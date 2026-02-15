@@ -25,81 +25,83 @@ class InstallQueueUsecase {
     required ProgressCallback onProgress,
   }) async {
     final total = plan.installQueueInOrder.length;
+    await _cleanupLegacyModsTempDir(modsPath);
 
-    for (var index = 0; index < total; index++) {
-      final item = plan.installQueueInOrder[index];
-      final file = item.version.primaryJarFile;
-      if (file == null) {
-        throw Exception('No .jar file available for ${item.version.name}.');
-      }
+    try {
+      for (var index = 0; index < total; index++) {
+        final item = plan.installQueueInOrder[index];
+        final file = item.version.primaryJarFile;
+        if (file == null) {
+          throw Exception('No .jar file available for ${item.version.name}.');
+        }
 
-      final step = index + 1;
-      await onProgress(
-        InstallProgress(
-          stage: InstallProgressStage.downloading,
-          current: step,
-          total: total,
-          modName: item.displayName,
-          message: 'Downloading $step/$total: ${item.displayName}',
-        ),
-      );
+        final step = index + 1;
+        await onProgress(
+          InstallProgress(
+            stage: InstallProgressStage.downloading,
+            current: step,
+            total: total,
+            modName: item.displayName,
+            message: 'Downloading $step/$total: ${item.displayName}',
+          ),
+        );
 
-      final stagingPath = await _createStagingPath(
-        modsPath: modsPath,
-        fileName: file.fileName,
-      );
-      final downloaded = await _modrinthRepository.downloadVersionFile(
-        file: file,
-        targetPath: stagingPath,
-      );
+        final stagingPath = await _createStagingPath(fileName: file.fileName);
+        final downloaded = await _modrinthRepository.downloadVersionFile(
+          file: file,
+          targetPath: stagingPath,
+        );
 
-      if (!await downloaded.exists() || await downloaded.length() <= 0) {
-        throw Exception('Download failed for ${item.displayName}.');
-      }
+        if (!await downloaded.exists() || await downloaded.length() <= 0) {
+          throw Exception('Download failed for ${item.displayName}.');
+        }
 
-      await onProgress(
-        InstallProgress(
-          stage: InstallProgressStage.installing,
-          current: step,
-          total: total,
-          modName: item.displayName,
-          message: 'Installing $step/$total: ${item.displayName}',
-        ),
-      );
+        await onProgress(
+          InstallProgress(
+            stage: InstallProgressStage.installing,
+            current: step,
+            total: total,
+            modName: item.displayName,
+            message: 'Installing $step/$total: ${item.displayName}',
+          ),
+        );
 
-      await _cleanupOldMappedFiles(
-        modsPath: modsPath,
-        projectId: item.projectId,
-        incomingFileName: file.fileName,
-      );
-
-      final targetPath = p.join(modsPath, file.fileName);
-      await _commitStagedFile(
-        stagedFile: downloaded,
-        targetPath: targetPath,
-      );
-
-      await _mappingRepository.put(
-        ModrinthMapping(
-          jarFileName: file.fileName,
+        await _cleanupOldMappedFiles(
+          modsPath: modsPath,
           projectId: item.projectId,
-          versionId: item.version.id,
-          installedAt: DateTime.now(),
-          sha1: file.sha1,
-          sha512: file.sha512,
+          incomingFileName: file.fileName,
+        );
+
+        final targetPath = p.join(modsPath, file.fileName);
+        await _commitStagedFile(
+          stagedFile: downloaded,
+          targetPath: targetPath,
+        );
+
+        await _mappingRepository.put(
+          ModrinthMapping(
+            jarFileName: file.fileName,
+            projectId: item.projectId,
+            versionId: item.version.id,
+            installedAt: DateTime.now(),
+            sha1: file.sha1,
+            sha512: file.sha512,
+          ),
+        );
+      }
+
+      await onProgress(
+        InstallProgress(
+          stage: InstallProgressStage.done,
+          current: total,
+          total: total,
+          modName: null,
+          message: 'Installation completed.',
         ),
       );
+    } finally {
+      await _cleanupLegacyModsTempDir(modsPath);
     }
-
-    await onProgress(
-      InstallProgress(
-        stage: InstallProgressStage.done,
-        current: total,
-        total: total,
-        modName: null,
-        message: 'Installation completed.',
-      ),
-    );
   }
 
   Future<void> _cleanupOldMappedFiles({
@@ -125,16 +127,27 @@ class InstallQueueUsecase {
     }
   }
 
-  Future<String> _createStagingPath({
-    required String modsPath,
-    required String fileName,
-  }) async {
-    final stagingDir = Directory(p.join(modsPath, '.melon_tmp'));
+  Future<String> _createStagingPath({required String fileName}) async {
+    final stagingDir = Directory(
+      p.join(Directory.systemTemp.path, 'melon_mod', 'staging'),
+    );
     if (!await stagingDir.exists()) {
       await stagingDir.create(recursive: true);
     }
     final timestamp = DateTime.now().microsecondsSinceEpoch;
     return p.join(stagingDir.path, '${timestamp}_$fileName');
+  }
+
+  Future<void> _cleanupLegacyModsTempDir(String modsPath) async {
+    final legacy = Directory(p.join(modsPath, '.melon_tmp'));
+    if (!await legacy.exists()) {
+      return;
+    }
+    try {
+      await legacy.delete(recursive: true);
+    } catch (_) {
+      // Keep install flow resilient if legacy cleanup fails.
+    }
   }
 
   Future<void> _commitStagedFile({
