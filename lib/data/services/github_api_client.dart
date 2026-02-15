@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 
 import '../models/github_profile_model.dart';
+import '../models/github_release_model.dart';
 import '../models/github_repository_model.dart';
 
 class GitHubApiClient {
@@ -53,5 +54,24 @@ class GitHubApiClient {
       throw const FormatException('Invalid GitHub repository response.');
     }
     return GitHubRepositoryModel.fromJson(decoded);
+  }
+
+  Future<GitHubReleaseModel> getLatestRelease(
+    String owner,
+    String repository,
+  ) async {
+    final uri = Uri.parse('$baseUrl/repos/$owner/$repository/releases/latest');
+    final response = await _client.get(uri, headers: _headers);
+    if (response.statusCode != 200) {
+      throw HttpException(
+        'GitHub latest release failed: ${response.statusCode}',
+      );
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const FormatException('Invalid GitHub release response.');
+    }
+    return GitHubReleaseModel.fromJson(decoded);
   }
 }
