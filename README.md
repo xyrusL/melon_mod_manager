@@ -4,6 +4,8 @@ Melon Mod Manager helps you **download, install, and update Minecraft Fabric/Qui
 
 It is built for players who want easy mod management without manually moving `.jar` files every time.
 
+Project repository: `https://github.com/xyrusL/melon_mod_manager`
+
 ## What this app is for
 
 - Keep your mods organized in one selected `mods` folder
@@ -57,6 +59,9 @@ flutter run -d windows
 - Mods added manually still appear in the list and can be managed as local files.
 
 ## Developer info (optional)
+
+- Developer: **Xyrus**
+- GitHub profile: `https://github.com/xyrusL`
 
 ### Project structure
 
