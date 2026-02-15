@@ -25,8 +25,11 @@ class ModrinthApiClient {
     String loader = 'fabric',
     String? gameVersion,
     int limit = 20,
+    int offset = 0,
+    String index = 'relevance',
   }) async {
     final facets = <List<String>>[
+      ['project_type:mod'],
       ['categories:$loader'],
       if (gameVersion != null && gameVersion.isNotEmpty)
         ['versions:$gameVersion'],
@@ -36,6 +39,8 @@ class ModrinthApiClient {
       queryParameters: {
         'query': query,
         'limit': '$limit',
+        'offset': '$offset',
+        'index': index,
         'facets': jsonEncode(facets),
       },
     );
