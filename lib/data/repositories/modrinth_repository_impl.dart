@@ -64,12 +64,16 @@ class ModrinthRepositoryImpl implements ModrinthRepository {
     String loader = 'fabric',
     String? gameVersion,
     int limit = 20,
+    int offset = 0,
+    String index = 'relevance',
   }) async {
     final result = await _apiClient.searchProjects(
       query,
       loader: loader,
       gameVersion: gameVersion,
       limit: limit,
+      offset: offset,
+      index: index,
     );
 
     return result.map((m) => m.toEntity()).toList();
