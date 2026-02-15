@@ -71,26 +71,32 @@ class UpdateModsUsecase {
           continue;
         }
 
-        final newTarget = p.join(modsPath, file.fileName);
+        final stagingPath = await _createStagingPath(
+          modsPath: modsPath,
+          fileName: file.fileName,
+        );
         final downloaded = await _modrinthRepository.downloadVersionFile(
           file: file,
-          targetPath: newTarget,
+          targetPath: stagingPath,
         );
 
-        if (downloaded.lengthSync() <= 0) {
+        if (!await downloaded.exists() || await downloaded.length() <= 0) {
           notes.add('Failed to update ${mod.displayName}: empty download.');
           failed++;
           continue;
         }
 
-        if (file.fileName != mapping.jarFileName) {
-          final oldPath = p.join(modsPath, mapping.jarFileName);
-          final oldFile = File(oldPath);
-          if (await oldFile.exists()) {
-            await oldFile.delete();
-          }
-          await _mappingRepository.remove(mapping.jarFileName);
-        }
+        await _cleanupOldMappedFiles(
+          modsPath: modsPath,
+          projectId: mapping.projectId,
+          incomingFileName: file.fileName,
+        );
+
+        final targetPath = p.join(modsPath, file.fileName);
+        await _commitStagedFile(
+          stagedFile: downloaded,
+          targetPath: targetPath,
+        );
 
         await _mappingRepository.put(
           ModrinthMapping(
@@ -117,6 +123,91 @@ class UpdateModsUsecase {
       failed: failed,
       notes: notes,
     );
+  }
+
+  Future<String> _createStagingPath({
+    required String modsPath,
+    required String fileName,
+  }) async {
+    final stagingDir = Directory(p.join(modsPath, '.melon_tmp'));
+    if (!await stagingDir.exists()) {
+      await stagingDir.create(recursive: true);
+    }
+    final timestamp = DateTime.now().microsecondsSinceEpoch;
+    return p.join(stagingDir.path, '${timestamp}_$fileName');
+  }
+
+  Future<void> _cleanupOldMappedFiles({
+    required String modsPath,
+    required String projectId,
+    required String incomingFileName,
+  }) async {
+    final allMappings = await _mappingRepository.getAll();
+    for (final mapping in allMappings.values) {
+      if (mapping.projectId != projectId) {
+        continue;
+      }
+      if (mapping.jarFileName == incomingFileName) {
+        continue;
+      }
+
+      final oldPath = p.join(modsPath, mapping.jarFileName);
+      final oldFile = File(oldPath);
+      if (await oldFile.exists()) {
+        await oldFile.delete();
+      }
+      await _mappingRepository.remove(mapping.jarFileName);
+    }
+  }
+
+  Future<void> _commitStagedFile({
+    required File stagedFile,
+    required String targetPath,
+  }) async {
+    final target = File(targetPath);
+    final backup = File('$targetPath.bak');
+
+    if (await backup.exists()) {
+      await backup.delete();
+    }
+
+    try {
+      if (await target.exists()) {
+        await target.rename(backup.path);
+      }
+
+      try {
+        await _moveFile(stagedFile, target);
+        if (await backup.exists()) {
+          await backup.delete();
+        }
+      } catch (_) {
+        if (await target.exists()) {
+          await target.delete();
+        }
+        if (await backup.exists()) {
+          await backup.rename(target.path);
+        }
+        rethrow;
+      }
+    } finally {
+      if (await stagedFile.exists()) {
+        await stagedFile.delete();
+      }
+    }
+  }
+
+  Future<void> _moveFile(File source, File destination) async {
+    if (!await destination.parent.exists()) {
+      await destination.parent.create(recursive: true);
+    }
+
+    try {
+      await source.rename(destination.path);
+    } on FileSystemException {
+      await source.copy(destination.path);
+      await source.delete();
+    }
   }
 }
 
