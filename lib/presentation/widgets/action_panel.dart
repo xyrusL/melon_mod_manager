@@ -1,18 +1,25 @@
 import 'package:flutter/material.dart';
 
+import 'developer_info_card.dart';
+import 'panel_action_button.dart';
+
 class ActionPanel extends StatelessWidget {
   const ActionPanel({
     super.key,
     required this.onDownloadMods,
     required this.onCheckUpdates,
     required this.onAddFile,
+    required this.onDeleteSelected,
     required this.isBusy,
+    required this.hasDeleteSelection,
   });
 
   final VoidCallback onDownloadMods;
   final VoidCallback onCheckUpdates;
   final VoidCallback onAddFile;
+  final VoidCallback onDeleteSelected;
   final bool isBusy;
+  final bool hasDeleteSelection;
 
   @override
   Widget build(BuildContext context) {
@@ -25,22 +32,43 @@ class ActionPanel extends StatelessWidget {
       ),
       child: Column(
         children: [
-          ElevatedButton.icon(
+          PanelActionButton(
+            label: 'Download Mods',
+            icon: Icons.download_rounded,
+            backgroundColor: const Color(0xFF50F0A8),
+            foregroundColor: Colors.black,
             onPressed: isBusy ? null : onDownloadMods,
-            icon: const Icon(Icons.download_rounded),
-            label: const Text('Download Mods'),
           ),
           const SizedBox(height: 10),
-          ElevatedButton.icon(
+          PanelActionButton(
+            label: 'Check for Updates',
+            icon: Icons.system_update_alt_rounded,
+            backgroundColor: const Color(0xFFFFC15A),
+            foregroundColor: Colors.black,
             onPressed: isBusy ? null : onCheckUpdates,
-            icon: const Icon(Icons.system_update_alt_rounded),
-            label: const Text('Check for Updates'),
           ),
           const SizedBox(height: 10),
-          ElevatedButton.icon(
+          PanelActionButton(
+            label: 'Add File',
+            icon: Icons.add_circle_outline_rounded,
+            backgroundColor: const Color(0xFF6AB9FF),
+            foregroundColor: Colors.black,
             onPressed: isBusy ? null : onAddFile,
-            icon: const Icon(Icons.add_circle_outline_rounded),
-            label: const Text('Add File'),
+          ),
+          const SizedBox(height: 10),
+          PanelActionButton(
+            label: 'Delete Selected',
+            icon: Icons.delete_forever_rounded,
+            backgroundColor: const Color(0xFFFF6A7D),
+            foregroundColor: Colors.black,
+            onPressed: isBusy || !hasDeleteSelection ? null : onDeleteSelected,
+          ),
+          const SizedBox(height: 12),
+          const Expanded(
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: DeveloperInfoCard(),
+            ),
           ),
         ],
       ),
