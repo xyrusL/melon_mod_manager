@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers.dart';
 import '../../core/theme/app_theme.dart';
+import '../widgets/melon_logo.dart';
 import '../viewmodels/app_controller.dart';
 
 class SetupScreen extends ConsumerStatefulWidget {
@@ -141,9 +142,18 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Setup Mods Folder',
-                    style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
+                  const Row(
+                    children: [
+                      MelonLogo(size: 34),
+                      SizedBox(width: 10),
+                      Text(
+                        'Setup Mods Folder',
+                        style: TextStyle(
+                          fontSize: 30,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 8),
                   const Text(
