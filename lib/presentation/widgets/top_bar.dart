@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'melon_logo.dart';
+
 class TopBar extends StatelessWidget {
   const TopBar({
     super.key,
@@ -28,9 +30,36 @@ class TopBar extends StatelessWidget {
       ),
       child: Row(
         children: [
+          const MelonLogo(size: 30),
+          const SizedBox(width: 10),
           const Text(
             'Melon Mod Manager',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            style: TextStyle(fontSize: 21, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: Theme.of(context)
+                  .colorScheme
+                  .secondary
+                  .withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: Theme.of(context)
+                    .colorScheme
+                    .secondary
+                    .withValues(alpha: 0.6),
+              ),
+            ),
+            child: Text(
+              'BETA',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.secondary,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
           const SizedBox(width: 22),
           Expanded(
