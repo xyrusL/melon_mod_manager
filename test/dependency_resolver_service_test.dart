@@ -291,6 +291,8 @@ class _FakeModrinthRepository implements ModrinthRepository {
     String loader = 'fabric',
     String? gameVersion,
     int limit = 20,
+    int offset = 0,
+    String index = 'relevance',
   }) {
     throw UnimplementedError();
   }
