@@ -1,17 +1,33 @@
 # Melon Mod Manager (Flutter Windows)
 
-Production-ready Flutter desktop app for managing Minecraft Fabric/Quilt mods from a user-selected `.minecraft/mods` folder.
+Melon Mod Manager is a Flutter desktop app for Windows that helps Minecraft players manage Fabric/Quilt mods safely from a selected `.minecraft/mods` folder.
+
+## Purpose
+
+Provide a focused, reliable mod management tool so users can install, track, and update mods without manually handling `.jar` files every time.
+
+## App Goals
+
+- Make mod installation and updates simple for non-technical users
+- Reduce broken mod setups with safer install/update flows
+- Keep mod metadata visible and searchable in one place
+- Support both Modrinth-managed mods and external `.jar` mods
 
 ## Features
 
 - First-run setup with persisted mods path (`shared_preferences`)
 - Auto-detect default Minecraft mods folder on Windows
 - Incremental `.jar` scan with isolate-based metadata parsing
-- Mod table with icon, name, version, provider, last modified
-- Modrinth integration: search, install, and update
+- Mod table with icon, name, version, provider, and last modified timestamp
+- Modrinth integration for search, install, and update workflows
 - External install (`Add File`) for non-Modrinth `.jar` files
-- Safe update flow with temp file + atomic replace
-- Local Modrinth mapping DB (`hive`) for reliable updates
+- Safe update flow using temporary file + atomic replace
+- Local Modrinth mapping DB (`hive`) to keep update detection reliable
+- Riverpod-based state management for predictable UI state handling
+
+## Goal in Practice
+
+The app is designed to be the day-to-day control panel for Minecraft mod folders: choose your mods directory once, view what is installed, install new mods, and perform safer updates with clear feedback.
 
 ## Architecture
 
