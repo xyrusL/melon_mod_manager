@@ -9,6 +9,8 @@ class PanelActionButton extends StatelessWidget {
     required this.foregroundColor,
     required this.onPressed,
     this.height = 44,
+    this.fontSize = 16,
+    this.iconSize = 20,
   });
 
   final String label;
@@ -17,6 +19,8 @@ class PanelActionButton extends StatelessWidget {
   final Color foregroundColor;
   final VoidCallback? onPressed;
   final double height;
+  final double fontSize;
+  final double iconSize;
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +28,7 @@ class PanelActionButton extends StatelessWidget {
       width: double.infinity,
       child: FilledButton.icon(
         onPressed: onPressed,
-        icon: Icon(icon),
+        icon: Icon(icon, size: iconSize),
         style: FilledButton.styleFrom(
           minimumSize: Size.fromHeight(height),
           backgroundColor: backgroundColor,
@@ -35,6 +39,7 @@ class PanelActionButton extends StatelessWidget {
         label: Text(
           label,
           overflow: TextOverflow.ellipsis,
+          style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.w600),
         ),
       ),
     );
