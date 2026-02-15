@@ -10,6 +10,7 @@ class TopBar extends StatelessWidget {
     required this.onRefresh,
     required this.onBrowsePath,
     required this.onAutoDetectPath,
+    this.uiScale = 1.0,
   });
 
   final String currentPath;
@@ -17,12 +18,19 @@ class TopBar extends StatelessWidget {
   final VoidCallback onRefresh;
   final VoidCallback onBrowsePath;
   final VoidCallback onAutoDetectPath;
+  final double uiScale;
 
   @override
   Widget build(BuildContext context) {
+    final titleSize = (21 * uiScale).clamp(21, 27).toDouble();
+    final iconSize = (18 * uiScale).clamp(18, 24).toDouble();
+    final controlVerticalPadding = (10 * uiScale).clamp(10, 14).toDouble();
+    final paddingH = (20 * uiScale).clamp(20, 28).toDouble();
+    final paddingV = (14 * uiScale).clamp(14, 18).toDouble();
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 240),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      padding: EdgeInsets.symmetric(horizontal: paddingH, vertical: paddingV),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(20),
@@ -30,15 +38,18 @@ class TopBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const MelonLogo(size: 30),
-          const SizedBox(width: 10),
-          const Text(
+          MelonLogo(size: (30 * uiScale).clamp(30, 38).toDouble()),
+          SizedBox(width: (10 * uiScale).clamp(10, 14).toDouble()),
+          Text(
             'Melon Mod Manager',
-            style: TextStyle(fontSize: 21, fontWeight: FontWeight.bold),
+            style: TextStyle(fontSize: titleSize, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: (8 * uiScale).clamp(8, 12).toDouble()),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: EdgeInsets.symmetric(
+              horizontal: (8 * uiScale).clamp(8, 12).toDouble(),
+              vertical: (4 * uiScale).clamp(4, 6).toDouble(),
+            ),
             decoration: BoxDecoration(
               color: Theme.of(context)
                   .colorScheme
@@ -56,12 +67,12 @@ class TopBar extends StatelessWidget {
               'BETA',
               style: TextStyle(
                 color: Theme.of(context).colorScheme.secondary,
-                fontSize: 11,
+                fontSize: (11 * uiScale).clamp(11, 13).toDouble(),
                 fontWeight: FontWeight.w700,
               ),
             ),
           ),
-          const SizedBox(width: 22),
+          SizedBox(width: (22 * uiScale).clamp(22, 28).toDouble()),
           Expanded(
             child: PopupMenuButton<_PathAction>(
               tooltip: 'Mods path options',
@@ -86,9 +97,9 @@ class TopBar extends StatelessWidget {
                 ),
               ],
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 10,
+                padding: EdgeInsets.symmetric(
+                  horizontal: (14 * uiScale).clamp(14, 18).toDouble(),
+                  vertical: controlVerticalPadding,
                 ),
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.3),
@@ -96,8 +107,8 @@ class TopBar extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.folder_open_rounded, size: 18),
-                    const SizedBox(width: 10),
+                    Icon(Icons.folder_open_rounded, size: iconSize),
+                    SizedBox(width: (10 * uiScale).clamp(10, 14).toDouble()),
                     Expanded(
                       child: Text(
                         currentPath,
@@ -105,27 +116,30 @@ class TopBar extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.92),
-                          fontSize: 13,
+                          fontSize: (13 * uiScale).clamp(13, 16).toDouble(),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 6),
-                    const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
+                    SizedBox(width: (6 * uiScale).clamp(6, 10).toDouble()),
+                    Icon(Icons.keyboard_arrow_down_rounded, size: iconSize),
                   ],
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 14),
+          SizedBox(width: (14 * uiScale).clamp(14, 18).toDouble()),
           IconButton.filledTonal(
             onPressed: isBusy ? null : onRefresh,
             icon: isBusy
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
+                ? SizedBox(
+                    width: (16 * uiScale).clamp(16, 20).toDouble(),
+                    height: (16 * uiScale).clamp(16, 20).toDouble(),
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Icon(Icons.refresh_rounded),
+                : Icon(
+                    Icons.refresh_rounded,
+                    size: (22 * uiScale).clamp(22, 26).toDouble(),
+                  ),
             tooltip: 'Refresh',
           ),
         ],
