@@ -4,7 +4,7 @@ Melon Mod Manager is a Flutter desktop app for Windows that helps Minecraft play
 
 ## Purpose
 
-Provide a focused, reliable mod management tool so users can install, track, and update mods without manually handling `.jar` files every time.
+Provide a focused, reliable mod management tool so users can install, track, and update mods without manually handling `.jar` files every time, regardless of the Minecraft launcher/client they use.
 
 ## App Goals
 
@@ -12,6 +12,7 @@ Provide a focused, reliable mod management tool so users can install, track, and
 - Reduce broken mod setups with safer install/update flows
 - Keep mod metadata visible and searchable in one place
 - Support both Modrinth-managed mods and external `.jar` mods
+- Work with any launcher setup (official, custom, or non-official) as long as users can select the correct mods folder path
 
 ## Features
 
