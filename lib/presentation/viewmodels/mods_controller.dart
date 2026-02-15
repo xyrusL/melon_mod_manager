@@ -16,6 +16,43 @@ import '../../domain/usecases/install_queue_usecase.dart';
 import '../../domain/usecases/update_mods_usecase.dart';
 
 enum ModFilter { all, modrinth, external, updatable }
+typedef UpdateCheckProgressCallback = void Function(
+  int processed,
+  int total,
+  String message,
+);
+
+class PendingModUpdate {
+  const PendingModUpdate({
+    required this.mod,
+    this.currentVersion,
+    this.latestVersion,
+  });
+
+  final ModItem mod;
+  final String? currentVersion;
+  final String? latestVersion;
+}
+
+class UpdateCheckPreview {
+  const UpdateCheckPreview({
+    required this.selectedOnly,
+    required this.totalChecked,
+    required this.updates,
+    required this.alreadyLatest,
+    required this.externalOrUnknown,
+    required this.failed,
+    required this.notes,
+  });
+
+  final bool selectedOnly;
+  final int totalChecked;
+  final List<PendingModUpdate> updates;
+  final int alreadyLatest;
+  final int externalOrUnknown;
+  final int failed;
+  final List<String> notes;
+}
 
 enum ProjectInstallState {
   notInstalled,
@@ -452,7 +489,11 @@ class ModsController extends StateNotifier<ModsState> {
   Future<void> checkForUpdates(String modsPath) async {
     state = state.copyWith(isBusy: true, errorMessage: null, infoMessage: null);
     try {
-      final modsToCheck = state.mods;
+      final selectedMods = state.mods
+          .where((mod) => state.selectedFiles.contains(mod.fileName))
+          .toList();
+      final checkSelectedOnly = selectedMods.isNotEmpty;
+      final modsToCheck = checkSelectedOnly ? selectedMods : state.mods;
       if (modsToCheck.isEmpty) {
         state = state.copyWith(
           isBusy: false,
@@ -465,7 +506,10 @@ class ModsController extends StateNotifier<ModsState> {
         modsPath: modsPath,
         mods: modsToCheck,
       );
-      final message = _buildUpdateMessage(summary);
+      final message = _buildUpdateMessage(
+        summary,
+        selectedOnly: checkSelectedOnly,
+      );
       state = state.copyWith(isBusy: false, infoMessage: message);
       await loadMods(modsPath);
     } catch (error) {
@@ -473,6 +517,130 @@ class ModsController extends StateNotifier<ModsState> {
         isBusy: false,
         errorMessage: _errorReporter.toUserMessage(error),
       );
+    }
+  }
+
+  Future<UpdateCheckPreview> checkForUpdatesPreview({
+    UpdateCheckProgressCallback? onProgress,
+  }) async {
+    state = state.copyWith(isBusy: true, errorMessage: null, infoMessage: null);
+    try {
+      final selectedMods = state.mods
+          .where((mod) => state.selectedFiles.contains(mod.fileName))
+          .toList();
+      final selectedOnly = selectedMods.isNotEmpty;
+      final modsToCheck = selectedOnly ? selectedMods : state.mods;
+
+      if (modsToCheck.isEmpty) {
+        return const UpdateCheckPreview(
+          selectedOnly: false,
+          totalChecked: 0,
+          updates: [],
+          alreadyLatest: 0,
+          externalOrUnknown: 0,
+          failed: 0,
+          notes: [],
+        );
+      }
+
+      final updates = <PendingModUpdate>[];
+      final notes = <String>[];
+      var alreadyLatest = 0;
+      var externalOrUnknown = 0;
+      var failed = 0;
+      final total = modsToCheck.length;
+
+      for (var i = 0; i < modsToCheck.length; i++) {
+        final mod = modsToCheck[i];
+        onProgress?.call(
+          i + 1,
+          total,
+          'Checking ${mod.displayName}...',
+        );
+        // Keep progress readable for users (avoid big visual jumps like 1 -> 7).
+        await Future<void>.delayed(const Duration(milliseconds: 28));
+
+        if (mod.provider != ModProviderType.modrinth) {
+          externalOrUnknown++;
+          if (notes.length < 6) {
+            notes.add('${mod.displayName}: not from Modrinth.');
+          }
+          continue;
+        }
+
+        final mapping = await _mappingRepository.getByFileName(mod.fileName);
+        if (mapping == null) {
+          externalOrUnknown++;
+          if (notes.length < 6) {
+            notes.add('${mod.displayName}: no Modrinth mapping found.');
+          }
+          continue;
+        }
+
+        try {
+          final current = await _modrinthRepository.getVersionById(
+            mapping.versionId,
+          );
+          final latest = await _modrinthRepository.getLatestVersion(
+            mapping.projectId,
+          );
+
+          if (latest == null || latest.id == mapping.versionId) {
+            alreadyLatest++;
+            continue;
+          }
+
+          updates.add(
+            PendingModUpdate(
+              mod: mod,
+              currentVersion: current?.versionNumber,
+              latestVersion: latest.versionNumber,
+            ),
+          );
+        } catch (error) {
+          failed++;
+          if (notes.length < 6) {
+            notes.add('${mod.displayName}: $error');
+          }
+        }
+      }
+
+      return UpdateCheckPreview(
+        selectedOnly: selectedOnly,
+        totalChecked: total,
+        updates: List<PendingModUpdate>.unmodifiable(updates),
+        alreadyLatest: alreadyLatest,
+        externalOrUnknown: externalOrUnknown,
+        failed: failed,
+        notes: List<String>.unmodifiable(notes),
+      );
+    } finally {
+      state = state.copyWith(isBusy: false);
+    }
+  }
+
+  Future<UpdateSummary> runUpdatesForMods({
+    required String modsPath,
+    required List<ModItem> mods,
+    required bool selectedOnly,
+  }) async {
+    state = state.copyWith(isBusy: true, errorMessage: null, infoMessage: null);
+    try {
+      final summary = await _updateModsUsecase.execute(
+        modsPath: modsPath,
+        mods: mods,
+      );
+      final message = _buildUpdateMessage(
+        summary,
+        selectedOnly: selectedOnly,
+      );
+      state = state.copyWith(isBusy: false, infoMessage: message);
+      await loadMods(modsPath);
+      return summary;
+    } catch (error) {
+      final message = _errorReporter.toUserMessage(error);
+      state = state.copyWith(isBusy: false, errorMessage: message);
+      rethrow;
     }
   }
 
@@ -516,7 +684,32 @@ class ModsController extends StateNotifier<ModsState> {
     await loadMods(modsPath);
   }
 
-  String _buildUpdateMessage(UpdateSummary summary) {
+  String _buildUpdateMessage(
+    UpdateSummary summary, {
+    required bool selectedOnly,
+  }) {
+    if (selectedOnly && summary.totalChecked == 1) {
+      final modName = _firstOrNull(summary.updatedMods) ??
+          _firstOrNull(summary.alreadyLatestMods) ??
+          _firstOrNull(summary.externalSkippedMods) ??
+          _firstOrNull(summary.failedMods) ??
+          'Selected mod';
+
+      if (summary.updated == 1) {
+        return '$modName was updated successfully.';
+      }
+      if (summary.alreadyLatest == 1) {
+        return '$modName is already on the latest compatible version.';
+      }
+      if (summary.externalSkipped == 1) {
+        return '$modName cannot be updated automatically because it is not from Modrinth.';
+      }
+      if (summary.failed == 1) {
+        final detail = summary.notes.isEmpty ? '' : '\n${summary.notes.first}';
+        return 'Failed to update $modName.$detail';
+      }
+    }
+
     final parts = <String>[
       'Checked ${summary.totalChecked} mod(s)',
       '${summary.updated} updated',
@@ -525,11 +718,19 @@ class ModsController extends StateNotifier<ModsState> {
       '${summary.failed} failed',
     ];
 
-    final base = parts.join(' | ');
+    final scope = selectedOnly ? 'Selected mods' : 'All mods';
+    final base = '$scope: ${parts.join(' | ')}';
     if (summary.notes.isEmpty) {
       return base;
     }
     return '$base\n${summary.notes.first}';
+  }
+
+  String? _firstOrNull(List<String> values) {
+    if (values.isEmpty) {
+      return null;
+    }
+    return values.first;
   }
 
   Future<ModItem> _toModItem(ModMetadataResult metadata) async {
