@@ -50,70 +50,98 @@ class _MainScreenState extends ConsumerState<MainScreen> {
       decoration: AppTheme.appBackground(),
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        body: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Column(
-            children: [
-              TopBar(
-                currentPath: widget.modsPath,
-                isBusy: state.isScanning || state.isBusy,
-                onRefresh: () async {
-                  ref.invalidate(developerSnapshotProvider);
-                  await notifier.loadMods(widget.modsPath);
-                },
-                onBrowsePath: _browseNewPath,
-                onAutoDetectPath: _autoDetectPath,
-              ),
-              if (state.errorMessage != null || state.infoMessage != null) ...[
-                const SizedBox(height: 10),
-                StatusBanner(
-                  message: state.errorMessage ?? state.infoMessage!,
-                  isError: state.errorMessage != null,
-                  onDismiss: notifier.clearMessages,
-                ),
-              ],
-              const SizedBox(height: 14),
-              Expanded(
-                child: Row(
-                  children: [
-                    Expanded(
-                      flex: 5,
-                      child: Container(
-                        decoration: AppTheme.glassPanel(),
-                        padding: const EdgeInsets.all(8),
-                        child: ModsTable(
-                          mods: filteredMods,
-                          selectedFiles: state.selectedFiles,
-                          onToggleSelected: notifier.toggleModSelection,
-                          onToggleSelectAllVisible: (selected) => notifier
-                              .toggleSelectAllVisible(filteredMods, selected),
-                          isScanning: state.isScanning,
-                          processed: state.scanProcessed,
-                          total: state.scanTotal,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    SizedBox(
-                      width: 260,
-                      child: ActionPanel(
-                        isBusy: state.isBusy,
-                        hasDeleteSelection: state.selectedFiles.isNotEmpty,
-                        onDownloadMods: _openModrinthSearch,
-                        onCheckUpdates: () =>
-                            notifier.checkForUpdates(widget.modsPath),
-                        onAddFile: _addFiles,
-                        onDeleteSelected: _deleteSelected,
-                      ),
+        body: LayoutBuilder(
+          builder: (context, constraints) {
+            final uiScale = _computeUiScale(
+              width: constraints.maxWidth,
+              height: constraints.maxHeight,
+            );
+            final sidePanelWidth =
+                (constraints.maxWidth * 0.24).clamp(260.0, 360.0).toDouble();
+            final pagePadding = (18 * uiScale).clamp(18, 24).toDouble();
+            final contentGap = (14 * uiScale).clamp(14, 20).toDouble();
+
+            return Padding(
+              padding: EdgeInsets.all(pagePadding),
+              child: Column(
+                children: [
+                  TopBar(
+                    currentPath: widget.modsPath,
+                    isBusy: state.isScanning || state.isBusy,
+                    uiScale: uiScale,
+                    onRefresh: () async {
+                      ref.invalidate(developerSnapshotProvider);
+                      ref.invalidate(environmentInfoProvider(widget.modsPath));
+                      await notifier.loadMods(widget.modsPath);
+                    },
+                    onBrowsePath: _browseNewPath,
+                    onAutoDetectPath: _autoDetectPath,
+                  ),
+                  if (state.errorMessage != null ||
+                      state.infoMessage != null) ...[
+                    SizedBox(height: (10 * uiScale).clamp(10, 14).toDouble()),
+                    StatusBanner(
+                      message: state.errorMessage ?? state.infoMessage!,
+                      isError: state.errorMessage != null,
+                      onDismiss: notifier.clearMessages,
                     ),
                   ],
-                ),
+                  SizedBox(height: contentGap),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            decoration: AppTheme.glassPanel(),
+                            padding: EdgeInsets.all(
+                              (8 * uiScale).clamp(8, 12).toDouble(),
+                            ),
+                            child: ModsTable(
+                              mods: filteredMods,
+                              selectedFiles: state.selectedFiles,
+                              onToggleSelected: notifier.toggleModSelection,
+                              onToggleSelectAllVisible: (selected) =>
+                                  notifier.toggleSelectAllVisible(
+                                      filteredMods, selected),
+                              isScanning: state.isScanning,
+                              processed: state.scanProcessed,
+                              total: state.scanTotal,
+                              uiScale: uiScale,
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: contentGap),
+                        SizedBox(
+                          width: sidePanelWidth,
+                          child: ActionPanel(
+                            modsPath: widget.modsPath,
+                            isBusy: state.isBusy,
+                            hasDeleteSelection: state.selectedFiles.isNotEmpty,
+                            uiScale: uiScale,
+                        onDownloadMods: _openModrinthSearch,
+                            onCheckUpdates: _checkUpdatesWithReview,
+                            onAddFile: _addFiles,
+                            onDeleteSelected: _deleteSelected,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
+  }
+
+  double _computeUiScale({required double width, required double height}) {
+    const baseWidth = 1100.0;
+    const baseHeight = 650.0;
+    final scale = (width / baseWidth).clamp(1.0, 1.3);
+    final heightScale = (height / baseHeight).clamp(1.0, 1.2);
+    return (scale < heightScale ? scale : heightScale).toDouble();
   }
 
   Future<void> _openModrinthSearch() async {
@@ -208,14 +236,82 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     }
     if (detected == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not auto-detect a default mods folder.'),
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+          backgroundColor: const Color(0xFF3A1420),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: const BorderSide(color: Color(0xFFFF6A7D), width: 1),
+          ),
+          content: const Text(
+            'Could not auto-detect a default mods folder.',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ),
       );
       return;
     }
 
     await _applyPath(detected);
+  }
+
+  Future<void> _checkUpdatesWithReview() async {
+    final notifier = ref.read(modsControllerProvider.notifier);
+    final preview = await showDialog<UpdateCheckPreview>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => _UpdateCheckProgressDialog(
+        runCheck: (onProgress) =>
+            notifier.checkForUpdatesPreview(onProgress: onProgress),
+      ),
+    );
+
+    if (!mounted || preview == null) {
+      return;
+    }
+
+    if (preview.totalChecked == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No mods available for update.')),
+      );
+      return;
+    }
+
+    if (preview.updates.isEmpty) {
+      final scope = preview.selectedOnly ? 'selected mods' : 'all mods';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No updates found for $scope.')),
+      );
+      return;
+    }
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => _UpdateConfirmDialog(preview: preview),
+    );
+
+    if (confirm != true || !mounted) {
+      return;
+    }
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => _UpdateRunDialog(
+        total: preview.updates.length,
+        run: () async {
+          await notifier.runUpdatesForMods(
+            modsPath: widget.modsPath,
+            mods: preview.updates.map((e) => e.mod).toList(),
+            selectedOnly: preview.selectedOnly,
+          );
+        },
+      ),
+    );
   }
 
   Future<void> _applyPath(String path) async {
@@ -254,5 +350,236 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     if (mounted) {
       await ref.read(modsControllerProvider.notifier).loadMods(path);
     }
+  }
+}
+
+class _UpdateCheckProgressDialog extends StatefulWidget {
+  const _UpdateCheckProgressDialog({required this.runCheck});
+
+  final Future<UpdateCheckPreview> Function(UpdateCheckProgressCallback onProgress)
+      runCheck;
+
+  @override
+  State<_UpdateCheckProgressDialog> createState() =>
+      _UpdateCheckProgressDialogState();
+}
+
+class _UpdateCheckProgressDialogState extends State<_UpdateCheckProgressDialog> {
+  int _processed = 0;
+  int _total = 0;
+  String _message = 'Preparing update check...';
+  bool _done = false;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(_run);
+  }
+
+  Future<void> _run() async {
+    final preview = await widget.runCheck((processed, total, message) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _processed = processed;
+        _total = total;
+        _message = message;
+      });
+    });
+
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _done = true;
+      _message = 'Check complete.';
+    });
+    Navigator.of(context).pop(preview);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final value =
+        (_total > 0) ? (_processed / _total).clamp(0.0, 1.0).toDouble() : null;
+    return AlertDialog(
+      title: const Text('Checking for Updates'),
+      content: SizedBox(
+        width: 430,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(_message),
+            const SizedBox(height: 10),
+            LinearProgressIndicator(value: value),
+            const SizedBox(height: 8),
+            Text(
+              _total > 0 ? '$_processed / $_total checked' : 'Starting...',
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.72)),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _done ? () => Navigator.of(context).pop() : null,
+          child: const Text('Close'),
+        ),
+      ],
+    );
+  }
+}
+
+class _UpdateConfirmDialog extends StatelessWidget {
+  const _UpdateConfirmDialog({required this.preview});
+
+  final UpdateCheckPreview preview;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Updates Found'),
+      content: SizedBox(
+        width: 560,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Found ${preview.updates.length} update(s). '
+              'All found updates will be installed.',
+            ),
+            const SizedBox(height: 10),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 280),
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: preview.updates.length,
+                itemBuilder: (context, index) {
+                  final item = preview.updates[index];
+                  final from = item.currentVersion ?? 'unknown';
+                  final to = item.latestVersion ?? 'latest';
+                  return Padding(
+                    padding: EdgeInsets.only(
+                      bottom: index == preview.updates.length - 1 ? 0 : 8,
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              item.mod.displayName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '$from -> $to',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.76),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          child: const Text('Update All'),
+        ),
+      ],
+    );
+  }
+}
+
+class _UpdateRunDialog extends StatefulWidget {
+  const _UpdateRunDialog({
+    required this.total,
+    required this.run,
+  });
+
+  final int total;
+  final Future<void> Function() run;
+
+  @override
+  State<_UpdateRunDialog> createState() => _UpdateRunDialogState();
+}
+
+class _UpdateRunDialogState extends State<_UpdateRunDialog> {
+  String _message = 'Starting updates...';
+
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(_run);
+  }
+
+  Future<void> _run() async {
+    try {
+      await widget.run();
+      if (!mounted) {
+        return;
+      }
+      Navigator.of(context).pop();
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _message = 'Update failed: $error';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Updating Mods'),
+      content: SizedBox(
+        width: 420,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(_message),
+            const SizedBox(height: 10),
+            const LinearProgressIndicator(),
+            const SizedBox(height: 8),
+            Text(
+              'Applying ${widget.total} update(s)...',
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.72)),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _message.startsWith('Update failed')
+              ? () => Navigator.of(context).pop()
+              : null,
+          child: const Text('Close'),
+        ),
+      ],
+    );
   }
 }
