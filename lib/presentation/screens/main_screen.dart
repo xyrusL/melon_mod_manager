@@ -57,7 +57,10 @@ class _MainScreenState extends ConsumerState<MainScreen> {
               TopBar(
                 currentPath: widget.modsPath,
                 isBusy: state.isScanning || state.isBusy,
-                onRefresh: () => notifier.loadMods(widget.modsPath),
+                onRefresh: () async {
+                  ref.invalidate(developerSnapshotProvider);
+                  await notifier.loadMods(widget.modsPath);
+                },
                 onBrowsePath: _browseNewPath,
                 onAutoDetectPath: _autoDetectPath,
               ),
@@ -95,10 +98,12 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                       width: 260,
                       child: ActionPanel(
                         isBusy: state.isBusy,
+                        hasDeleteSelection: state.selectedFiles.isNotEmpty,
                         onDownloadMods: _openModrinthSearch,
                         onCheckUpdates: () =>
                             notifier.checkForUpdates(widget.modsPath),
                         onAddFile: _addFiles,
+                        onDeleteSelected: _deleteSelected,
                       ),
                     ),
                   ],
@@ -134,6 +139,45 @@ class _MainScreenState extends ConsumerState<MainScreen> {
           modsPath: widget.modsPath,
           sourcePaths: paths,
           onConflict: _resolveConflict,
+        );
+  }
+
+  Future<void> _deleteSelected() async {
+    final selectedCount = ref.read(modsControllerProvider).selectedFiles.length;
+    if (selectedCount == 0 || !mounted) {
+      return;
+    }
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete selected mods?'),
+        content: Text(
+          'This will permanently delete $selectedCount selected mod file(s) from your mods folder.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFFF6A7D),
+              foregroundColor: Colors.black,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true || !mounted) {
+      return;
+    }
+
+    await ref.read(modsControllerProvider.notifier).deleteSelectedMods(
+          widget.modsPath,
         );
   }
 
