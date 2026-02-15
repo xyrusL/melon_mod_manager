@@ -28,91 +28,105 @@ class UpdateModsUsecase {
     var externalSkipped = 0;
     var failed = 0;
     final notes = <String>[];
+    final updatedMods = <String>[];
+    final alreadyLatestMods = <String>[];
+    final externalSkippedMods = <String>[];
+    final failedMods = <String>[];
+    await _cleanupLegacyModsTempDir(modsPath);
 
-    for (final mod in mods) {
-      if (mod.provider == ModProviderType.external) {
-        externalSkipped++;
-        if (notes.length < 5) {
-          notes.add('${mod.displayName}: Cannot update (not from Modrinth).');
-        }
-        continue;
-      }
-
-      final mapping = await _mappingRepository.getByFileName(mod.fileName);
-      if (mapping == null) {
-        externalSkipped++;
-        if (notes.length < 5) {
-          notes.add('${mod.displayName}: Cannot update (not from Modrinth).');
-        }
-        continue;
-      }
-
-      try {
-        final latest = await _modrinthRepository.getLatestVersion(
-          mapping.projectId,
-          loader: loader,
-          gameVersion: gameVersion,
-        );
-
-        if (latest == null) {
-          alreadyLatest++;
+    try {
+      for (final mod in mods) {
+        if (mod.provider == ModProviderType.external) {
+          externalSkipped++;
+          externalSkippedMods.add(mod.displayName);
+          if (notes.length < 5) {
+            notes.add('${mod.displayName}: Cannot update (not from Modrinth).');
+          }
           continue;
         }
 
-        if (latest.id == mapping.versionId) {
-          alreadyLatest++;
+        final mapping = await _mappingRepository.getByFileName(mod.fileName);
+        if (mapping == null) {
+          externalSkipped++;
+          externalSkippedMods.add(mod.displayName);
+          if (notes.length < 5) {
+            notes.add('${mod.displayName}: Cannot update (not from Modrinth).');
+          }
           continue;
         }
 
-        final file = latest.primaryJarFile;
-        if (file == null) {
-          notes.add('No .jar update file found for ${mod.displayName}.');
-          failed++;
-          continue;
-        }
+        try {
+          final latest = await _modrinthRepository.getLatestVersion(
+            mapping.projectId,
+            loader: loader,
+            gameVersion: gameVersion,
+          );
 
-        final stagingPath = await _createStagingPath(
-          modsPath: modsPath,
-          fileName: file.fileName,
-        );
-        final downloaded = await _modrinthRepository.downloadVersionFile(
-          file: file,
-          targetPath: stagingPath,
-        );
+          if (latest == null) {
+            alreadyLatest++;
+            alreadyLatestMods.add(mod.displayName);
+            continue;
+          }
 
-        if (!await downloaded.exists() || await downloaded.length() <= 0) {
-          notes.add('Failed to update ${mod.displayName}: empty download.');
-          failed++;
-          continue;
-        }
+          if (latest.id == mapping.versionId) {
+            alreadyLatest++;
+            alreadyLatestMods.add(mod.displayName);
+            continue;
+          }
 
-        await _cleanupOldMappedFiles(
-          modsPath: modsPath,
-          projectId: mapping.projectId,
-          incomingFileName: file.fileName,
-        );
+          final file = latest.primaryJarFile;
+          if (file == null) {
+            notes.add('No .jar update file found for ${mod.displayName}.');
+            failed++;
+            failedMods.add(mod.displayName);
+            continue;
+          }
 
-        final targetPath = p.join(modsPath, file.fileName);
-        await _commitStagedFile(
-          stagedFile: downloaded,
-          targetPath: targetPath,
-        );
+          final stagingPath = await _createStagingPath(fileName: file.fileName);
+          final downloaded = await _modrinthRepository.downloadVersionFile(
+            file: file,
+            targetPath: stagingPath,
+          );
 
-        await _mappingRepository.put(
-          ModrinthMapping(
-            jarFileName: file.fileName,
+          if (!await downloaded.exists() || await downloaded.length() <= 0) {
+            notes.add('Failed to update ${mod.displayName}: empty download.');
+            failed++;
+            failedMods.add(mod.displayName);
+            continue;
+          }
+
+          await _cleanupOldMappedFiles(
+            modsPath: modsPath,
             projectId: mapping.projectId,
-            versionId: latest.id,
-            installedAt: DateTime.now(),
-            sha1: file.sha1,
-            sha512: file.sha512,
-          ),
-        );
-        updated++;
-      } catch (error) {
-        failed++;
-        notes.add('Update failed for ${mod.displayName}: $error');
+            incomingFileName: file.fileName,
+          );
+
+          final targetPath = p.join(modsPath, file.fileName);
+          await _commitStagedFile(
+            stagedFile: downloaded,
+            targetPath: targetPath,
+          );
+
+          await _mappingRepository.put(
+            ModrinthMapping(
+              jarFileName: file.fileName,
+              projectId: mapping.projectId,
+              versionId: latest.id,
+              installedAt: DateTime.now(),
+              sha1: file.sha1,
+              sha512: file.sha512,
+            ),
+          );
+          updated++;
+          updatedMods.add(mod.displayName);
+        } catch (error) {
+          failed++;
+          failedMods.add(mod.displayName);
+          notes.add('Update failed for ${mod.displayName}: $error');
+        }
       }
+    } finally {
+      await _cleanupLegacyModsTempDir(modsPath);
     }
 
     return UpdateSummary(
@@ -122,19 +136,34 @@ class UpdateModsUsecase {
       externalSkipped: externalSkipped,
       failed: failed,
       notes: notes,
+      updatedMods: updatedMods,
+      alreadyLatestMods: alreadyLatestMods,
+      externalSkippedMods: externalSkippedMods,
+      failedMods: failedMods,
     );
   }
 
-  Future<String> _createStagingPath({
-    required String modsPath,
-    required String fileName,
-  }) async {
-    final stagingDir = Directory(p.join(modsPath, '.melon_tmp'));
+  Future<String> _createStagingPath({required String fileName}) async {
+    final stagingDir = Directory(
+      p.join(Directory.systemTemp.path, 'melon_mod', 'staging'),
+    );
     if (!await stagingDir.exists()) {
       await stagingDir.create(recursive: true);
     }
     final timestamp = DateTime.now().microsecondsSinceEpoch;
     return p.join(stagingDir.path, '${timestamp}_$fileName');
+  }
+
+  Future<void> _cleanupLegacyModsTempDir(String modsPath) async {
+    final legacy = Directory(p.join(modsPath, '.melon_tmp'));
+    if (!await legacy.exists()) {
+      return;
+    }
+    try {
+      await legacy.delete(recursive: true);
+    } catch (_) {
+      // Keep update flow resilient if legacy cleanup fails.
+    }
   }
 
   Future<void> _cleanupOldMappedFiles({
@@ -219,6 +248,10 @@ class UpdateSummary {
     required this.externalSkipped,
     required this.failed,
     required this.notes,
+    required this.updatedMods,
+    required this.alreadyLatestMods,
+    required this.externalSkippedMods,
+    required this.failedMods,
   });
 
   final int totalChecked;
@@ -227,4 +260,8 @@ class UpdateSummary {
   final int externalSkipped;
   final int failed;
   final List<String> notes;
+  final List<String> updatedMods;
+  final List<String> alreadyLatestMods;
+  final List<String> externalSkippedMods;
+  final List<String> failedMods;
 }
