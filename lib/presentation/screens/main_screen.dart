@@ -275,16 +275,25 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     }
 
     if (preview.totalChecked == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No mods available for update.')),
+      await showDialog<void>(
+        context: context,
+        builder: (context) => const _UpdateResultDialog(
+          title: 'Update Check Complete',
+          message: 'No mods available for update.',
+        ),
       );
       return;
     }
 
     if (preview.updates.isEmpty) {
       final scope = preview.selectedOnly ? 'selected mods' : 'all mods';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No updates found for $scope.')),
+      await showDialog<void>(
+        context: context,
+        builder: (context) => _UpdateResultDialog(
+          title: 'No Updates Found',
+          message: 'Checked ${preview.totalChecked} mod(s) in $scope.\n'
+              'Everything is already up to date.',
+        ),
       );
       return;
     }
@@ -304,11 +313,16 @@ class _MainScreenState extends ConsumerState<MainScreen> {
       builder: (context) => _UpdateRunDialog(
         total: preview.updates.length,
         run: () async {
-          await notifier.runUpdatesForMods(
+          final summary = await notifier.runUpdatesForMods(
             modsPath: widget.modsPath,
             mods: preview.updates.map((e) => e.mod).toList(),
             selectedOnly: preview.selectedOnly,
           );
+          return 'Checked ${summary.totalChecked} mod(s)\n'
+              'Updated: ${summary.updated}\n'
+              'Up to date: ${summary.alreadyLatest}\n'
+              'Skipped: ${summary.externalSkipped}\n'
+              'Failed: ${summary.failed}';
         },
       ),
     );
@@ -519,7 +533,7 @@ class _UpdateRunDialog extends StatefulWidget {
   });
 
   final int total;
-  final Future<void> Function() run;
+  final Future<String> Function() run;
 
   @override
   State<_UpdateRunDialog> createState() => _UpdateRunDialogState();
@@ -527,6 +541,8 @@ class _UpdateRunDialog extends StatefulWidget {
 
 class _UpdateRunDialogState extends State<_UpdateRunDialog> {
   String _message = 'Starting updates...';
+  bool _done = false;
+  bool _failed = false;
 
   @override
   void initState() {
@@ -536,16 +552,22 @@ class _UpdateRunDialogState extends State<_UpdateRunDialog> {
 
   Future<void> _run() async {
     try {
-      await widget.run();
+      final result = await widget.run();
       if (!mounted) {
         return;
       }
-      Navigator.of(context).pop();
+      setState(() {
+        _done = true;
+        _failed = false;
+        _message = result;
+      });
     } catch (error) {
       if (!mounted) {
         return;
       }
       setState(() {
+        _done = true;
+        _failed = true;
         _message = 'Update failed: $error';
       });
     }
@@ -563,20 +585,49 @@ class _UpdateRunDialogState extends State<_UpdateRunDialog> {
           children: [
             Text(_message),
             const SizedBox(height: 10),
-            const LinearProgressIndicator(),
-            const SizedBox(height: 8),
-            Text(
-              'Applying ${widget.total} update(s)...',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.72)),
-            ),
+            if (!_done) ...[
+              const LinearProgressIndicator(),
+              const SizedBox(height: 8),
+              Text(
+                'Applying ${widget.total} update(s)...',
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.72)),
+              ),
+            ],
           ],
         ),
       ),
       actions: [
         TextButton(
-          onPressed: _message.startsWith('Update failed')
+          onPressed: _done
               ? () => Navigator.of(context).pop()
               : null,
+          child: Text(_failed ? 'Close' : 'Done'),
+        ),
+      ],
+    );
+  }
+}
+
+class _UpdateResultDialog extends StatelessWidget {
+  const _UpdateResultDialog({
+    required this.title,
+    required this.message,
+  });
+
+  final String title;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(title),
+      content: SizedBox(
+        width: 420,
+        child: Text(message),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
           child: const Text('Close'),
         ),
       ],
