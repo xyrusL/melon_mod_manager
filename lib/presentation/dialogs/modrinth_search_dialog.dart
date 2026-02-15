@@ -19,23 +19,34 @@ class ModrinthSearchDialog extends ConsumerStatefulWidget {
 enum _BrowseMode { popular, search }
 
 enum _SortMode { popular, relevance, newest, updated }
+enum _StatusFilter { all, installed, update, onDisk, notInstalled }
 
 class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
   static const List<int> _pageSizeOptions = [10, 20, 30, 50];
+  static const String _anyVersionValue = '__any_version__';
+  static const Set<String> _supportedLoaders = {
+    'fabric',
+    'quilt',
+    'forge',
+    'neoforge',
+  };
 
   final _queryController = TextEditingController();
 
   var _loader = 'fabric';
   var _loading = false;
   var _statusLoading = false;
-  var _detectingVersion = true;
   var _hasNextPage = false;
   var _mode = _BrowseMode.popular;
   var _sortMode = _SortMode.popular;
   var _versionLookupToken = 0;
   var _currentPage = 1;
   var _pageSize = 10;
+  var _statusFilter = _StatusFilter.all;
+  var _versionSelection = _anyVersionValue;
   String? _detectedGameVersion;
+  String? _detectedLoader;
+  String? _detectedLoaderVersion;
   List<ModrinthProject> _results = const [];
   Map<String, ProjectInstallInfo> _installInfo = const {};
   Map<String, String> _latestVersionByProject = const {};
@@ -56,13 +67,32 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
       if (mounted) {
         setState(() {
           _detectedGameVersion = detected;
-          _detectingVersion = false;
+          _versionSelection = detected ?? _anyVersionValue;
         });
       }
     } catch (_) {
+      // Best effort only.
+    }
+
+    try {
+      final detected = await ref
+          .read(minecraftLoaderServiceProvider)
+          .detectLoaderFromModsPath(widget.modsPath);
       if (mounted) {
-        setState(() => _detectingVersion = false);
+        setState(() {
+          _detectedLoader = detected?.loader;
+          _detectedLoaderVersion = detected?.version;
+          if (detected != null &&
+              (detected.loader == 'fabric' ||
+                  detected.loader == 'quilt' ||
+                  detected.loader == 'forge' ||
+                  detected.loader == 'neoforge')) {
+            _loader = detected.loader;
+          }
+        });
       }
+    } catch (_) {
+      // Best effort only.
     }
 
     await _loadPopular();
@@ -103,7 +133,7 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
           await ref.read(modsControllerProvider.notifier).searchModrinth(
                 query,
                 loader: _loader,
-                gameVersion: _detectedGameVersion,
+                gameVersion: _selectedGameVersion,
                 limit: _pageSize,
                 offset: (_currentPage - 1) * _pageSize,
                 index: _sortIndex,
@@ -157,7 +187,7 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
           .loadProjectInstallInfo(
             projects: projects,
             loader: _loader,
-            gameVersion: _detectedGameVersion,
+            gameVersion: _selectedGameVersion,
           );
 
       final prunedSelected = _selectedProjectIds.where((id) {
@@ -201,7 +231,7 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
           final latest = await repository.getLatestVersion(
             project.id,
             loader: _loader,
-            gameVersion: _detectedGameVersion,
+            gameVersion: _selectedGameVersion,
           );
           if (latest != null) {
             fetched[project.id] = latest.versionNumber;
@@ -316,7 +346,7 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
         projects: selected,
         installInfo: _installInfo,
         loader: _loader,
-        gameVersion: _detectedGameVersion,
+        gameVersion: _selectedGameVersion,
       ),
     );
 
@@ -335,8 +365,60 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
     }
   }
 
+  ProjectInstallState _projectState(ModrinthProject project) {
+    return _installInfo[project.id]?.state ?? ProjectInstallState.notInstalled;
+  }
+
+  bool _matchesStatusFilter(ProjectInstallState state) {
+    return switch (_statusFilter) {
+      _StatusFilter.all => true,
+      _StatusFilter.installed => state == ProjectInstallState.installed,
+      _StatusFilter.update => state == ProjectInstallState.updateAvailable,
+      _StatusFilter.onDisk => state == ProjectInstallState.installedUntracked,
+      _StatusFilter.notInstalled => state == ProjectInstallState.notInstalled,
+    };
+  }
+
+  void _toggleStatusFilter(_StatusFilter filter) {
+    setState(() {
+      _statusFilter = _statusFilter == filter ? _StatusFilter.all : filter;
+    });
+  }
+
+  String? get _selectedGameVersion =>
+      _versionSelection == _anyVersionValue ? null : _versionSelection;
+
   @override
   Widget build(BuildContext context) {
+    final hasDetectedLoader =
+        _detectedLoader != null && _supportedLoaders.contains(_detectedLoader);
+    final versionItems = <DropdownMenuItem<String>>[
+      if (_detectedGameVersion != null)
+        DropdownMenuItem(
+          value: _detectedGameVersion!,
+          child: Text(_detectedGameVersion!),
+        ),
+      const DropdownMenuItem(
+        value: _anyVersionValue,
+        child: Text('Any version'),
+      ),
+    ];
+    final installedCount = _results
+        .where((p) => _projectState(p) == ProjectInstallState.installed)
+        .length;
+    final updateCount = _results
+        .where((p) => _projectState(p) == ProjectInstallState.updateAvailable)
+        .length;
+    final onDiskCount = _results
+        .where((p) => _projectState(p) == ProjectInstallState.installedUntracked)
+        .length;
+    final notInstalledCount = _results
+        .where((p) => _projectState(p) == ProjectInstallState.notInstalled)
+        .length;
+    final filteredResults = _results
+        .where((p) => _matchesStatusFilter(_projectState(p)))
+        .toList();
+
     return Dialog(
       child: Container(
         width: 980,
@@ -386,18 +468,44 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
                 SizedBox(
                   width: 150,
                   child: DropdownButtonFormField<String>(
+                    key: ValueKey<String>(
+                      'loader_${hasDetectedLoader ? 1 : 0}_${_loader}_${_detectedLoaderVersion ?? ''}',
+                    ),
                     initialValue: _loader,
                     isExpanded: true,
-                    items: const [
-                      DropdownMenuItem(value: 'fabric', child: Text('Fabric')),
-                      DropdownMenuItem(value: 'quilt', child: Text('Quilt')),
-                    ],
-                    onChanged: (value) async {
-                      if (value != null) {
-                        setState(() => _loader = value);
-                        await _runNewQuery();
-                      }
-                    },
+                    items: hasDetectedLoader
+                        ? [
+                            DropdownMenuItem(
+                              value: _loader,
+                              child: Text(_loaderDisplayLabel(_loader)),
+                            ),
+                          ]
+                        : const [
+                            DropdownMenuItem(
+                              value: 'fabric',
+                              child: Text('Fabric'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'quilt',
+                              child: Text('Quilt'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'forge',
+                              child: Text('Forge'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'neoforge',
+                              child: Text('NeoForge'),
+                            ),
+                          ],
+                    onChanged: hasDetectedLoader
+                        ? null
+                        : (value) async {
+                            if (value != null) {
+                              setState(() => _loader = value);
+                              await _runNewQuery();
+                            }
+                          },
                     decoration: const InputDecoration(labelText: 'Loader'),
                   ),
                 ),
@@ -438,39 +546,22 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
                 const SizedBox(width: 10),
                 SizedBox(
                   width: 220,
-                  child: Container(
-                    height: 56,
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .primary
-                            .withValues(alpha: 0.45),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.auto_fix_high_rounded, size: 18),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            _detectingVersion
-                                ? 'Detecting game version...'
-                                : _detectedGameVersion == null
-                                    ? 'Game version: Not detected'
-                                    : 'Game version: $_detectedGameVersion',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.92),
-                              fontSize: 13,
-                            ),
-                          ),
-                        ),
-                      ],
+                  child: DropdownButtonFormField<String>(
+                    key: ValueKey<String>(_versionSelection),
+                    initialValue: _versionSelection,
+                    isExpanded: true,
+                    items: versionItems,
+                    onChanged: _loading
+                        ? null
+                        : (value) async {
+                            if (value == null || value == _versionSelection) {
+                              return;
+                            }
+                            setState(() => _versionSelection = value);
+                            await _runNewQuery();
+                          },
+                    decoration: const InputDecoration(
+                      labelText: 'Minecraft Version',
                     ),
                   ),
                 ),
@@ -490,23 +581,31 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
                 ),
                 const SizedBox(width: 12),
                 _StatusTag(
-                  label: 'Installed',
+                  label: 'Installed ($installedCount)',
                   color: const Color(0xFF68DA97),
+                  selected: _statusFilter == _StatusFilter.installed,
+                  onTap: () => _toggleStatusFilter(_StatusFilter.installed),
                 ),
                 const SizedBox(width: 6),
                 _StatusTag(
-                  label: 'Update',
+                  label: 'Update ($updateCount)',
                   color: const Color(0xFFFFB55A),
+                  selected: _statusFilter == _StatusFilter.update,
+                  onTap: () => _toggleStatusFilter(_StatusFilter.update),
                 ),
                 const SizedBox(width: 6),
                 _StatusTag(
-                  label: 'On Disk',
+                  label: 'On Disk ($onDiskCount)',
                   color: const Color(0xFF86C5FF),
+                  selected: _statusFilter == _StatusFilter.onDisk,
+                  onTap: () => _toggleStatusFilter(_StatusFilter.onDisk),
                 ),
                 const SizedBox(width: 6),
                 _StatusTag(
-                  label: 'Not Installed',
+                  label: 'Not Installed ($notInstalledCount)',
                   color: const Color(0xFF8D98A5),
+                  selected: _statusFilter == _StatusFilter.notInstalled,
+                  onTap: () => _toggleStatusFilter(_StatusFilter.notInstalled),
                 ),
                 const Spacer(),
                 FilledButton.icon(
@@ -535,10 +634,16 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
                     ? const Center(child: CircularProgressIndicator())
                     : _results.isEmpty
                         ? _EmptyState(onReloadPopular: _loadPopular)
-                        : ListView.builder(
-                            itemCount: _results.length,
+                        : filteredResults.isEmpty
+                            ? _FilteredEmptyState(
+                                onClearFilter: () => setState(
+                                  () => _statusFilter = _StatusFilter.all,
+                                ),
+                              )
+                            : ListView.builder(
+                            itemCount: filteredResults.length,
                             itemBuilder: (context, index) {
-                              final item = _results[index];
+                              final item = filteredResults[index];
                               final info = _installInfo[item.id];
                               final selected =
                                   _selectedProjectIds.contains(item.id);
@@ -568,7 +673,8 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
 
                               return Padding(
                                 padding: EdgeInsets.only(
-                                  bottom: index == _results.length - 1 ? 8 : 8,
+                                  bottom:
+                                      index == filteredResults.length - 1 ? 8 : 8,
                                 ),
                                 child: _ProjectCard(
                                   project: item,
@@ -636,6 +742,21 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
         ),
       ),
     );
+  }
+
+  String _loaderDisplayLabel(String value) {
+    final base = switch (value) {
+      'quilt' => 'Quilt',
+      'forge' => 'Forge',
+      'neoforge' => 'NeoForge',
+      _ => 'Fabric',
+    };
+    if (_detectedLoader == value &&
+        _detectedLoaderVersion != null &&
+        _detectedLoaderVersion!.trim().isNotEmpty) {
+      return '$base ${_detectedLoaderVersion!}';
+    }
+    return base;
   }
 }
 
@@ -850,19 +971,29 @@ class _ProjectCard extends StatelessWidget {
 }
 
 class _StatusTag extends StatelessWidget {
-  const _StatusTag({required this.label, required this.color});
+  const _StatusTag({
+    required this.label,
+    required this.color,
+    this.onTap,
+    this.selected = false,
+  });
 
   final String label;
   final Color color;
+  final VoidCallback? onTap;
+  final bool selected;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final tag = Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.16),
+        color: color.withValues(alpha: selected ? 0.28 : 0.16),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withValues(alpha: 0.55)),
+        border: Border.all(
+          color: color.withValues(alpha: selected ? 0.95 : 0.55),
+          width: selected ? 1.4 : 1,
+        ),
       ),
       child: Text(
         label,
@@ -872,6 +1003,15 @@ class _StatusTag extends StatelessWidget {
           fontWeight: FontWeight.w700,
         ),
       ),
+    );
+
+    if (onTap == null) {
+      return tag;
+    }
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: tag,
     );
   }
 }
@@ -931,6 +1071,36 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
+class _FilteredEmptyState extends StatelessWidget {
+  const _FilteredEmptyState({required this.onClearFilter});
+
+  final VoidCallback onClearFilter;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'No mods in this status filter.',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.85),
+              fontSize: 16,
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextButton.icon(
+            onPressed: onClearFilter,
+            icon: const Icon(Icons.filter_alt_off_rounded),
+            label: const Text('Show all statuses'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _CartConfirmDialog extends StatelessWidget {
   const _CartConfirmDialog({
     required this.projects,
@@ -938,12 +1108,22 @@ class _CartConfirmDialog extends StatelessWidget {
     required this.latestVersionByProject,
   });
 
+  static const int _scrollTriggerCount = 4;
+  static const double _rowHeight = 62;
+  static const double _listMaxHeight = 280;
+
   final List<ModrinthProject> projects;
   final Map<String, ProjectInstallInfo> installInfo;
   final Map<String, String> latestVersionByProject;
 
   @override
   Widget build(BuildContext context) {
+    final shouldScroll = projects.length > _scrollTriggerCount;
+    final desiredHeight = projects.length * _rowHeight;
+    final listHeight = shouldScroll
+        ? _listMaxHeight
+        : desiredHeight.clamp(0, _listMaxHeight).toDouble();
+
     return AlertDialog(
       title: const Text('Confirm Installation'),
       content: SizedBox(
@@ -954,67 +1134,58 @@ class _CartConfirmDialog extends StatelessWidget {
           children: [
             const Text('Selected mods:'),
             const SizedBox(height: 10),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 280),
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: projects.length,
-                itemBuilder: (context, index) {
-                  final project = projects[index];
-                  final info = installInfo[project.id];
-                  final state = info?.state;
-                  final label = switch (state) {
-                    ProjectInstallState.updateAvailable => 'Update',
-                    ProjectInstallState.installed => 'Installed',
-                    ProjectInstallState.installedUntracked => 'On Disk',
-                    _ => 'Install',
-                  };
-                  final latestVersion = info?.latestVersionNumber ??
-                      latestVersionByProject[project.id];
-                  final installedVersion = info?.installedVersionNumber;
-                  final versionText = switch (state) {
-                    ProjectInstallState.updateAvailable =>
-                      installedVersion != null && latestVersion != null
-                          ? '$installedVersion -> $latestVersion'
-                          : latestVersion ?? 'Update available',
-                    ProjectInstallState.installed =>
-                      installedVersion ?? latestVersion ?? 'Installed',
-                    _ => latestVersion ?? 'Latest version: unknown',
-                  };
+            SizedBox(
+              height: listHeight,
+              child: Scrollbar(
+                thumbVisibility: shouldScroll,
+                child: ListView.builder(
+                  shrinkWrap: !shouldScroll,
+                  physics: shouldScroll
+                      ? const ClampingScrollPhysics()
+                      : const NeverScrollableScrollPhysics(),
+                  itemCount: projects.length,
+                  itemBuilder: (context, index) {
+                    final project = projects[index];
+                    final info = installInfo[project.id];
+                    final state = info?.state;
+                    final label = switch (state) {
+                      ProjectInstallState.updateAvailable => 'Update',
+                      ProjectInstallState.installed => 'Installed',
+                      ProjectInstallState.installedUntracked => 'On Disk',
+                      _ => 'Install',
+                    };
+                    final latestVersion = info?.latestVersionNumber ??
+                        latestVersionByProject[project.id];
+                    final installedVersion = info?.installedVersionNumber;
+                    final versionText = switch (state) {
+                      ProjectInstallState.updateAvailable =>
+                        installedVersion != null && latestVersion != null
+                            ? '$installedVersion -> $latestVersion'
+                            : latestVersion ?? 'Update available',
+                      ProjectInstallState.installed =>
+                        installedVersion ?? latestVersion ?? 'Installed',
+                      _ => latestVersion ?? 'Latest version: unknown',
+                    };
 
-                  return Padding(
-                    padding: EdgeInsets.only(
-                      bottom: index == projects.length - 1 ? 0 : 8,
-                    ),
-                    child: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.18),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.06),
-                        ),
+                    return Padding(
+                      padding: EdgeInsets.only(
+                        bottom: index == projects.length - 1 ? 0 : 8,
                       ),
-                      child: Row(
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: project.iconUrl == null
-                                ? Container(
-                                    width: 34,
-                                    height: 34,
-                                    color: Colors.white.withValues(alpha: 0.08),
-                                    child: const Icon(
-                                      Icons.extension_rounded,
-                                      size: 18,
-                                    ),
-                                  )
-                                : Image.network(
-                                    project.iconUrl!,
-                                    width: 34,
-                                    height: 34,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => Container(
+                      child: Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.06),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: project.iconUrl == null
+                                  ? Container(
                                       width: 34,
                                       height: 34,
                                       color:
@@ -1023,48 +1194,65 @@ class _CartConfirmDialog extends StatelessWidget {
                                         Icons.extension_rounded,
                                         size: 18,
                                       ),
+                                    )
+                                  : Image.network(
+                                      project.iconUrl!,
+                                      width: 34,
+                                      height: 34,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => Container(
+                                        width: 34,
+                                        height: 34,
+                                        color: Colors.white
+                                            .withValues(alpha: 0.08),
+                                        child: const Icon(
+                                          Icons.extension_rounded,
+                                          size: 18,
+                                        ),
+                                      ),
+                                    ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    project.title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
                                     ),
                                   ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  project.title,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Version: $versionText',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color:
+                                          Colors.white.withValues(alpha: 0.72),
+                                      fontSize: 12,
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'Version: $versionText',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.72),
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 10),
-                          Text(
-                            label,
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.72),
-                              fontWeight: FontWeight.w600,
+                            const SizedBox(width: 10),
+                            Text(
+                              label,
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.72),
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
             ),
           ],
