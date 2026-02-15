@@ -9,6 +9,7 @@ import '../data/repositories/modrinth_mapping_repository_impl.dart';
 import '../data/repositories/modrinth_repository_impl.dart';
 import '../data/repositories/settings_repository_impl.dart';
 import '../data/services/file_install_service.dart';
+import '../data/services/minecraft_loader_service.dart';
 import '../data/services/minecraft_path_service.dart';
 import '../data/services/minecraft_version_service.dart';
 import '../data/services/mod_scanner_service.dart';
@@ -88,6 +89,41 @@ final minecraftVersionServiceProvider =
     Provider<MinecraftVersionService>((ref) {
   return MinecraftVersionService();
 });
+
+final minecraftLoaderServiceProvider = Provider<MinecraftLoaderService>((ref) {
+  return MinecraftLoaderService();
+});
+
+class EnvironmentInfoSnapshot {
+  const EnvironmentInfoSnapshot({
+    this.minecraftVersion,
+    this.loaderName,
+    this.loaderVersion,
+  });
+
+  final String? minecraftVersion;
+  final String? loaderName;
+  final String? loaderVersion;
+}
+
+final environmentInfoProvider =
+    FutureProvider.autoDispose.family<EnvironmentInfoSnapshot, String>(
+  (ref, modsPath) async {
+    final versionService = ref.watch(minecraftVersionServiceProvider);
+    final loaderService = ref.watch(minecraftLoaderServiceProvider);
+
+    final minecraftVersion = await versionService.detectVersionFromModsPath(
+      modsPath,
+    );
+    final loader = await loaderService.detectLoaderFromModsPath(modsPath);
+
+    return EnvironmentInfoSnapshot(
+      minecraftVersion: minecraftVersion,
+      loaderName: loader?.loader,
+      loaderVersion: loader?.version,
+    );
+  },
+);
 
 final modScannerServiceProvider = Provider<ModScannerService>((ref) {
   return ModScannerService();
