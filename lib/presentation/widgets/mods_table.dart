@@ -66,19 +66,7 @@ class _ModsTableState extends State<ModsTable> {
         Expanded(
           child: SingleChildScrollView(
             child: PaginatedDataTable(
-              header: Row(
-                children: [
-                  Text('Mods (${widget.mods.length})'),
-                  const SizedBox(width: 12),
-                  Text(
-                    'Selected: ${widget.selectedFiles.length}',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.7),
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
-              ),
+              header: Text('Mods (${widget.mods.length})'),
               columns: [
                 DataColumn(
                   label: Checkbox(
@@ -177,7 +165,7 @@ class _ModsDataSource extends DataTableSource {
   int get rowCount => mods.length;
 
   @override
-  int get selectedRowCount => selectedFiles.length;
+  int get selectedRowCount => 0;
 }
 
 class _ModIcon extends StatelessWidget {
