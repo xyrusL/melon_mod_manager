@@ -9,6 +9,8 @@ abstract class ModrinthRepository {
     String loader = 'fabric',
     String? gameVersion,
     int limit = 20,
+    int offset = 0,
+    String index = 'relevance',
   });
 
   Future<ModrinthVersion?> getLatestVersion(
