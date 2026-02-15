@@ -1,0 +1,30 @@
+<svg width="192" height="192" viewBox="0 0 192 192" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="24" y1="18" x2="170" y2="176" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#091C2D"/>
+      <stop offset="1" stop-color="#07121D"/>
+    </linearGradient>
+    <linearGradient id="slice" x1="48" y1="42" x2="150" y2="154" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#56F2A9"/>
+      <stop offset="1" stop-color="#FF5EA9"/>
+    </linearGradient>
+    <filter id="glow" x="30" y="30" width="132" height="132" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect x="14" y="14" width="164" height="164" rx="44" fill="url(#bg)" stroke="#1F3A54"/>
+
+  <g filter="url(#glow)">
+    <path d="M48 52C48 44.268 54.268 38 62 38H126C133.732 38 140 44.268 140 52V140H86C64.909 140 48 123.091 48 102V52Z" fill="url(#slice)"/>
+    <path d="M140 52L96 96L140 140V52Z" fill="#081321" fill-opacity="0.86"/>
+  </g>
+
+  <circle cx="74" cy="65" r="4" fill="#C6FFE6"/>
+  <circle cx="86" cy="73" r="4" fill="#C6FFE6"/>
+  <circle cx="71" cy="82" r="4" fill="#C6FFE6"/>
+</svg>
