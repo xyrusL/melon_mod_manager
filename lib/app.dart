@@ -14,7 +14,7 @@ class MelonModApp extends ConsumerWidget {
     final appState = ref.watch(appControllerProvider);
 
     return MaterialApp(
-      title: 'Melon Mod',
+      title: 'Melon Mod Manager',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme(),
       home: switch (appState.status) {
