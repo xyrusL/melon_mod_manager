@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:io';
 
 import '../../core/error_reporter.dart';
 import '../../core/providers.dart';
@@ -6,6 +7,7 @@ import '../../data/models/mod_metadata_result.dart';
 import '../../data/services/file_install_service.dart';
 import '../../data/services/mod_scanner_service.dart';
 import '../../domain/entities/mod_item.dart';
+import '../../domain/entities/modrinth_mapping.dart';
 import '../../domain/entities/modrinth_project.dart';
 import '../../domain/repositories/modrinth_mapping_repository.dart';
 import '../../domain/repositories/modrinth_repository.dart';
@@ -14,6 +16,29 @@ import '../../domain/usecases/install_queue_usecase.dart';
 import '../../domain/usecases/update_mods_usecase.dart';
 
 enum ModFilter { all, modrinth, external, updatable }
+
+enum ProjectInstallState {
+  notInstalled,
+  installed,
+  updateAvailable,
+  installedUntracked,
+}
+
+class ProjectInstallInfo {
+  const ProjectInstallInfo({
+    required this.state,
+    this.installedVersionId,
+    this.latestVersionId,
+    this.installedVersionNumber,
+    this.latestVersionNumber,
+  });
+
+  final ProjectInstallState state;
+  final String? installedVersionId;
+  final String? latestVersionId;
+  final String? installedVersionNumber;
+  final String? latestVersionNumber;
+}
 
 class ModsState {
   const ModsState({
@@ -208,16 +233,37 @@ class ModsController extends StateNotifier<ModsState> {
     String query, {
     String loader = 'fabric',
     String? gameVersion,
+    int limit = 20,
+    int offset = 0,
+    String index = 'relevance',
   }) {
     return _modrinthRepository.searchProjects(
       query,
       loader: loader,
       gameVersion: gameVersion,
-      limit: 20,
+      limit: limit,
+      offset: offset,
+      index: index,
     );
   }
 
-  Future<void> installFromModrinth({
+  Future<List<ModrinthProject>> loadPopularClientMods({
+    String loader = 'fabric',
+    String? gameVersion,
+    int limit = 30,
+    int offset = 0,
+  }) {
+    return _modrinthRepository.searchProjects(
+      '',
+      loader: loader,
+      gameVersion: gameVersion,
+      limit: limit,
+      offset: offset,
+      index: 'downloads',
+    );
+  }
+
+  Future<InstallModResult> installFromModrinth({
     required String modsPath,
     required ModrinthProject project,
     required String loader,
@@ -249,23 +295,122 @@ class ModsController extends StateNotifier<ModsState> {
             message: result.message,
           ),
         );
-        return;
+        return result;
       }
       await loadMods(modsPath);
+      return result;
     } catch (error) {
+      final message = _errorReporter.toUserMessage(error);
       await onProgress(
         InstallProgress(
           stage: InstallProgressStage.error,
           current: 0,
           total: 0,
-          message: _errorReporter.toUserMessage(error),
+          message: message,
         ),
       );
       state = state.copyWith(
         isBusy: false,
-        errorMessage: _errorReporter.toUserMessage(error),
+        errorMessage: message,
+      );
+      return const InstallModResult(
+        installed: false,
+        message: 'Install failed due to an unexpected error.',
+        optionalInfo: [],
+        installQueue: [],
       );
     }
+  }
+
+  Future<Map<String, ProjectInstallInfo>> loadProjectInstallInfo({
+    required List<ModrinthProject> projects,
+    required String loader,
+    String? gameVersion,
+  }) async {
+    final mappings = await _mappingRepository.getAll();
+
+    final byProjectId = <String, List<ModrinthMapping>>{};
+    for (final mapping in mappings.values) {
+      byProjectId.putIfAbsent(mapping.projectId, () => []).add(mapping);
+    }
+
+    final result = <String, ProjectInstallInfo>{};
+    final futures = projects.map((project) async {
+      final projectMappings = byProjectId[project.id];
+      if (projectMappings == null || projectMappings.isEmpty) {
+        final untrackedInstalled = _isLikelyInstalledLocally(project);
+        if (untrackedInstalled) {
+          result[project.id] = const ProjectInstallInfo(
+            state: ProjectInstallState.installedUntracked,
+          );
+          return;
+        }
+        result[project.id] = const ProjectInstallInfo(
+          state: ProjectInstallState.notInstalled,
+        );
+        return;
+      }
+
+      projectMappings.sort((a, b) => b.installedAt.compareTo(a.installedAt));
+      final latestInstalled = projectMappings.first;
+      final installedVersion =
+          await _modrinthRepository.getVersionById(latestInstalled.versionId);
+
+      final latestVersion = await _modrinthRepository.getLatestVersion(
+        project.id,
+        loader: loader,
+        gameVersion: gameVersion,
+      );
+
+      if (latestVersion == null ||
+          latestVersion.id == latestInstalled.versionId) {
+        result[project.id] = ProjectInstallInfo(
+          state: ProjectInstallState.installed,
+          installedVersionId: latestInstalled.versionId,
+          latestVersionId: latestVersion?.id,
+          installedVersionNumber: installedVersion?.versionNumber,
+          latestVersionNumber: latestVersion?.versionNumber,
+        );
+      } else {
+        result[project.id] = ProjectInstallInfo(
+          state: ProjectInstallState.updateAvailable,
+          installedVersionId: latestInstalled.versionId,
+          latestVersionId: latestVersion.id,
+          installedVersionNumber: installedVersion?.versionNumber,
+          latestVersionNumber: latestVersion.versionNumber,
+        );
+      }
+    });
+
+    await Future.wait(futures);
+    return result;
+  }
+
+  bool _isLikelyInstalledLocally(ModrinthProject project) {
+    final projectSlug = _canonical(project.slug);
+    final projectTitle = _canonical(project.title);
+
+    for (final mod in state.mods) {
+      final modId = _canonical(mod.modId);
+      final modName = _canonical(mod.displayName);
+      final fileName = _canonical(mod.fileName.replaceAll('.jar', ''));
+
+      final slugMatch = projectSlug.isNotEmpty &&
+          (modId == projectSlug ||
+              modName == projectSlug ||
+              fileName == projectSlug);
+      final titleMatch = projectTitle.isNotEmpty &&
+          (modName == projectTitle || modId == projectTitle);
+
+      if (slugMatch || titleMatch) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  String _canonical(String value) {
+    return value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
   }
 
   Future<void> installExternalFiles({
@@ -307,23 +452,18 @@ class ModsController extends StateNotifier<ModsState> {
   Future<void> checkForUpdates(String modsPath) async {
     state = state.copyWith(isBusy: true, errorMessage: null, infoMessage: null);
     try {
-      final selectedMods = state.selectedFiles.isEmpty
-          ? state.mods
-          : state.mods
-              .where((mod) => state.selectedFiles.contains(mod.fileName))
-              .toList();
-
-      if (selectedMods.isEmpty) {
+      final modsToCheck = state.mods;
+      if (modsToCheck.isEmpty) {
         state = state.copyWith(
           isBusy: false,
-          infoMessage: 'No mods selected for update.',
+          infoMessage: 'No mods available for update.',
         );
         return;
       }
 
       final summary = await _updateModsUsecase.execute(
         modsPath: modsPath,
-        mods: selectedMods,
+        mods: modsToCheck,
       );
       final message = _buildUpdateMessage(summary);
       state = state.copyWith(isBusy: false, infoMessage: message);
@@ -334,6 +474,46 @@ class ModsController extends StateNotifier<ModsState> {
         errorMessage: _errorReporter.toUserMessage(error),
       );
     }
+  }
+
+  Future<void> deleteSelectedMods(String modsPath) async {
+    final selected = state.mods
+        .where((mod) => state.selectedFiles.contains(mod.fileName))
+        .toList();
+
+    if (selected.isEmpty) {
+      state = state.copyWith(infoMessage: 'No mods selected for deletion.');
+      return;
+    }
+
+    state = state.copyWith(isBusy: true, errorMessage: null, infoMessage: null);
+    var deleted = 0;
+    var failed = 0;
+
+    for (final mod in selected) {
+      try {
+        final file = File(mod.filePath);
+        if (await file.exists()) {
+          await file.delete();
+        }
+        await _mappingRepository.remove(mod.fileName);
+        deleted++;
+      } catch (_) {
+        failed++;
+      }
+    }
+
+    final message = failed == 0
+        ? 'Deleted $deleted mod(s).'
+        : 'Deleted $deleted mod(s), failed to delete $failed.';
+
+    state = state.copyWith(
+      isBusy: false,
+      infoMessage: message,
+      selectedFiles: const <String>{},
+    );
+
+    await loadMods(modsPath);
   }
 
   String _buildUpdateMessage(UpdateSummary summary) {
