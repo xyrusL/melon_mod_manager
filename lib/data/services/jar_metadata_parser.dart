@@ -1,12 +1,20 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
+import 'package:path/path.dart' as p;
 
 import '../models/mod_metadata_result.dart';
 
 class JarMetadataParser {
   const JarMetadataParser._();
+
+  static ModMetadataResult parseFromJarPath(String jarPath) {
+    final fileName = p.basename(jarPath);
+    final bytes = File(jarPath).readAsBytesSync();
+    return parseFromArchiveBytes(Uint8List.fromList(bytes), fileName);
+  }
 
   static ModMetadataResult parseFromArchiveBytes(
     Uint8List bytes,
