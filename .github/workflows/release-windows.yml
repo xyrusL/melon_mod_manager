@@ -222,48 +222,6 @@ jobs:
           $checksumPath = (Resolve-Path $checksumFile).Path.Replace('\', '/')
           "checksums_file=$checksumPath" >> $env:GITHUB_OUTPUT
 
-      - name: Remove Legacy Release Assets
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          $tag = "${{ steps.meta.outputs.tag_name }}"
-          $currentPortable = [System.IO.Path]::GetFileName("${{ steps.portable.outputs.portable_zip }}")
-          $currentInstaller = [System.IO.Path]::GetFileName("${{ steps.installer.outputs.installer_exe }}")
-          $currentChecksums = [System.IO.Path]::GetFileName("${{ steps.checksums.outputs.checksums_file }}")
-
-          $legacyPatterns = @(
-            "melon_mod_setup_*.exe",
-            "melon_mod_windows_*_portable.zip",
-            "melon_mod_windows_portable.zip"
-          )
-
-          $assets = gh release view $tag --json assets --jq ".assets[].name"
-          if ([string]::IsNullOrWhiteSpace($assets)) {
-            Write-Host "No existing assets to clean."
-            exit 0
-          }
-
-          $assetList = $assets -split "`r?`n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
-          foreach ($asset in $assetList) {
-            if ($asset -eq $currentPortable -or $asset -eq $currentInstaller -or $asset -eq $currentChecksums) {
-              continue
-            }
-
-            $isLegacy = $false
-            foreach ($pattern in $legacyPatterns) {
-              if ($asset -like $pattern) {
-                $isLegacy = $true
-                break
-              }
-            }
-
-            if ($isLegacy) {
-              Write-Host "Deleting legacy asset: $asset"
-              gh release delete-asset $tag $asset --yes
-            }
-          }
-
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:

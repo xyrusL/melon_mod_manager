@@ -58,6 +58,26 @@ On tag push, GitHub Actions will:
   - `SHA256SUMS.txt` for file integrity verification
 - publish both assets to the GitHub Release page
 
+### Release helper script (prerelease / beta)
+
+You can create release tags using:
+
+```powershell
+.\scripts\release.ps1 -Channel prerelease
+.\scripts\release.ps1 -Channel beta
+```
+
+To create and push the tag in one step:
+
+```powershell
+.\scripts\release.ps1 -Channel beta -Push
+```
+
+Rules:
+- `prerelease` requires a pubspec version containing `-` (example: `1.1.0-rc.1`).
+- `beta` requires `-beta` or `-beta.N` (example: `1.1.0-beta.2`).
+- Script checks for a clean git working tree and prevents duplicate tags.
+
 If you already created a tag before this workflow existed, go to:
 `Actions -> Release Windows -> Run workflow`
 and provide the existing tag (for example `v1.0.0-beta.1`).
