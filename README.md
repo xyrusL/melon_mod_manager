@@ -42,3 +42,10 @@ dart analyze lib
 ## Repository
 
 `https://github.com/xyrusL/melon_mod_manager`
+
+## License
+
+This project uses the MIT License. You are allowed to use, modify, and fork this project, including for redistribution, as long as you keep the original copyright and license notice.
+
+- Full license text: `LICENSE`
+- Credit source: `https://github.com/xyrusL/melon_mod_manager`
