@@ -1,0 +1,103 @@
+name: Release Windows
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Resolve App Version
+        id: meta
+        shell: pwsh
+        run: |
+          $pubspecVersion = (Select-String -Path pubspec.yaml -Pattern '^version:\s*(.+)$').Matches[0].Groups[1].Value.Trim()
+          $appVersion = $pubspecVersion.Split('+')[0]
+          $tagName = "${{ github.ref_name }}"
+          if ([string]::IsNullOrWhiteSpace($tagName)) {
+            $tagName = "v$appVersion"
+          }
+          $expectedTag = "v$appVersion"
+          if ($tagName -ne $expectedTag) {
+            throw "Tag/version mismatch. Tag is '$tagName' but pubspec.yaml is '$expectedTag'."
+          }
+          $isPreRelease = if ($appVersion.Contains('-')) { "true" } else { "false" }
+          "app_version=$appVersion" >> $env:GITHUB_OUTPUT
+          "tag_name=$tagName" >> $env:GITHUB_OUTPUT
+          "is_prerelease=$isPreRelease" >> $env:GITHUB_OUTPUT
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test
+        run: flutter test
+
+      - name: Build Windows Release
+        run: flutter build windows --release
+
+      - name: Create Portable Zip
+        id: portable
+        shell: pwsh
+        run: |
+          $appVersion = "${{ steps.meta.outputs.app_version }}"
+          $releaseDir = "build\windows\x64\runner\Release"
+          if (!(Test-Path $releaseDir)) {
+            throw "Windows release output not found at $releaseDir"
+          }
+          $zipName = "melon_mod_windows_${appVersion}_portable.zip"
+          if (Test-Path $zipName) { Remove-Item $zipName -Force }
+          Compress-Archive -Path "$releaseDir\*" -DestinationPath $zipName
+          "portable_zip=$zipName" >> $env:GITHUB_OUTPUT
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup -y --no-progress
+
+      - name: Build Installer
+        id: installer
+        shell: pwsh
+        run: |
+          $appVersion = "${{ steps.meta.outputs.app_version }}"
+          $outputBase = "melon_mod_setup_$appVersion"
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (!(Test-Path $iscc)) {
+            throw "ISCC not found at $iscc"
+          }
+          & $iscc "windows\installer\melon_mod_setup.iss" "/DMyAppVersion=$appVersion" "/DMyOutputBaseFilename=$outputBase"
+          if ($LASTEXITCODE -ne 0) {
+            throw "Inno Setup build failed with code $LASTEXITCODE"
+          }
+          $installerPath = "windows\installer\$outputBase.exe"
+          if (!(Test-Path $installerPath)) {
+            throw "Installer not found at $installerPath"
+          }
+          "installer_exe=$installerPath" >> $env:GITHUB_OUTPUT
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag_name }}
+          name: Melon Mod Manager ${{ steps.meta.outputs.app_version }}
+          prerelease: ${{ steps.meta.outputs.is_prerelease }}
+          generate_release_notes: true
+          files: |
+            ${{ steps.portable.outputs.portable_zip }}
+            ${{ steps.installer.outputs.installer_exe }}
