@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Existing git tag to release (example: v1.0.0-beta.1)'
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -15,6 +21,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref }}
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -28,7 +36,12 @@ jobs:
         run: |
           $pubspecVersion = (Select-String -Path pubspec.yaml -Pattern '^version:\s*(.+)$').Matches[0].Groups[1].Value.Trim()
           $appVersion = $pubspecVersion.Split('+')[0]
-          $tagName = "${{ github.ref_name }}"
+          $dispatchTag = "${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || '' }}"
+          if (![string]::IsNullOrWhiteSpace($dispatchTag)) {
+            $tagName = $dispatchTag
+          } else {
+            $tagName = "${{ github.ref_name }}"
+          }
           if ([string]::IsNullOrWhiteSpace($tagName)) {
             $tagName = "v$appVersion"
           }
@@ -97,9 +110,16 @@ jobs:
           tag_name: ${{ steps.meta.outputs.tag_name }}
           name: Melon Mod Manager ${{ steps.meta.outputs.app_version }}
           prerelease: ${{ steps.meta.outputs.is_prerelease }}
-          body_path: .github/release-template.md
-          append_body: true
+          body: |
+            Windows release artifacts:
+            - Installer (`.exe`) for normal users
+            - Portable (`.zip`) for advanced users
+
+            Notes:
+            - Use the installer for easiest setup.
+            - Portable zip can run without installation.
           generate_release_notes: true
+          overwrite_files: true
           files: |
             ${{ steps.portable.outputs.portable_zip }}
             ${{ steps.installer.outputs.installer_exe }}

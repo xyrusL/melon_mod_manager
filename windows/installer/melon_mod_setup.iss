@@ -75,7 +75,6 @@ begin
   InstallPercentLabel.Left :=
     WizardForm.ProgressGauge.Left + WizardForm.ProgressGauge.Width - InstallPercentLabel.Width;
   InstallPercentLabel.Top := InstallStageLabel.Top;
-  InstallPercentLabel.Alignment := taRightJustify;
   InstallPercentLabel.Caption := '0%';
 end;
 

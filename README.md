@@ -57,6 +57,10 @@ On tag push, GitHub Actions will:
   - portable `.zip`
 - publish both assets to the GitHub Release page
 
+If you already created a tag before this workflow existed, go to:
+`Actions -> Release Windows -> Run workflow`
+and provide the existing tag (for example `v1.0.0-beta.1`).
+
 ## Notes
 
 - Only Modrinth-managed mods can be auto-updated.
