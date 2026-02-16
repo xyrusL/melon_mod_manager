@@ -6,14 +6,18 @@
 #endif
 
 #ifndef MyOutputBaseFilename
-  #define MyOutputBaseFilename "melon_mod_setup"
+  #define MyOutputBaseFilename "MelonModManager-Win64-Setup-" + MyAppVersion
+#endif
+
+#ifndef MyVersionInfoVersion
+  #define MyVersionInfoVersion "1.0.0.0"
 #endif
 
 [Setup]
 AppId={{6A8C18A3-8D5A-4E8D-9D2D-2B4E8D8F0B11}
 AppName=Melon Mod Manager
 AppVersion={#MyAppVersion}
-AppPublisher=Melon Mod
+AppPublisher=melon_mod_manager
 DefaultDirName={autopf}\Melon Mod Manager
 DefaultGroupName=Melon Mod Manager
 OutputDir=.
@@ -24,8 +28,15 @@ WizardStyle=modern
 DisableProgramGroupPage=yes
 UninstallDisplayName=Melon Mod Manager
 SetupIconFile=..\runner\resources\app_icon.ico
-UninstallDisplayIcon={app}\melon_mod.exe
+UninstallDisplayIcon={app}\melon_mod_manager.exe
 ArchitecturesInstallIn64BitMode=x64compatible
+VersionInfoVersion={#MyVersionInfoVersion}
+VersionInfoCompany=melon_mod_manager
+VersionInfoDescription=Melon Mod Manager Setup
+VersionInfoTextVersion={#MyAppVersion}
+VersionInfoProductName=Melon Mod Manager
+VersionInfoProductVersion={#MyAppVersion}
+VersionInfoCopyright=Copyright (C) 2026 melon_mod_manager. Licensed under MIT.
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -38,11 +49,11 @@ Name: "desktopicon"; Description: "Create a desktop icon"; GroupDescription: "Ad
 Source: "..\..\build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\Melon Mod Manager"; Filename: "{app}\melon_mod.exe"
-Name: "{autodesktop}\Melon Mod Manager"; Filename: "{app}\melon_mod.exe"; Tasks: desktopicon
+Name: "{group}\Melon Mod Manager"; Filename: "{app}\melon_mod_manager.exe"
+Name: "{autodesktop}\Melon Mod Manager"; Filename: "{app}\melon_mod_manager.exe"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\melon_mod.exe"; Description: "Launch Melon Mod Manager"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\melon_mod_manager.exe"; Description: "Launch Melon Mod Manager"; Flags: nowait postinstall skipifsilent
 
 [Messages]
 WelcomeLabel1=Welcome to Melon Mod Manager Setup

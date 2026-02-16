@@ -55,11 +55,30 @@ On tag push, GitHub Actions will:
 - generate:
   - installer `.exe` (Inno Setup)
   - portable `.zip`
+  - `SHA256SUMS.txt` for file integrity verification
 - publish both assets to the GitHub Release page
 
 If you already created a tag before this workflow existed, go to:
 `Actions -> Release Windows -> Run workflow`
 and provide the existing tag (for example `v1.0.0-beta.1`).
+
+### Optional: Windows code signing in CI
+
+If you have a code-signing certificate (`.pfx`), the release workflow can sign:
+- `melon_mod_manager.exe` (app binary)
+- `MelonModManager-Win64-Setup-<version>.exe` (installer)
+
+Configure repository secrets:
+- `WINDOWS_SIGN_PFX_BASE64`
+- `WINDOWS_SIGN_PFX_PASSWORD`
+
+To create `WINDOWS_SIGN_PFX_BASE64` on Windows PowerShell:
+
+```powershell
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("C:\path\to\codesign.pfx"))
+```
+
+If these secrets are not set, the workflow still works and skips signing.
 
 ## Notes
 
