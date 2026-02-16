@@ -55,6 +55,19 @@ class _GlobalErrorOverlay extends StatefulWidget {
 
 class _GlobalErrorOverlayState extends State<_GlobalErrorOverlay> {
   final AppErrorService _service = AppErrorService.instance;
+  late final ScrollController _errorLogScrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _errorLogScrollController = ScrollController();
+  }
+
+  @override
+  void dispose() {
+    _errorLogScrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -74,7 +87,8 @@ class _GlobalErrorOverlayState extends State<_GlobalErrorOverlay> {
             color: Colors.black.withValues(alpha: 0.65),
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 900, maxHeight: 620),
+                constraints:
+                    const BoxConstraints(maxWidth: 900, maxHeight: 620),
                 child: Container(
                   margin: const EdgeInsets.all(20),
                   padding: const EdgeInsets.all(16),
@@ -82,7 +96,10 @@ class _GlobalErrorOverlayState extends State<_GlobalErrorOverlay> {
                     color: const Color(0xFF101824),
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
-                      color: Theme.of(context).colorScheme.error.withValues(alpha: 0.6),
+                      color: Theme.of(context)
+                          .colorScheme
+                          .error
+                          .withValues(alpha: 0.6),
                     ),
                   ),
                   child: Column(
@@ -113,11 +130,15 @@ class _GlobalErrorOverlayState extends State<_GlobalErrorOverlay> {
                           decoration: BoxDecoration(
                             color: Colors.black.withValues(alpha: 0.28),
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+                            border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.12)),
                           ),
                           child: Scrollbar(
+                            controller: _errorLogScrollController,
                             thumbVisibility: true,
                             child: SingleChildScrollView(
+                              controller: _errorLogScrollController,
+                              primary: false,
                               child: SelectableText(
                                 logText,
                                 style: TextStyle(

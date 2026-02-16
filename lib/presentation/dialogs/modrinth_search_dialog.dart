@@ -6,6 +6,12 @@ import '../../core/providers.dart';
 import '../../domain/entities/modrinth_project.dart';
 import '../viewmodels/mods_controller.dart';
 
+part 'modrinth_search/bulk_install_progress_dialog.dart';
+part 'modrinth_search/cart_confirm_dialog.dart';
+part 'modrinth_search/empty_states.dart';
+part 'modrinth_search/project_card.dart';
+part 'modrinth_search/status_tag.dart';
+
 class ModrinthSearchDialog extends ConsumerStatefulWidget {
   const ModrinthSearchDialog({super.key, required this.modsPath});
 
@@ -19,7 +25,8 @@ class ModrinthSearchDialog extends ConsumerStatefulWidget {
 enum _BrowseMode { popular, search }
 
 enum _SortMode { popular, relevance, newest, updated }
-enum _StatusFilter { all, installed, update, onDisk, notInstalled }
+
+enum _StatusFilter { all, installed, update, onDisk }
 
 class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
   static const List<int> _pageSizeOptions = [10, 20, 30, 50];
@@ -375,7 +382,6 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
       _StatusFilter.installed => state == ProjectInstallState.installed,
       _StatusFilter.update => state == ProjectInstallState.updateAvailable,
       _StatusFilter.onDisk => state == ProjectInstallState.installedUntracked,
-      _StatusFilter.notInstalled => state == ProjectInstallState.notInstalled,
     };
   }
 
@@ -410,14 +416,11 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
         .where((p) => _projectState(p) == ProjectInstallState.updateAvailable)
         .length;
     final onDiskCount = _results
-        .where((p) => _projectState(p) == ProjectInstallState.installedUntracked)
+        .where(
+            (p) => _projectState(p) == ProjectInstallState.installedUntracked)
         .length;
-    final notInstalledCount = _results
-        .where((p) => _projectState(p) == ProjectInstallState.notInstalled)
-        .length;
-    final filteredResults = _results
-        .where((p) => _matchesStatusFilter(_projectState(p)))
-        .toList();
+    final filteredResults =
+        _results.where((p) => _matchesStatusFilter(_projectState(p))).toList();
 
     return Dialog(
       child: Container(
@@ -600,13 +603,6 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
                   selected: _statusFilter == _StatusFilter.onDisk,
                   onTap: () => _toggleStatusFilter(_StatusFilter.onDisk),
                 ),
-                const SizedBox(width: 6),
-                _StatusTag(
-                  label: 'Not Installed ($notInstalledCount)',
-                  color: const Color(0xFF8D98A5),
-                  selected: _statusFilter == _StatusFilter.notInstalled,
-                  onTap: () => _toggleStatusFilter(_StatusFilter.notInstalled),
-                ),
                 const Spacer(),
                 FilledButton.icon(
                   onPressed:
@@ -641,51 +637,54 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
                                 ),
                               )
                             : ListView.builder(
-                            itemCount: filteredResults.length,
-                            itemBuilder: (context, index) {
-                              final item = filteredResults[index];
-                              final info = _installInfo[item.id];
-                              final selected =
-                                  _selectedProjectIds.contains(item.id);
-                              final latestVersion = info?.latestVersionNumber ??
-                                  _latestVersionByProject[item.id];
-                              final installedVersion =
-                                  info?.installedVersionNumber;
+                                itemCount: filteredResults.length,
+                                itemBuilder: (context, index) {
+                                  final item = filteredResults[index];
+                                  final info = _installInfo[item.id];
+                                  final selected =
+                                      _selectedProjectIds.contains(item.id);
+                                  final latestVersion =
+                                      info?.latestVersionNumber ??
+                                          _latestVersionByProject[item.id];
+                                  final installedVersion =
+                                      info?.installedVersionNumber;
 
-                              final versionLine = switch (info?.state) {
-                                ProjectInstallState.updateAvailable =>
-                                  installedVersion != null &&
-                                          latestVersion != null
-                                      ? 'Version: $installedVersion -> $latestVersion'
-                                      : latestVersion != null
-                                          ? 'Latest compatible: $latestVersion'
-                                          : 'Update available',
-                                ProjectInstallState.installed =>
-                                  installedVersion != null
-                                      ? 'Installed version: $installedVersion'
-                                      : latestVersion != null
-                                          ? 'Installed, latest: $latestVersion'
-                                          : 'Installed',
-                                _ => latestVersion != null
-                                    ? 'Latest compatible: $latestVersion'
-                                    : 'Latest version not available',
-                              };
+                                  final versionLine = switch (info?.state) {
+                                    ProjectInstallState.updateAvailable =>
+                                      installedVersion != null &&
+                                              latestVersion != null
+                                          ? 'Version: $installedVersion -> $latestVersion'
+                                          : latestVersion != null
+                                              ? 'Latest compatible: $latestVersion'
+                                              : 'Update available',
+                                    ProjectInstallState.installed =>
+                                      installedVersion != null
+                                          ? 'Installed version: $installedVersion'
+                                          : latestVersion != null
+                                              ? 'Installed, latest: $latestVersion'
+                                              : 'Installed',
+                                    _ => latestVersion != null
+                                        ? 'Latest compatible: $latestVersion'
+                                        : 'Latest version not available',
+                                  };
 
-                              return Padding(
-                                padding: EdgeInsets.only(
-                                  bottom:
-                                      index == filteredResults.length - 1 ? 8 : 8,
-                                ),
-                                child: _ProjectCard(
-                                  project: item,
-                                  info: info,
-                                  selected: selected,
-                                  versionLine: versionLine,
-                                  onTapAction: () => _toggleSelection(item),
-                                ),
-                              );
-                            },
-                          ),
+                                  return Padding(
+                                    padding: EdgeInsets.only(
+                                      bottom:
+                                          index == filteredResults.length - 1
+                                              ? 8
+                                              : 8,
+                                    ),
+                                    child: _ProjectCard(
+                                      project: item,
+                                      info: info,
+                                      selected: selected,
+                                      versionLine: versionLine,
+                                      onTapAction: () => _toggleSelection(item),
+                                    ),
+                                  );
+                                },
+                              ),
               ),
             ),
             const SizedBox(height: 6),
@@ -757,672 +756,5 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
       return '$base ${_detectedLoaderVersion!}';
     }
     return base;
-  }
-}
-
-class _ProjectCard extends StatelessWidget {
-  const _ProjectCard({
-    required this.project,
-    required this.info,
-    required this.selected,
-    required this.versionLine,
-    required this.onTapAction,
-  });
-
-  final ModrinthProject project;
-  final ProjectInstallInfo? info;
-  final bool selected;
-  final String versionLine;
-  final VoidCallback onTapAction;
-
-  @override
-  Widget build(BuildContext context) {
-    final state = info?.state ?? ProjectInstallState.notInstalled;
-    final isInstalled = state == ProjectInstallState.installed;
-    final isUntracked = state == ProjectInstallState.installedUntracked;
-    final isUpdate = state == ProjectInstallState.updateAvailable;
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: selected
-            ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
-            : Colors.black.withValues(alpha: 0.22),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: selected
-              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.65)
-              : Colors.white.withValues(alpha: 0.06),
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: project.iconUrl == null
-                ? Container(
-                    width: 46,
-                    height: 46,
-                    color: Colors.white.withValues(alpha: 0.08),
-                    child: const Icon(Icons.extension_rounded),
-                  )
-                : Image.network(
-                    project.iconUrl!,
-                    width: 46,
-                    height: 46,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      width: 46,
-                      height: 46,
-                      color: Colors.white.withValues(alpha: 0.08),
-                      child: const Icon(Icons.extension_rounded),
-                    ),
-                  ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        project.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  project.description.isEmpty
-                      ? project.slug
-                      : project.description,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.78)),
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.sell_outlined,
-                      size: 14,
-                      color: Colors.white.withValues(alpha: 0.65),
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        versionLine,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.72),
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    _StatPill(
-                      icon: Icons.download_rounded,
-                      label: _formatCompact(project.downloads),
-                    ),
-                    const SizedBox(width: 6),
-                    _StatPill(
-                      icon: Icons.favorite_border_rounded,
-                      label: _formatCompact(project.follows),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 16),
-          SizedBox(
-            width: 150,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                if (isInstalled)
-                  _StatusTag(
-                    label: 'Installed',
-                    color: const Color(0xFF68DA97),
-                  ),
-                if (isUpdate)
-                  _StatusTag(
-                    label: 'Update',
-                    color: const Color(0xFFFFB55A),
-                  ),
-                if (isUntracked)
-                  _StatusTag(
-                    label: 'On Disk',
-                    color: const Color(0xFF86C5FF),
-                  ),
-                if (!isInstalled && !isUpdate && !isUntracked)
-                  _StatusTag(
-                    label: 'Not Installed',
-                    color: const Color(0xFF8D98A5),
-                  ),
-                const SizedBox(height: 10),
-                FilledButton.tonal(
-                  onPressed: (isInstalled || isUntracked) ? null : onTapAction,
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size(150, 42),
-                    backgroundColor: isInstalled
-                        ? const Color(0xFF68DA97).withValues(alpha: 0.15)
-                        : isUntracked
-                            ? const Color(0xFF86C5FF).withValues(alpha: 0.15)
-                            : isUpdate
-                                ? const Color(0xFFFFB55A).withValues(alpha: 0.2)
-                                : selected
-                                    ? Theme.of(context)
-                                        .colorScheme
-                                        .primary
-                                        .withValues(alpha: 0.25)
-                                    : null,
-                    foregroundColor: isInstalled
-                        ? const Color(0xFF68DA97)
-                        : isUntracked
-                            ? const Color(0xFF86C5FF)
-                            : isUpdate
-                                ? const Color(0xFFFFC574)
-                                : null,
-                  ),
-                  child: Text(
-                    isInstalled
-                        ? 'Installed'
-                        : isUntracked
-                            ? 'On Disk'
-                            : selected
-                                ? 'Selected'
-                                : isUpdate
-                                    ? 'Add Update'
-                                    : 'Add',
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  static String _formatCompact(int value) {
-    if (value >= 1000000) {
-      return '${(value / 1000000).toStringAsFixed(1)}M';
-    }
-    if (value >= 1000) {
-      return '${(value / 1000).toStringAsFixed(1)}K';
-    }
-    return '$value';
-  }
-}
-
-class _StatusTag extends StatelessWidget {
-  const _StatusTag({
-    required this.label,
-    required this.color,
-    this.onTap,
-    this.selected = false,
-  });
-
-  final String label;
-  final Color color;
-  final VoidCallback? onTap;
-  final bool selected;
-
-  @override
-  Widget build(BuildContext context) {
-    final tag = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: selected ? 0.28 : 0.16),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: color.withValues(alpha: selected ? 0.95 : 0.55),
-          width: selected ? 1.4 : 1,
-        ),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-
-    if (onTap == null) {
-      return tag;
-    }
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: tag,
-    );
-  }
-}
-
-class _StatPill extends StatelessWidget {
-  const _StatPill({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 14, color: Colors.white.withValues(alpha: 0.76)),
-          const SizedBox(width: 4),
-          Text(label, style: const TextStyle(fontSize: 12)),
-        ],
-      ),
-    );
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.onReloadPopular});
-
-  final VoidCallback onReloadPopular;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            'No mods found.',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.85),
-              fontSize: 16,
-            ),
-          ),
-          const SizedBox(height: 8),
-          TextButton.icon(
-            onPressed: onReloadPopular,
-            icon: const Icon(Icons.refresh_rounded),
-            label: const Text('Load popular mods'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FilteredEmptyState extends StatelessWidget {
-  const _FilteredEmptyState({required this.onClearFilter});
-
-  final VoidCallback onClearFilter;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            'No mods in this status filter.',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.85),
-              fontSize: 16,
-            ),
-          ),
-          const SizedBox(height: 8),
-          TextButton.icon(
-            onPressed: onClearFilter,
-            icon: const Icon(Icons.filter_alt_off_rounded),
-            label: const Text('Show all statuses'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CartConfirmDialog extends StatelessWidget {
-  const _CartConfirmDialog({
-    required this.projects,
-    required this.installInfo,
-    required this.latestVersionByProject,
-  });
-
-  static const int _scrollTriggerCount = 4;
-  static const double _rowHeight = 62;
-  static const double _listMaxHeight = 280;
-
-  final List<ModrinthProject> projects;
-  final Map<String, ProjectInstallInfo> installInfo;
-  final Map<String, String> latestVersionByProject;
-
-  @override
-  Widget build(BuildContext context) {
-    final shouldScroll = projects.length > _scrollTriggerCount;
-    final desiredHeight = projects.length * _rowHeight;
-    final listHeight = shouldScroll
-        ? _listMaxHeight
-        : desiredHeight.clamp(0, _listMaxHeight).toDouble();
-
-    return AlertDialog(
-      title: const Text('Confirm Installation'),
-      content: SizedBox(
-        width: 620,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Selected mods:'),
-            const SizedBox(height: 10),
-            SizedBox(
-              height: listHeight,
-              child: Scrollbar(
-                thumbVisibility: shouldScroll,
-                child: ListView.builder(
-                  shrinkWrap: !shouldScroll,
-                  physics: shouldScroll
-                      ? const ClampingScrollPhysics()
-                      : const NeverScrollableScrollPhysics(),
-                  itemCount: projects.length,
-                  itemBuilder: (context, index) {
-                    final project = projects[index];
-                    final info = installInfo[project.id];
-                    final state = info?.state;
-                    final label = switch (state) {
-                      ProjectInstallState.updateAvailable => 'Update',
-                      ProjectInstallState.installed => 'Installed',
-                      ProjectInstallState.installedUntracked => 'On Disk',
-                      _ => 'Install',
-                    };
-                    final latestVersion = info?.latestVersionNumber ??
-                        latestVersionByProject[project.id];
-                    final installedVersion = info?.installedVersionNumber;
-                    final versionText = switch (state) {
-                      ProjectInstallState.updateAvailable =>
-                        installedVersion != null && latestVersion != null
-                            ? '$installedVersion -> $latestVersion'
-                            : latestVersion ?? 'Update available',
-                      ProjectInstallState.installed =>
-                        installedVersion ?? latestVersion ?? 'Installed',
-                      _ => latestVersion ?? 'Latest version: unknown',
-                    };
-
-                    return Padding(
-                      padding: EdgeInsets.only(
-                        bottom: index == projects.length - 1 ? 0 : 8,
-                      ),
-                      child: Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.18),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.06),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: project.iconUrl == null
-                                  ? Container(
-                                      width: 34,
-                                      height: 34,
-                                      color:
-                                          Colors.white.withValues(alpha: 0.08),
-                                      child: const Icon(
-                                        Icons.extension_rounded,
-                                        size: 18,
-                                      ),
-                                    )
-                                  : Image.network(
-                                      project.iconUrl!,
-                                      width: 34,
-                                      height: 34,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) => Container(
-                                        width: 34,
-                                        height: 34,
-                                        color: Colors.white
-                                            .withValues(alpha: 0.08),
-                                        child: const Icon(
-                                          Icons.extension_rounded,
-                                          size: 18,
-                                        ),
-                                      ),
-                                    ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    project.title,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    'Version: $versionText',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color:
-                                          Colors.white.withValues(alpha: 0.72),
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Text(
-                              label,
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.72),
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('Install Now'),
-        ),
-      ],
-    );
-  }
-}
-
-class _BulkInstallProgressDialog extends ConsumerStatefulWidget {
-  const _BulkInstallProgressDialog({
-    required this.modsPath,
-    required this.projects,
-    required this.installInfo,
-    required this.loader,
-    required this.gameVersion,
-  });
-
-  final String modsPath;
-  final List<ModrinthProject> projects;
-  final Map<String, ProjectInstallInfo> installInfo;
-  final String loader;
-  final String? gameVersion;
-
-  @override
-  ConsumerState<_BulkInstallProgressDialog> createState() =>
-      _BulkInstallProgressDialogState();
-}
-
-class _BulkInstallProgressDialogState
-    extends ConsumerState<_BulkInstallProgressDialog> {
-  String _message = 'Preparing installation...';
-  final List<String> _logs = [];
-  var _done = false;
-
-  int _installed = 0;
-  int _updated = 0;
-  int _skipped = 0;
-  int _failed = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    Future.microtask(_run);
-  }
-
-  Future<void> _run() async {
-    final total = widget.projects.length;
-
-    for (var i = 0; i < total; i++) {
-      final project = widget.projects[i];
-      final installState = widget.installInfo[project.id]?.state;
-      final step = i + 1;
-
-      if (installState == ProjectInstallState.installed) {
-        _skipped++;
-        _logs.add('Skipped ${project.title}: already installed.');
-        if (mounted) {
-          setState(() {
-            _message =
-                '[$step/$total] Skipped ${project.title} (already installed).';
-          });
-        }
-        continue;
-      }
-      if (installState == ProjectInstallState.installedUntracked) {
-        _skipped++;
-        _logs.add(
-          'Skipped ${project.title}: already in mods folder (untracked).',
-        );
-        if (mounted) {
-          setState(() {
-            _message = '[$step/$total] Skipped ${project.title} (on disk).';
-          });
-        }
-        continue;
-      }
-
-      final result =
-          await ref.read(modsControllerProvider.notifier).installFromModrinth(
-                modsPath: widget.modsPath,
-                project: project,
-                loader: widget.loader,
-                gameVersion: widget.gameVersion,
-                onProgress: (progress) async {
-                  if (!mounted) {
-                    return;
-                  }
-                  setState(() {
-                    _message = '[$step/$total] ${progress.message}';
-                  });
-                },
-              );
-
-      if (!result.installed) {
-        _failed++;
-        _logs.add('Failed ${project.title}: ${result.message}');
-        continue;
-      }
-
-      if (installState == ProjectInstallState.updateAvailable) {
-        _updated++;
-        _logs.add('Updated ${project.title}.');
-      } else {
-        _installed++;
-        _logs.add('Installed ${project.title}.');
-      }
-    }
-
-    if (!mounted) {
-      return;
-    }
-
-    setState(() {
-      _done = true;
-      _message = 'Done. Installed $_installed, Updated $_updated, '
-          'Skipped $_skipped, Failed $_failed.';
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Installing Selected Mods'),
-      content: SizedBox(
-        width: 620,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (!_done) const LinearProgressIndicator(),
-            if (!_done) const SizedBox(height: 12),
-            Text(_message),
-            const SizedBox(height: 10),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 240),
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: _logs.length,
-                itemBuilder: (context, index) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: Text(
-                      '• ${_logs[index]}',
-                      style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.85)),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        FilledButton(
-          onPressed: _done ? () => Navigator.of(context).pop() : null,
-          child: const Text('Close'),
-        ),
-      ],
-    );
   }
 }

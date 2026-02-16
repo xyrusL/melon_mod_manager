@@ -1,15 +1,23 @@
 ; Melon Mod Manager installer/uninstaller (Inno Setup template)
 ; Build app first, then point Source to your release output folder.
 
+#ifndef MyAppVersion
+  #define MyAppVersion "1.0.0-beta.1"
+#endif
+
+#ifndef MyOutputBaseFilename
+  #define MyOutputBaseFilename "melon_mod_setup"
+#endif
+
 [Setup]
 AppId={{6A8C18A3-8D5A-4E8D-9D2D-2B4E8D8F0B11}
 AppName=Melon Mod Manager
-AppVersion=1.0.0-beta.1
+AppVersion={#MyAppVersion}
 AppPublisher=Melon Mod
 DefaultDirName={autopf}\Melon Mod Manager
 DefaultGroupName=Melon Mod Manager
 OutputDir=.
-OutputBaseFilename=melon_mod_setup
+OutputBaseFilename={#MyOutputBaseFilename}
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
