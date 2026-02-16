@@ -8,6 +8,7 @@ import '../../data/services/file_install_service.dart';
 import '../dialogs/confirm_overwrite_dialog.dart';
 import '../dialogs/modrinth_search_dialog.dart';
 import '../viewmodels/app_controller.dart';
+import '../viewmodels/app_update_controller.dart';
 import '../viewmodels/mods_controller.dart';
 import '../widgets/action_panel.dart';
 import '../widgets/mods_table.dart';
@@ -24,11 +25,32 @@ class MainScreen extends ConsumerStatefulWidget {
 }
 
 class _MainScreenState extends ConsumerState<MainScreen> {
+  ProviderSubscription<AppUpdateState>? _updateSub;
+  bool _autoUpdatePromptShown = false;
+
   @override
   void initState() {
     super.initState();
     Future.microtask(
       () => ref.read(modsControllerProvider.notifier).loadMods(widget.modsPath),
+    );
+    _updateSub = ref.listenManual<AppUpdateState>(
+      appUpdateControllerProvider,
+      (previous, next) {
+        if (!mounted || _autoUpdatePromptShown) {
+          return;
+        }
+        if (next.status == AppUpdateCheckStatus.updateAvailable) {
+          _autoUpdatePromptShown = true;
+          final tag = next.latestRelease?.tagName ?? 'latest';
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('New app update available: $tag'),
+              action: SnackBarAction(label: 'See Sidebar', onPressed: () {}),
+            ),
+          );
+        }
+      },
     );
   }
 
@@ -38,6 +60,12 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     if (oldWidget.modsPath != widget.modsPath) {
       ref.read(modsControllerProvider.notifier).loadMods(widget.modsPath);
     }
+  }
+
+  @override
+  void dispose() {
+    _updateSub?.close();
+    super.dispose();
   }
 
   @override

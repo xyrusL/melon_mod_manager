@@ -60,4 +60,31 @@ void main() {
     expect(repo.stars, 7);
     expect(repo.forks, 2);
   });
+
+  test('parses GitHub latest release response', () async {
+    final client = MockClient((request) async {
+      if (request.url.path == '/repos/xyrusL/melon_mod_manager/releases/latest') {
+        return http.Response(
+          jsonEncode({
+            'tag_name': 'v1.0.1',
+            'name': 'v1.0.1',
+            'html_url': 'https://github.com/xyrusL/melon_mod_manager/releases/tag/v1.0.1',
+            'body': 'Bug fixes',
+            'prerelease': false,
+            'draft': false,
+            'published_at': '2026-02-15T12:00:00Z',
+          }),
+          200,
+        );
+      }
+      return http.Response('Not Found', 404);
+    });
+
+    final api = GitHubApiClient(client: client);
+    final release = await api.getLatestRelease('xyrusL', 'melon_mod_manager');
+
+    expect(release.tagName, 'v1.0.1');
+    expect(release.prerelease, isFalse);
+    expect(release.htmlUrl, contains('/releases/tag/v1.0.1'));
+  });
 }

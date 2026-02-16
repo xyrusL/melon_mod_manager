@@ -16,19 +16,21 @@ class AppUpdateResult {
 }
 
 class AppUpdateService {
-  const AppUpdateService({
+  AppUpdateService({
     required GitHubApiClient apiClient,
     required this.owner,
     required this.repository,
-  }) : _apiClient = apiClient;
+    Future<String> Function()? currentVersionProvider,
+  })  : _apiClient = apiClient,
+        _currentVersionProvider = currentVersionProvider ?? _defaultVersionProvider;
 
   final GitHubApiClient _apiClient;
   final String owner;
   final String repository;
+  final Future<String> Function() _currentVersionProvider;
 
   Future<AppUpdateResult> checkForUpdate() async {
-    final info = await PackageInfo.fromPlatform();
-    final currentVersion = info.version.trim();
+    final currentVersion = (await _currentVersionProvider()).trim();
 
     final latest = (await _apiClient.getLatestRelease(owner, repository)).toEntity();
 
@@ -41,6 +43,11 @@ class AppUpdateService {
       latestRelease: latest,
       hasUpdate: comparison > 0,
     );
+  }
+
+  static Future<String> _defaultVersionProvider() async {
+    final info = await PackageInfo.fromPlatform();
+    return info.version;
   }
 
   String _normalizeTag(String value) {

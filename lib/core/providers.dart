@@ -9,6 +9,7 @@ import '../data/repositories/modrinth_mapping_repository_impl.dart';
 import '../data/repositories/modrinth_repository_impl.dart';
 import '../data/repositories/settings_repository_impl.dart';
 import '../data/services/file_install_service.dart';
+import '../data/services/app_update_service.dart';
 import '../data/services/minecraft_loader_service.dart';
 import '../data/services/minecraft_path_service.dart';
 import '../data/services/minecraft_version_service.dart';
@@ -57,6 +58,14 @@ const _developerGitHubUsername = 'xyrusL';
 const _projectRepositoryName = 'melon_mod_manager';
 const projectRepositoryUrl =
     'https://github.com/$_developerGitHubUsername/$_projectRepositoryName';
+
+final appUpdateServiceProvider = Provider<AppUpdateService>((ref) {
+  return AppUpdateService(
+    apiClient: ref.watch(gitHubApiClientProvider),
+    owner: _developerGitHubUsername,
+    repository: _projectRepositoryName,
+  );
+});
 
 final developerSnapshotProvider =
     FutureProvider.autoDispose<DeveloperSnapshot>((ref) async {

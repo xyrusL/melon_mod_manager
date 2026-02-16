@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/providers.dart';
+import '../viewmodels/app_update_controller.dart';
 import 'panel_action_button.dart';
 
 class ActionPanel extends ConsumerWidget {
@@ -30,6 +32,7 @@ class ActionPanel extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final versionLabel = ref.watch(appVersionLabelProvider);
     final environmentInfo = ref.watch(environmentInfoProvider(modsPath));
+    final appUpdateState = ref.watch(appUpdateControllerProvider);
     final spacing = (10 * uiScale).clamp(10, 14).toDouble();
     final buttonHeight = (44 * uiScale).clamp(44, 52).toDouble();
     final buttonFont = (16 * uiScale).clamp(16, 19).toDouble();
@@ -115,6 +118,36 @@ class ActionPanel extends ConsumerWidget {
           ),
           SizedBox(height: (8 * uiScale).clamp(8, 10).toDouble()),
           PanelActionButton(
+            label: switch (appUpdateState.status) {
+              AppUpdateCheckStatus.checking => 'Checking Updates...',
+              AppUpdateCheckStatus.updateAvailable => 'New App Update',
+              AppUpdateCheckStatus.upToDate => 'App is Up to Date',
+              AppUpdateCheckStatus.error => 'Retry App Update Check',
+              AppUpdateCheckStatus.idle => 'Check App Updates',
+            },
+            icon: switch (appUpdateState.status) {
+              AppUpdateCheckStatus.checking => Icons.sync_rounded,
+              AppUpdateCheckStatus.updateAvailable => Icons.new_releases_rounded,
+              AppUpdateCheckStatus.upToDate => Icons.verified_rounded,
+              AppUpdateCheckStatus.error => Icons.error_outline_rounded,
+              AppUpdateCheckStatus.idle => Icons.system_update_rounded,
+            },
+            backgroundColor: switch (appUpdateState.status) {
+              AppUpdateCheckStatus.updateAvailable => const Color(0xFF8E79FF),
+              AppUpdateCheckStatus.upToDate => const Color(0xFF3C4E5F),
+              AppUpdateCheckStatus.error => const Color(0xFFB44F5E),
+              _ => const Color(0xFF2F4253),
+            },
+            foregroundColor: Colors.white,
+            onPressed: appUpdateState.status == AppUpdateCheckStatus.checking
+                ? null
+                : () => _checkAppUpdates(context, ref),
+            height: buttonHeight,
+            fontSize: buttonFont,
+            iconSize: buttonIcon,
+          ),
+          SizedBox(height: (8 * uiScale).clamp(8, 10).toDouble()),
+          PanelActionButton(
             label: 'About',
             icon: Icons.info_outline_rounded,
             backgroundColor: const Color(0xFF2E3E4E),
@@ -134,6 +167,61 @@ class ActionPanel extends ConsumerWidget {
       context: context,
       builder: (context) => const _AboutDialog(),
     );
+  }
+
+  Future<void> _checkAppUpdates(BuildContext context, WidgetRef ref) async {
+    await ref.read(appUpdateControllerProvider.notifier).checkForUpdates();
+    final state = ref.read(appUpdateControllerProvider);
+    if (!context.mounted) {
+      return;
+    }
+
+    switch (state.status) {
+      case AppUpdateCheckStatus.updateAvailable:
+        final release = state.latestRelease;
+        final title = release?.name.isNotEmpty == true
+            ? release!.name
+            : (release?.tagName ?? 'latest release');
+        final open = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('App Update Available'),
+            content: Text(
+              'Current: ${state.currentVersion ?? '-'}\nLatest: ${release?.tagName ?? '-'}\n\n$title',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Later'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Open Release'),
+              ),
+            ],
+          ),
+        );
+        if (open == true && release != null) {
+          final uri = Uri.tryParse(release.htmlUrl);
+          if (uri != null) {
+            await launchUrl(uri, mode: LaunchMode.externalApplication);
+          }
+        }
+        break;
+      case AppUpdateCheckStatus.upToDate:
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('App is already up to date.')),
+        );
+        break;
+      case AppUpdateCheckStatus.error:
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(state.message ?? 'Update check failed.')),
+        );
+        break;
+      case AppUpdateCheckStatus.idle:
+      case AppUpdateCheckStatus.checking:
+        break;
+    }
   }
 }
 
