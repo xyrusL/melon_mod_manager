@@ -98,11 +98,26 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
             throw "Inno Setup build failed with code $LASTEXITCODE"
           }
-          $installerPath = "windows\installer\$outputBase.exe"
-          if (!(Test-Path $installerPath)) {
-            throw "Installer not found at $installerPath"
+          $installerFile = Get-ChildItem -Path "windows\installer" -Filter "$outputBase*.exe" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if ($null -eq $installerFile) {
+            throw "Installer not found in windows\\installer for base $outputBase"
           }
+          $installerPath = $installerFile.FullName.Replace('\', '/')
           "installer_exe=$installerPath" >> $env:GITHUB_OUTPUT
+
+      - name: Verify Release Files
+        shell: pwsh
+        run: |
+          $portable = "${{ steps.portable.outputs.portable_zip }}"
+          $installer = "${{ steps.installer.outputs.installer_exe }}"
+          if (!(Test-Path $portable)) {
+            throw "Portable zip missing: $portable"
+          }
+          if (!(Test-Path $installer)) {
+            throw "Installer exe missing: $installer"
+          }
+          Write-Host "Portable: $portable"
+          Write-Host "Installer: $installer"
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
