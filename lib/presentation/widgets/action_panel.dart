@@ -6,13 +6,15 @@ import '../../core/providers.dart';
 import '../viewmodels/app_update_controller.dart';
 import 'panel_action_button.dart';
 
-class ActionPanel extends ConsumerWidget {
+class ActionPanel extends ConsumerStatefulWidget {
   const ActionPanel({
     super.key,
     required this.modsPath,
     required this.onDownloadMods,
     required this.onCheckUpdates,
     required this.onAddFile,
+    required this.onImportZip,
+    required this.onExportZip,
     required this.onDeleteSelected,
     required this.isBusy,
     required this.hasDeleteSelection,
@@ -23,86 +25,172 @@ class ActionPanel extends ConsumerWidget {
   final VoidCallback onDownloadMods;
   final VoidCallback onCheckUpdates;
   final VoidCallback onAddFile;
+  final VoidCallback onImportZip;
+  final VoidCallback onExportZip;
   final VoidCallback onDeleteSelected;
   final bool isBusy;
   final bool hasDeleteSelection;
   final double uiScale;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ActionPanel> createState() => _ActionPanelState();
+}
+
+class _ActionPanelState extends ConsumerState<ActionPanel> {
+  late final ScrollController _panelScrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _panelScrollController = ScrollController();
+  }
+
+  @override
+  void dispose() {
+    _panelScrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final versionLabel = ref.watch(appVersionLabelProvider);
-    final environmentInfo = ref.watch(environmentInfoProvider(modsPath));
+    final environmentInfo = ref.watch(
+      environmentInfoProvider(widget.modsPath),
+    );
     final appUpdateState = ref.watch(appUpdateControllerProvider);
-    final spacing = (10 * uiScale).clamp(10, 14).toDouble();
-    final buttonHeight = (44 * uiScale).clamp(44, 52).toDouble();
-    final buttonFont = (16 * uiScale).clamp(16, 19).toDouble();
-    final buttonIcon = (20 * uiScale).clamp(20, 23).toDouble();
+    final itemGap = (6 * widget.uiScale).clamp(5, 8).toDouble();
+    final sectionGap = (12 * widget.uiScale).clamp(10, 14).toDouble();
+    final panelPadding = (14 * widget.uiScale).clamp(12, 16).toDouble();
+    final primaryHeight = (40 * widget.uiScale).clamp(38, 44).toDouble();
+    final secondaryHeight = (36 * widget.uiScale).clamp(34, 40).toDouble();
+    final dangerHeight = (38 * widget.uiScale).clamp(36, 42).toDouble();
+    final primaryFont = (15 * widget.uiScale).clamp(14, 16.5).toDouble();
+    final secondaryFont = (14 * widget.uiScale).clamp(13, 15.5).toDouble();
+    final buttonIcon = (18 * widget.uiScale).clamp(17, 20).toDouble();
     return Container(
-      padding: EdgeInsets.all((16 * uiScale).clamp(16, 20).toDouble()),
+      padding: EdgeInsets.all(panelPadding),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
       child: Column(
         children: [
           Expanded(
-            child: ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                PanelActionButton(
-                  label: 'Download Mods',
-                  icon: Icons.download_rounded,
-                  backgroundColor: const Color(0xFF50F0A8),
-                  foregroundColor: Colors.black,
-                  onPressed: isBusy ? null : onDownloadMods,
-                  height: buttonHeight,
-                  fontSize: buttonFont,
-                  iconSize: buttonIcon,
+            child: ScrollConfiguration(
+              behavior: ScrollConfiguration.of(context).copyWith(
+                scrollbars: false,
+              ),
+              child: ScrollbarTheme(
+                data: ScrollbarTheme.of(context).copyWith(
+                  thumbColor: WidgetStatePropertyAll(
+                    Colors.white.withValues(alpha: 0.26),
+                  ),
+                  trackColor: WidgetStatePropertyAll(
+                    Colors.white.withValues(alpha: 0.04),
+                  ),
+                  radius: const Radius.circular(99),
+                  thickness: const WidgetStatePropertyAll(4),
                 ),
-                SizedBox(height: spacing),
-                PanelActionButton(
-                  label: 'Check for Updates',
-                  icon: Icons.system_update_alt_rounded,
-                  backgroundColor: const Color(0xFFFFC15A),
-                  foregroundColor: Colors.black,
-                  onPressed: isBusy ? null : onCheckUpdates,
-                  height: buttonHeight,
-                  fontSize: buttonFont,
-                  iconSize: buttonIcon,
+                child: Scrollbar(
+                  controller: _panelScrollController,
+                  thumbVisibility: false,
+                  trackVisibility: false,
+                  interactive: true,
+                  child: ListView(
+                    controller: _panelScrollController,
+                    primary: false,
+                    padding: EdgeInsets.only(
+                      right: (4 * widget.uiScale).clamp(4, 6),
+                    ),
+                    children: [
+                      _SectionLabel(label: 'PRIMARY'),
+                      SizedBox(height: itemGap),
+                      PanelActionButton(
+                        label: 'Download Mods',
+                        icon: Icons.download_rounded,
+                        backgroundColor: const Color(0xFF50F0A8),
+                        foregroundColor: Colors.black,
+                        onPressed: widget.isBusy ? null : widget.onDownloadMods,
+                        height: primaryHeight,
+                        fontSize: primaryFont,
+                        iconSize: buttonIcon,
+                      ),
+                      SizedBox(height: itemGap),
+                      PanelActionButton(
+                        label: 'Check for Updates',
+                        icon: Icons.system_update_alt_rounded,
+                        backgroundColor: const Color(0xFFFFC15A),
+                        foregroundColor: Colors.black,
+                        onPressed: widget.isBusy ? null : widget.onCheckUpdates,
+                        height: primaryHeight,
+                        fontSize: primaryFont,
+                        iconSize: buttonIcon,
+                      ),
+                      SizedBox(height: sectionGap),
+                      _SectionLabel(label: 'FILES'),
+                      SizedBox(height: itemGap),
+                      PanelActionButton(
+                        label: 'Add File',
+                        icon: Icons.add_circle_outline_rounded,
+                        backgroundColor: const Color(0xFF6AB9FF),
+                        foregroundColor: Colors.black,
+                        onPressed: widget.isBusy ? null : widget.onAddFile,
+                        height: secondaryHeight,
+                        fontSize: secondaryFont,
+                        iconSize: buttonIcon,
+                      ),
+                      SizedBox(height: itemGap),
+                      PanelActionButton(
+                        label: 'Import Zip',
+                        icon: Icons.archive_rounded,
+                        backgroundColor: const Color(0xFF7AC8FF),
+                        foregroundColor: Colors.black,
+                        onPressed: widget.isBusy ? null : widget.onImportZip,
+                        height: secondaryHeight,
+                        fontSize: secondaryFont,
+                        iconSize: buttonIcon,
+                      ),
+                      SizedBox(height: itemGap),
+                      PanelActionButton(
+                        label: 'Export Zip',
+                        icon: Icons.outbox_rounded,
+                        backgroundColor: const Color(0xFF7BE7B5),
+                        foregroundColor: Colors.black,
+                        onPressed: widget.isBusy ? null : widget.onExportZip,
+                        height: secondaryHeight,
+                        fontSize: secondaryFont,
+                        iconSize: buttonIcon,
+                      ),
+                      SizedBox(height: sectionGap),
+                      _SectionLabel(label: 'DANGER'),
+                      SizedBox(height: itemGap),
+                      PanelActionButton(
+                        label: 'Delete Selected',
+                        icon: Icons.delete_forever_rounded,
+                        backgroundColor: const Color(0xFFFF6A7D),
+                        foregroundColor: Colors.black,
+                        onPressed: widget.isBusy || !widget.hasDeleteSelection
+                            ? null
+                            : widget.onDeleteSelected,
+                        height: dangerHeight,
+                        fontSize: secondaryFont,
+                        iconSize: buttonIcon,
+                      ),
+                      SizedBox(height: sectionGap),
+                      _SectionLabel(label: 'INFO'),
+                      SizedBox(height: itemGap),
+                      _EnvironmentInfoCard(
+                        snapshotAsync: environmentInfo,
+                        uiScale: widget.uiScale,
+                      ),
+                    ],
+                  ),
                 ),
-                SizedBox(height: spacing),
-                PanelActionButton(
-                  label: 'Add File',
-                  icon: Icons.add_circle_outline_rounded,
-                  backgroundColor: const Color(0xFF6AB9FF),
-                  foregroundColor: Colors.black,
-                  onPressed: isBusy ? null : onAddFile,
-                  height: buttonHeight,
-                  fontSize: buttonFont,
-                  iconSize: buttonIcon,
-                ),
-                SizedBox(height: spacing),
-                PanelActionButton(
-                  label: 'Delete Selected',
-                  icon: Icons.delete_forever_rounded,
-                  backgroundColor: const Color(0xFFFF6A7D),
-                  foregroundColor: Colors.black,
-                  onPressed:
-                      isBusy || !hasDeleteSelection ? null : onDeleteSelected,
-                  height: buttonHeight,
-                  fontSize: buttonFont,
-                  iconSize: buttonIcon,
-                ),
-                SizedBox(height: spacing * 1.4),
-                _EnvironmentInfoCard(
-                  snapshotAsync: environmentInfo,
-                  uiScale: uiScale,
-                ),
-              ],
+              ),
             ),
           ),
-          SizedBox(height: spacing),
+          SizedBox(height: itemGap),
           Text(
             versionLabel.when(
               data: (v) => v,
@@ -113,10 +201,10 @@ class ActionPanel extends ConsumerWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.68),
-              fontSize: (12 * uiScale).clamp(12, 14).toDouble(),
+              fontSize: (11.5 * widget.uiScale).clamp(11.5, 13.5).toDouble(),
             ),
           ),
-          SizedBox(height: (8 * uiScale).clamp(8, 10).toDouble()),
+          SizedBox(height: itemGap),
           PanelActionButton(
             label: switch (appUpdateState.status) {
               AppUpdateCheckStatus.checking => 'Checking Updates...',
@@ -127,7 +215,8 @@ class ActionPanel extends ConsumerWidget {
             },
             icon: switch (appUpdateState.status) {
               AppUpdateCheckStatus.checking => Icons.sync_rounded,
-              AppUpdateCheckStatus.updateAvailable => Icons.new_releases_rounded,
+              AppUpdateCheckStatus.updateAvailable =>
+                Icons.new_releases_rounded,
               AppUpdateCheckStatus.upToDate => Icons.verified_rounded,
               AppUpdateCheckStatus.error => Icons.error_outline_rounded,
               AppUpdateCheckStatus.idle => Icons.system_update_rounded,
@@ -142,19 +231,19 @@ class ActionPanel extends ConsumerWidget {
             onPressed: appUpdateState.status == AppUpdateCheckStatus.checking
                 ? null
                 : () => _checkAppUpdates(context, ref),
-            height: buttonHeight,
-            fontSize: buttonFont,
+            height: secondaryHeight,
+            fontSize: secondaryFont,
             iconSize: buttonIcon,
           ),
-          SizedBox(height: (8 * uiScale).clamp(8, 10).toDouble()),
+          SizedBox(height: itemGap),
           PanelActionButton(
             label: 'About',
             icon: Icons.info_outline_rounded,
             backgroundColor: const Color(0xFF2E3E4E),
             foregroundColor: Colors.white,
             onPressed: () => _showAboutDialog(context),
-            height: buttonHeight,
-            fontSize: buttonFont,
+            height: secondaryHeight,
+            fontSize: secondaryFont,
             iconSize: buttonIcon,
           ),
         ],
@@ -236,15 +325,16 @@ class _EnvironmentInfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final titleSize = (13 * uiScale).clamp(13, 15).toDouble();
-    final valueSize = (13 * uiScale).clamp(13, 15).toDouble();
+    final titleSize = (12 * uiScale).clamp(12, 13.5).toDouble();
+    final valueSize = (12.5 * uiScale).clamp(12.5, 14).toDouble();
 
     return Container(
-      padding: EdgeInsets.all((12 * uiScale).clamp(12, 14).toDouble()),
+      padding: EdgeInsets.all((10 * uiScale).clamp(10, 12).toDouble()),
       decoration: BoxDecoration(
         color: const Color(0x1129D79D),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF2BCF99).withValues(alpha: 0.3)),
+        border:
+            Border.all(color: const Color(0xFF2BCF99).withValues(alpha: 0.3)),
       ),
       child: snapshotAsync.when(
         loading: () => const SizedBox(
@@ -260,7 +350,8 @@ class _EnvironmentInfoCard extends StatelessWidget {
         ),
         data: (info) {
           final mcVersion = info.minecraftVersion ?? 'Unknown';
-          final isFabric = info.loaderName == null || info.loaderName == 'fabric';
+          final isFabric =
+              info.loaderName == null || info.loaderName == 'fabric';
           final fabricLabel = isFabric
               ? (info.loaderVersion?.isNotEmpty == true
                   ? info.loaderVersion!
@@ -278,13 +369,13 @@ class _EnvironmentInfoCard extends StatelessWidget {
                   fontSize: titleSize,
                 ),
               ),
-              SizedBox(height: (8 * uiScale).clamp(8, 10).toDouble()),
+              SizedBox(height: (4 * uiScale).clamp(4, 6).toDouble()),
               _InfoRow(
                 label: 'Minecraft',
                 value: mcVersion,
                 uiScale: uiScale,
               ),
-              SizedBox(height: (6 * uiScale).clamp(6, 8).toDouble()),
+              SizedBox(height: (3 * uiScale).clamp(3, 5).toDouble()),
               _InfoRow(
                 label: 'Fabric',
                 value: fabricLabel,
@@ -293,6 +384,25 @@ class _EnvironmentInfoCard extends StatelessWidget {
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label,
+      style: TextStyle(
+        color: Colors.white.withValues(alpha: 0.55),
+        fontSize: 11,
+        letterSpacing: 0.8,
+        fontWeight: FontWeight.w700,
       ),
     );
   }
@@ -418,19 +528,14 @@ class _AboutDialog extends ConsumerWidget {
                         ),
                       ],
                       const SizedBox(height: 8),
-                      Text(
-                        'Profile: ${data.profile.profileUrl}',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.78),
-                          fontSize: 12,
-                        ),
+                      _AboutLinkLine(
+                        label: 'Profile',
+                        url: data.profile.profileUrl,
                       ),
-                      Text(
-                        'Repository: ${data.repository.htmlUrl}',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.78),
-                          fontSize: 12,
-                        ),
+                      const SizedBox(height: 2),
+                      _AboutLinkLine(
+                        label: 'Repository',
+                        url: data.repository.htmlUrl,
                       ),
                     ],
                   );
@@ -449,5 +554,58 @@ class _AboutDialog extends ConsumerWidget {
         ),
       ),
     );
+  }
+}
+
+class _AboutLinkLine extends StatelessWidget {
+  const _AboutLinkLine({
+    required this.label,
+    required this.url,
+  });
+
+  final String label;
+  final String url;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Text(
+          '$label: ',
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.74),
+            fontSize: 12,
+          ),
+        ),
+        Expanded(
+          child: InkWell(
+            onTap: () => _openUrl(context),
+            child: Text(
+              url,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Color(0xFF6AB9FF),
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _openUrl(BuildContext context) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null) {
+      return;
+    }
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not open $url')),
+      );
+    }
   }
 }

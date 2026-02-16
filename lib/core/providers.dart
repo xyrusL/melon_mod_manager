@@ -14,6 +14,7 @@ import '../data/services/minecraft_loader_service.dart';
 import '../data/services/minecraft_path_service.dart';
 import '../data/services/minecraft_version_service.dart';
 import '../data/services/mod_scanner_service.dart';
+import '../data/services/mod_pack_service.dart';
 import '../data/services/modrinth_api_client.dart';
 import '../domain/repositories/modrinth_mapping_repository.dart';
 import '../domain/repositories/modrinth_repository.dart';
@@ -140,6 +141,10 @@ final modScannerServiceProvider = Provider<ModScannerService>((ref) {
 
 final fileInstallServiceProvider = Provider<FileInstallService>((ref) {
   return FileInstallService();
+});
+
+final modPackServiceProvider = Provider<ModPackService>((ref) {
+  return ModPackService();
 });
 
 final dependencyResolverServiceProvider =

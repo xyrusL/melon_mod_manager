@@ -5,6 +5,9 @@ import '../../core/error_reporter.dart';
 import '../../core/providers.dart';
 import '../../data/models/mod_metadata_result.dart';
 import '../../data/services/file_install_service.dart';
+import '../../data/services/minecraft_loader_service.dart';
+import '../../data/services/mod_pack_service.dart';
+import '../../data/services/minecraft_version_service.dart';
 import '../../data/services/mod_scanner_service.dart';
 import '../../domain/entities/mod_item.dart';
 import '../../domain/entities/modrinth_mapping.dart';
@@ -16,6 +19,7 @@ import '../../domain/usecases/install_queue_usecase.dart';
 import '../../domain/usecases/update_mods_usecase.dart';
 
 enum ModFilter { all, modrinth, external, updatable }
+
 typedef UpdateCheckProgressCallback = void Function(
   int processed,
   int total,
@@ -151,6 +155,9 @@ final modsControllerProvider = StateNotifierProvider<ModsController, ModsState>(
       installModUsecase: ref.watch(installModUsecaseProvider),
       updateModsUsecase: ref.watch(updateModsUsecaseProvider),
       fileInstallService: ref.watch(fileInstallServiceProvider),
+      modPackService: ref.watch(modPackServiceProvider),
+      minecraftVersionService: ref.watch(minecraftVersionServiceProvider),
+      minecraftLoaderService: ref.watch(minecraftLoaderServiceProvider),
       errorReporter: ErrorReporter(),
     );
   },
@@ -164,6 +171,9 @@ class ModsController extends StateNotifier<ModsState> {
     required InstallModUsecase installModUsecase,
     required UpdateModsUsecase updateModsUsecase,
     required FileInstallService fileInstallService,
+    required ModPackService modPackService,
+    required MinecraftVersionService minecraftVersionService,
+    required MinecraftLoaderService minecraftLoaderService,
     required ErrorReporter errorReporter,
   })  : _scanner = scanner,
         _mappingRepository = mappingRepository,
@@ -171,6 +181,9 @@ class ModsController extends StateNotifier<ModsState> {
         _installModUsecase = installModUsecase,
         _updateModsUsecase = updateModsUsecase,
         _fileInstallService = fileInstallService,
+        _modPackService = modPackService,
+        _minecraftVersionService = minecraftVersionService,
+        _minecraftLoaderService = minecraftLoaderService,
         _errorReporter = errorReporter,
         super(const ModsState());
 
@@ -180,6 +193,9 @@ class ModsController extends StateNotifier<ModsState> {
   final InstallModUsecase _installModUsecase;
   final UpdateModsUsecase _updateModsUsecase;
   final FileInstallService _fileInstallService;
+  final ModPackService _modPackService;
+  final MinecraftVersionService _minecraftVersionService;
+  final MinecraftLoaderService _minecraftLoaderService;
   final ErrorReporter _errorReporter;
 
   ScanCancellationToken? _scanToken;
@@ -365,9 +381,13 @@ class ModsController extends StateNotifier<ModsState> {
     String? gameVersion,
   }) async {
     final mappings = await _mappingRepository.getAll();
+    final currentModFiles = state.mods.map((mod) => mod.fileName).toSet();
 
     final byProjectId = <String, List<ModrinthMapping>>{};
     for (final mapping in mappings.values) {
+      if (!currentModFiles.contains(mapping.jarFileName)) {
+        continue;
+      }
       byProjectId.putIfAbsent(mapping.projectId, () => []).add(mapping);
     }
 
@@ -486,6 +506,84 @@ class ModsController extends StateNotifier<ModsState> {
     }
   }
 
+  Future<void> exportModsToZip({
+    required String modsPath,
+    required String zipPath,
+  }) async {
+    state = state.copyWith(isBusy: true, errorMessage: null, infoMessage: null);
+    try {
+      final result = await _modPackService.exportModsToZip(
+        modsPath: modsPath,
+        zipPath: zipPath,
+      );
+      state = state.copyWith(
+        isBusy: false,
+        infoMessage:
+            'Exported ${result.exportedCount} mod(s) to ${result.zipPath}.',
+      );
+    } catch (error) {
+      state = state.copyWith(
+        isBusy: false,
+        errorMessage: _errorReporter.toUserMessage(error),
+      );
+    }
+  }
+
+  Future<void> importModsFromZip({
+    required String modsPath,
+    required String zipPath,
+  }) async {
+    state = state.copyWith(isBusy: true, errorMessage: null, infoMessage: null);
+    try {
+      final installedSnapshot = state.mods
+          .map(
+            (mod) => InstalledModSnapshot(
+              fileName: mod.fileName,
+              filePath: mod.filePath,
+              modId: mod.modId,
+              version: mod.version,
+            ),
+          )
+          .toList();
+
+      final result = await _modPackService.importModsFromZip(
+        modsPath: modsPath,
+        zipPath: zipPath,
+        installedMods: installedSnapshot,
+      );
+
+      final mappingRemovals = <String>{
+        ...result.touchedFileNames,
+        ...result.removedFileNames,
+      };
+      for (final fileName in mappingRemovals) {
+        await _mappingRepository.remove(fileName);
+      }
+
+      final sourceLabel =
+          result.importedFromMelonPack ? 'Melon mod pack' : 'Zip archive';
+      final summary =
+          '$sourceLabel import: ${result.jarEntriesFound} jar(s) scanned | '
+          '${result.installed} installed | ${result.updated} updated | '
+          '${result.renamed} renamed | ${result.skippedSameVersion} same-version skipped | '
+          '${result.skippedOlderVersion} older-version skipped | '
+          '${result.skippedIdenticalFile} identical skipped | ${result.failed} failed';
+      final message =
+          result.notes.isEmpty ? summary : '$summary\n${result.notes.first}';
+
+      state = state.copyWith(
+        isBusy: false,
+        infoMessage: message,
+      );
+      await loadMods(modsPath);
+    } catch (error) {
+      state = state.copyWith(
+        isBusy: false,
+        errorMessage: _errorReporter.toUserMessage(error),
+      );
+    }
+  }
+
   Future<void> checkForUpdates(String modsPath) async {
     state = state.copyWith(isBusy: true, errorMessage: null, infoMessage: null);
     try {
@@ -502,9 +600,12 @@ class ModsController extends StateNotifier<ModsState> {
         return;
       }
 
+      final context = await _resolveUpdateContext(modsPath);
       final summary = await _updateModsUsecase.execute(
         modsPath: modsPath,
         mods: modsToCheck,
+        loader: context.loader,
+        gameVersion: context.gameVersion,
       );
       final message = _buildUpdateMessage(
         summary,
@@ -521,6 +622,7 @@ class ModsController extends StateNotifier<ModsState> {
   }
 
   Future<UpdateCheckPreview> checkForUpdatesPreview({
+    required String modsPath,
     UpdateCheckProgressCallback? onProgress,
   }) async {
     state = state.copyWith(isBusy: true, errorMessage: null, infoMessage: null);
@@ -549,6 +651,7 @@ class ModsController extends StateNotifier<ModsState> {
       var externalOrUnknown = 0;
       var failed = 0;
       final total = modsToCheck.length;
+      final context = await _resolveUpdateContext(modsPath);
 
       for (var i = 0; i < modsToCheck.length; i++) {
         final mod = modsToCheck[i];
@@ -583,6 +686,8 @@ class ModsController extends StateNotifier<ModsState> {
           );
           final latest = await _modrinthRepository.getLatestVersion(
             mapping.projectId,
+            loader: context.loader,
+            gameVersion: context.gameVersion,
           );
 
           if (latest == null || latest.id == mapping.versionId) {
@@ -626,9 +731,12 @@ class ModsController extends StateNotifier<ModsState> {
   }) async {
     state = state.copyWith(isBusy: true, errorMessage: null, infoMessage: null);
     try {
+      final context = await _resolveUpdateContext(modsPath);
       final summary = await _updateModsUsecase.execute(
         modsPath: modsPath,
         mods: mods,
+        loader: context.loader,
+        gameVersion: context.gameVersion,
       );
       final message = _buildUpdateMessage(
         summary,
@@ -733,6 +841,17 @@ class ModsController extends StateNotifier<ModsState> {
     return values.first;
   }
 
+  Future<_UpdateContext> _resolveUpdateContext(String modsPath) async {
+    final detectedVersion =
+        await _minecraftVersionService.detectVersionFromModsPath(modsPath);
+    final detectedLoader =
+        await _minecraftLoaderService.detectLoaderFromModsPath(modsPath);
+    return _UpdateContext(
+      loader: detectedLoader?.loader ?? 'fabric',
+      gameVersion: detectedVersion,
+    );
+  }
+
   Future<ModItem> _toModItem(ModMetadataResult metadata) async {
     final mapping = await _mappingRepository.getByFileName(metadata.fileName);
     return ModItem(
@@ -749,4 +868,14 @@ class ModsController extends StateNotifier<ModsState> {
       modrinthVersionId: mapping?.versionId,
     );
   }
+}
+
+class _UpdateContext {
+  const _UpdateContext({
+    required this.loader,
+    required this.gameVersion,
+  });
+
+  final String loader;
+  final String? gameVersion;
 }

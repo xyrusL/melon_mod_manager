@@ -146,9 +146,11 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                             isBusy: state.isBusy,
                             hasDeleteSelection: state.selectedFiles.isNotEmpty,
                             uiScale: uiScale,
-                        onDownloadMods: _openModrinthSearch,
+                            onDownloadMods: _openModrinthSearch,
                             onCheckUpdates: _checkUpdatesWithReview,
                             onAddFile: _addFiles,
+                            onImportZip: _importZipPack,
+                            onExportZip: _exportZipPack,
                             onDeleteSelected: _deleteSelected,
                           ),
                         ),
@@ -195,6 +197,45 @@ class _MainScreenState extends ConsumerState<MainScreen> {
           modsPath: widget.modsPath,
           sourcePaths: paths,
           onConflict: _resolveConflict,
+        );
+  }
+
+  Future<void> _importZipPack() async {
+    final picked = await FilePicker.platform.pickFiles(
+      allowMultiple: false,
+      type: FileType.custom,
+      allowedExtensions: const ['zip'],
+    );
+    final zipPath = picked?.files.single.path;
+    if (zipPath == null || zipPath.isEmpty || !mounted) {
+      return;
+    }
+
+    await ref.read(modsControllerProvider.notifier).importModsFromZip(
+          modsPath: widget.modsPath,
+          zipPath: zipPath,
+        );
+  }
+
+  Future<void> _exportZipPack() async {
+    final timestamp = DateTime.now();
+    final fileName =
+        'melon_mod_pack_${timestamp.year.toString().padLeft(4, '0')}${timestamp.month.toString().padLeft(2, '0')}${timestamp.day.toString().padLeft(2, '0')}_${timestamp.hour.toString().padLeft(2, '0')}${timestamp.minute.toString().padLeft(2, '0')}.zip';
+    final savePath = await FilePicker.platform.saveFile(
+      dialogTitle: 'Export Mods Pack',
+      fileName: fileName,
+      type: FileType.custom,
+      allowedExtensions: const ['zip'],
+    );
+    if (savePath == null || savePath.isEmpty || !mounted) {
+      return;
+    }
+
+    final normalized =
+        savePath.toLowerCase().endsWith('.zip') ? savePath : '$savePath.zip';
+    await ref.read(modsControllerProvider.notifier).exportModsToZip(
+          modsPath: widget.modsPath,
+          zipPath: normalized,
         );
   }
 
@@ -293,8 +334,10 @@ class _MainScreenState extends ConsumerState<MainScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) => _UpdateCheckProgressDialog(
-        runCheck: (onProgress) =>
-            notifier.checkForUpdatesPreview(onProgress: onProgress),
+        runCheck: (onProgress) => notifier.checkForUpdatesPreview(
+          modsPath: widget.modsPath,
+          onProgress: onProgress,
+        ),
       ),
     );
 
@@ -315,12 +358,13 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
     if (preview.updates.isEmpty) {
       final scope = preview.selectedOnly ? 'selected mods' : 'all mods';
+      final detail = _buildNoUpdatesDetail(preview);
       await showDialog<void>(
         context: context,
         builder: (context) => _UpdateResultDialog(
           title: 'No Updates Found',
           message: 'Checked ${preview.totalChecked} mod(s) in $scope.\n'
-              'Everything is already up to date.',
+              '$detail',
         ),
       );
       return;
@@ -354,6 +398,19 @@ class _MainScreenState extends ConsumerState<MainScreen> {
         },
       ),
     );
+  }
+
+  String _buildNoUpdatesDetail(UpdateCheckPreview preview) {
+    if (preview.failed > 0) {
+      return '${preview.alreadyLatest} up to date, '
+          '${preview.externalOrUnknown} external/unmapped, '
+          '${preview.failed} failed to check.';
+    }
+    if (preview.externalOrUnknown > 0) {
+      return '${preview.alreadyLatest} up to date, '
+          '${preview.externalOrUnknown} external/unmapped.';
+    }
+    return 'Everything is already up to date.';
   }
 
   Future<void> _applyPath(String path) async {
@@ -398,15 +455,16 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 class _UpdateCheckProgressDialog extends StatefulWidget {
   const _UpdateCheckProgressDialog({required this.runCheck});
 
-  final Future<UpdateCheckPreview> Function(UpdateCheckProgressCallback onProgress)
-      runCheck;
+  final Future<UpdateCheckPreview> Function(
+      UpdateCheckProgressCallback onProgress) runCheck;
 
   @override
   State<_UpdateCheckProgressDialog> createState() =>
       _UpdateCheckProgressDialogState();
 }
 
-class _UpdateCheckProgressDialogState extends State<_UpdateCheckProgressDialog> {
+class _UpdateCheckProgressDialogState
+    extends State<_UpdateCheckProgressDialog> {
   int _processed = 0;
   int _total = 0;
   String _message = 'Preparing update check...';
@@ -511,7 +569,8 @@ class _UpdateConfirmDialog extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                        border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.08)),
                       ),
                       child: Row(
                         children: [
@@ -626,9 +685,7 @@ class _UpdateRunDialogState extends State<_UpdateRunDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: _done
-              ? () => Navigator.of(context).pop()
-              : null,
+          onPressed: _done ? () => Navigator.of(context).pop() : null,
           child: Text(_failed ? 'Close' : 'Done'),
         ),
       ],
