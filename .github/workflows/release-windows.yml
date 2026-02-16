@@ -50,9 +50,16 @@ jobs:
             throw "Tag/version mismatch. Tag is '$tagName' but pubspec.yaml is '$expectedTag'."
           }
           $isPreRelease = if ($appVersion.Contains('-')) { "true" } else { "false" }
+          $releaseChannel = if ($appVersion -match '-beta(\.|$)') { "Beta" } elseif ($isPreRelease -eq "true") { "Pre-release" } else { "Stable" }
+          $releaseTitle = "Melon Mod Manager $appVersion"
+          if ($releaseChannel -eq "Beta") {
+            $releaseTitle = "$releaseTitle (Beta)"
+          }
           "app_version=$appVersion" >> $env:GITHUB_OUTPUT
           "tag_name=$tagName" >> $env:GITHUB_OUTPUT
           "is_prerelease=$isPreRelease" >> $env:GITHUB_OUTPUT
+          "release_channel=$releaseChannel" >> $env:GITHUB_OUTPUT
+          "release_title=$releaseTitle" >> $env:GITHUB_OUTPUT
 
       - name: Install Dependencies
         run: flutter pub get
@@ -261,18 +268,31 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.meta.outputs.tag_name }}
-          name: Melon Mod Manager ${{ steps.meta.outputs.app_version }}
+          name: ${{ steps.meta.outputs.release_title }}
           prerelease: ${{ steps.meta.outputs.is_prerelease }}
           body: |
-            Windows release artifacts:
-            - Installer (`.exe`) for normal users
-            - Portable (`.zip`) for advanced users
+            ## 🍈 Melon Mod Manager
+            **Channel:** ${{ steps.meta.outputs.release_channel }}
+
+            Melon Mod Manager helps players download mods from Modrinth and safely manage the Minecraft `mods` folder.
+
+            ### Core features
+            - Select or auto-detect your Minecraft `mods` folder
+            - Browse and install mods directly from Modrinth
+            - Check updates, review updates, then apply them
+            - Add and manage external `.jar` mods
+            - Import/export mod packs as `.zip`
+            - Supports Fabric, Quilt, Forge, and NeoForge
+
+            ### Included assets
+            - Installer (`.exe`) for easiest setup
+            - Portable build (`.zip`) for no-install usage
             - SHA256 checksums (`SHA256SUMS.txt`) for integrity verification
 
-            Notes:
-            - Use the installer for easiest setup.
-            - Portable zip can run without installation.
-            - You can verify downloaded files against `SHA256SUMS.txt`.
+            ### Notes
+            - Use installer for most users
+            - Portable zip can run without installation
+            - Verify downloads using `SHA256SUMS.txt`
           generate_release_notes: true
           overwrite_files: true
           files: |
