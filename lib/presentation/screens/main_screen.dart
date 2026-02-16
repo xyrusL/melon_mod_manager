@@ -85,7 +85,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
               height: constraints.maxHeight,
             );
             final sidePanelWidth =
-                (constraints.maxWidth * 0.24).clamp(260.0, 360.0).toDouble();
+                (constraints.maxWidth * 0.23).clamp(248.0, 330.0).toDouble();
             final pagePadding = (18 * uiScale).clamp(18, 24).toDouble();
             final contentGap = (14 * uiScale).clamp(14, 20).toDouble();
 
@@ -299,11 +299,11 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
   Future<void> _autoDetectPath() async {
     final pathService = ref.read(minecraftPathServiceProvider);
-    final detected = await pathService.detectDefaultModsPath();
+    final result = await pathService.detectDefaultModsPathDetailed();
     if (!mounted) {
       return;
     }
-    if (detected == null) {
+    if (!result.hasPath) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           behavior: SnackBarBehavior.floating,
@@ -313,8 +313,8 @@ class _MainScreenState extends ConsumerState<MainScreen> {
             borderRadius: BorderRadius.circular(12),
             side: const BorderSide(color: Color(0xFFFF6A7D), width: 1),
           ),
-          content: const Text(
-            'Could not auto-detect a default mods folder.',
+          content: Text(
+            result.message,
             style: TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.w600,
@@ -325,7 +325,17 @@ class _MainScreenState extends ConsumerState<MainScreen> {
       return;
     }
 
-    await _applyPath(detected);
+    if (result.needsCreation) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+          content: Text(result.message),
+        ),
+      );
+    }
+
+    await _applyPath(result.path!);
   }
 
   Future<void> _checkUpdatesWithReview() async {
