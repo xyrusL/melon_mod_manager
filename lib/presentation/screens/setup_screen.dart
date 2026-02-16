@@ -27,15 +27,15 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
 
   Future<void> _autoDetect() async {
     final pathService = ref.read(minecraftPathServiceProvider);
-    final detected = await pathService.detectDefaultModsPath();
-    if (detected == null) {
-      setState(() => _error = 'Could not auto-detect Minecraft mods folder.');
+    final result = await pathService.detectDefaultModsPathDetailed();
+    if (!result.hasPath) {
+      setState(() => _error = result.message);
       return;
     }
 
     setState(() {
-      _error = null;
-      _pathController.text = detected;
+      _error = result.needsCreation ? result.message : null;
+      _pathController.text = result.path!;
     });
   }
 
