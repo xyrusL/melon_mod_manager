@@ -34,6 +34,29 @@ flutter test
 dart analyze lib
 ```
 
+## Create a GitHub release (Windows installer + portable zip)
+
+The repository includes CI automation at `.github/workflows/release-windows.yml`.
+
+1. Update `pubspec.yaml` version.
+2. Commit and push to `main`.
+3. Create and push a matching tag in the format `v<pubspec-version-without-build>`.
+
+Example for current app version:
+
+```bash
+git tag v1.0.0-beta.1
+git push origin v1.0.0-beta.1
+```
+
+On tag push, GitHub Actions will:
+- run `flutter analyze` and `flutter test`
+- build Windows release binaries
+- generate:
+  - installer `.exe` (Inno Setup)
+  - portable `.zip`
+- publish both assets to the GitHub Release page
+
 ## Notes
 
 - Only Modrinth-managed mods can be auto-updated.
