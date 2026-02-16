@@ -35,7 +35,7 @@ VersionInfoCompany=melon_mod_manager
 VersionInfoDescription=Melon Mod Manager Setup
 VersionInfoTextVersion={#MyAppVersion}
 VersionInfoProductName=Melon Mod Manager
-VersionInfoProductVersion={#MyAppVersion}
+VersionInfoProductVersion={#MyVersionInfoVersion}
 VersionInfoCopyright=Copyright (C) 2026 melon_mod_manager. Licensed under MIT.
 
 [Languages]
