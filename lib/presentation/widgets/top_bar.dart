@@ -41,7 +41,7 @@ class TopBar extends StatelessWidget {
           MelonLogo(size: (30 * uiScale).clamp(30, 38).toDouble()),
           SizedBox(width: (10 * uiScale).clamp(10, 14).toDouble()),
           Text(
-            'Melon Mod Manager',
+            'Melon',
             style: TextStyle(fontSize: titleSize, fontWeight: FontWeight.bold),
           ),
           SizedBox(width: (8 * uiScale).clamp(8, 12).toDouble()),
