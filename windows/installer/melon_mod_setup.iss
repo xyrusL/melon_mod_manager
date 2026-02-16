@@ -17,7 +17,7 @@
 AppId={{6A8C18A3-8D5A-4E8D-9D2D-2B4E8D8F0B11}
 AppName=Melon Mod Manager
 AppVersion={#MyAppVersion}
-AppPublisher=melon_mod_manager
+AppPublisher=Melon Mod Manager
 DefaultDirName={autopf}\Melon Mod Manager
 DefaultGroupName=Melon Mod Manager
 OutputDir=.
@@ -31,12 +31,12 @@ SetupIconFile=..\runner\resources\app_icon.ico
 UninstallDisplayIcon={app}\melon_mod_manager.exe
 ArchitecturesInstallIn64BitMode=x64compatible
 VersionInfoVersion={#MyVersionInfoVersion}
-VersionInfoCompany=melon_mod_manager
+VersionInfoCompany=Melon Mod Manager
 VersionInfoDescription=Melon Mod Manager Setup
 VersionInfoTextVersion={#MyAppVersion}
 VersionInfoProductName=Melon Mod Manager
 VersionInfoProductVersion={#MyVersionInfoVersion}
-VersionInfoCopyright=Copyright (C) 2026 melon_mod_manager. Licensed under MIT.
+VersionInfoCopyright=Copyright (C) 2026 Melon Mod Manager. Licensed under MIT.
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
