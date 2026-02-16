@@ -67,19 +67,30 @@ jobs:
         run: flutter build windows --release
 
       - name: Prepare Code Signing Certificate
-        if: ${{ secrets.WINDOWS_SIGN_PFX_BASE64 != '' && secrets.WINDOWS_SIGN_PFX_PASSWORD != '' }}
         id: sign_cert
         shell: pwsh
         run: |
+          $pfxBase64 = "${{ secrets.WINDOWS_SIGN_PFX_BASE64 }}"
+          $pfxPassword = "${{ secrets.WINDOWS_SIGN_PFX_PASSWORD }}"
+          $hasSigning = -not [string]::IsNullOrWhiteSpace($pfxBase64) -and -not [string]::IsNullOrWhiteSpace($pfxPassword)
+
+          if (-not $hasSigning) {
+            "signing_enabled=false" >> $env:GITHUB_OUTPUT
+            "cert_path=" >> $env:GITHUB_OUTPUT
+            Write-Host "Code signing not configured. Continuing unsigned."
+            exit 0
+          }
+
           $certPath = Join-Path $env:RUNNER_TEMP "windows_codesign.pfx"
           [System.IO.File]::WriteAllBytes(
             $certPath,
-            [System.Convert]::FromBase64String("${{ secrets.WINDOWS_SIGN_PFX_BASE64 }}")
+            [System.Convert]::FromBase64String($pfxBase64)
           )
+          "signing_enabled=true" >> $env:GITHUB_OUTPUT
           "cert_path=$certPath" >> $env:GITHUB_OUTPUT
 
       - name: Sign App Executable
-        if: ${{ secrets.WINDOWS_SIGN_PFX_BASE64 != '' && secrets.WINDOWS_SIGN_PFX_PASSWORD != '' }}
+        if: ${{ steps.sign_cert.outputs.signing_enabled == 'true' }}
         shell: pwsh
         env:
           SIGN_PFX_PASSWORD: ${{ secrets.WINDOWS_SIGN_PFX_PASSWORD }}
@@ -102,11 +113,6 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
             throw "signtool verification failed for app executable."
           }
-
-      - name: Signing Not Configured
-        if: ${{ !(secrets.WINDOWS_SIGN_PFX_BASE64 != '' && secrets.WINDOWS_SIGN_PFX_PASSWORD != '') }}
-        shell: pwsh
-        run: Write-Host "Code signing skipped. Set WINDOWS_SIGN_PFX_BASE64 and WINDOWS_SIGN_PFX_PASSWORD secrets to enable."
 
       - name: Create Portable Zip
         id: portable
@@ -151,7 +157,7 @@ jobs:
           "installer_exe=$installerPath" >> $env:GITHUB_OUTPUT
 
       - name: Sign Installer Executable
-        if: ${{ secrets.WINDOWS_SIGN_PFX_BASE64 != '' && secrets.WINDOWS_SIGN_PFX_PASSWORD != '' }}
+        if: ${{ steps.sign_cert.outputs.signing_enabled == 'true' }}
         shell: pwsh
         env:
           SIGN_PFX_PASSWORD: ${{ secrets.WINDOWS_SIGN_PFX_PASSWORD }}
