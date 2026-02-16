@@ -41,6 +41,8 @@ class _ModsTableState extends State<ModsTable> {
   @override
   Widget build(BuildContext context) {
     final tableScale = _tableScale();
+    const footerTextColor = Color(0xFFE7F0F6);
+    const rowTextColor = Color(0xFFF2F8FC);
     if (widget.mods.isEmpty && !widget.isScanning) {
       return Container(
         alignment: Alignment.center,
@@ -106,81 +108,120 @@ class _ModsTableState extends State<ModsTable> {
               final effectiveRowsPerPage =
                   _rowsPerPage > maxRows ? maxRows : _rowsPerPage;
 
-              return SizedBox(
-                width: constraints.maxWidth,
-                child: PaginatedDataTable(
-                  header: Text(
-                    'Mods (${widget.mods.length})',
-                    style: TextStyle(
-                      fontSize: (18 * tableScale).clamp(18, 22).toDouble(),
-                      fontWeight: FontWeight.w700,
+              return Theme(
+                data: Theme.of(context).copyWith(
+                  dataTableTheme: DataTableThemeData(
+                    headingTextStyle: TextStyle(
+                      color: rowTextColor.withValues(alpha: 0.9),
+                      fontSize: (14 * tableScale).clamp(14, 17).toDouble(),
+                      fontWeight: FontWeight.w600,
                     ),
+                    dataTextStyle: TextStyle(
+                      color: rowTextColor,
+                      fontSize:
+                          (13.5 * tableScale).clamp(13.5, 16.5).toDouble(),
+                    ),
+                    dividerThickness: 1,
+                    horizontalMargin:
+                        (20 * tableScale).clamp(20, 30).toDouble(),
                   ),
-                  columns: [
-                    DataColumn(
-                      label: Checkbox(
-                        value: allSelected,
-                        tristate: false,
-                        onChanged: (value) =>
-                            widget.onToggleSelectAllVisible(value ?? false),
+                  textTheme: Theme.of(context).textTheme.apply(
+                        bodyColor: footerTextColor,
+                        displayColor: footerTextColor,
+                      ),
+                  iconTheme: Theme.of(
+                    context,
+                  ).iconTheme.copyWith(color: footerTextColor),
+                ),
+                child: SizedBox(
+                  width: constraints.maxWidth,
+                  child: PaginatedDataTable(
+                    header: Text(
+                      'Mods (${widget.mods.length})',
+                      style: TextStyle(
+                        color: rowTextColor,
+                        fontSize: (18 * tableScale).clamp(18, 22).toDouble(),
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                    DataColumn(
-                      label: Text(
-                        'Icon',
-                        style: TextStyle(
-                          fontSize: (14 * tableScale).clamp(14, 17).toDouble(),
+                    columns: [
+                      DataColumn(
+                        label: Checkbox(
+                          value: allSelected,
+                          tristate: false,
+                          onChanged: (value) =>
+                              widget.onToggleSelectAllVisible(value ?? false),
                         ),
                       ),
-                    ),
-                    DataColumn(
-                      label: Text(
-                        'Name',
-                        style: TextStyle(
-                          fontSize: (14 * tableScale).clamp(14, 17).toDouble(),
+                      DataColumn(
+                        label: Text(
+                          'Icon',
+                          style: TextStyle(
+                            color: rowTextColor.withValues(alpha: 0.88),
+                            fontSize:
+                                (14 * tableScale).clamp(14, 17).toDouble(),
+                          ),
                         ),
                       ),
-                    ),
-                    DataColumn(
-                      label: Text(
-                        'Version',
-                        style: TextStyle(
-                          fontSize: (14 * tableScale).clamp(14, 17).toDouble(),
+                      DataColumn(
+                        label: Text(
+                          'Name',
+                          style: TextStyle(
+                            color: rowTextColor.withValues(alpha: 0.88),
+                            fontSize:
+                                (14 * tableScale).clamp(14, 17).toDouble(),
+                          ),
                         ),
                       ),
-                    ),
-                    DataColumn(
-                      label: Text(
-                        'Provider',
-                        style: TextStyle(
-                          fontSize: (14 * tableScale).clamp(14, 17).toDouble(),
+                      DataColumn(
+                        label: Text(
+                          'Version',
+                          style: TextStyle(
+                            color: rowTextColor.withValues(alpha: 0.88),
+                            fontSize:
+                                (14 * tableScale).clamp(14, 17).toDouble(),
+                          ),
                         ),
                       ),
-                    ),
-                    DataColumn(
-                      label: Text(
-                        'Last Modified',
-                        style: TextStyle(
-                          fontSize: (14 * tableScale).clamp(14, 17).toDouble(),
+                      DataColumn(
+                        label: Text(
+                          'Provider',
+                          style: TextStyle(
+                            color: rowTextColor.withValues(alpha: 0.88),
+                            fontSize:
+                                (14 * tableScale).clamp(14, 17).toDouble(),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                  source: dataSource,
-                  headingRowHeight: headingRowHeight,
-                  dataRowMinHeight: dataRowHeight,
-                  dataRowMaxHeight: dataRowHeight,
-                  rowsPerPage: effectiveRowsPerPage,
-                  availableRowsPerPage: allowedRows,
-                  onRowsPerPageChanged: (value) {
-                    if (value == null) {
-                      return;
-                    }
-                    setState(() => _rowsPerPage = value);
-                  },
-                  showCheckboxColumn: false,
-                  columnSpacing: (14 * tableScale).clamp(14, 22).toDouble(),
-                  horizontalMargin: (20 * tableScale).clamp(20, 30).toDouble(),
+                      DataColumn(
+                        label: Text(
+                          'Last Modified',
+                          style: TextStyle(
+                            color: rowTextColor.withValues(alpha: 0.88),
+                            fontSize:
+                                (14 * tableScale).clamp(14, 17).toDouble(),
+                          ),
+                        ),
+                      ),
+                    ],
+                    source: dataSource,
+                    headingRowHeight: headingRowHeight,
+                    dataRowMinHeight: dataRowHeight,
+                    dataRowMaxHeight: dataRowHeight,
+                    rowsPerPage: effectiveRowsPerPage,
+                    availableRowsPerPage: allowedRows,
+                    arrowHeadColor: footerTextColor,
+                    onRowsPerPageChanged: (value) {
+                      if (value == null) {
+                        return;
+                      }
+                      setState(() => _rowsPerPage = value);
+                    },
+                    showCheckboxColumn: false,
+                    columnSpacing: (14 * tableScale).clamp(14, 22).toDouble(),
+                    horizontalMargin:
+                        (20 * tableScale).clamp(20, 30).toDouble(),
+                  ),
                 ),
               );
             },
@@ -205,6 +246,7 @@ class _ModsDataSource extends DataTableSource {
   final double uiScale;
 
   TextStyle get _cellTextStyle => TextStyle(
+        color: const Color(0xFFF2F8FC),
         fontSize: (13.5 * uiScale).clamp(13.5, 16.5).toDouble(),
       );
 
