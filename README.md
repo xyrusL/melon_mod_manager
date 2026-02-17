@@ -1,78 +1,94 @@
-# Melon Mod Manager
+# 🍈 Melon Mod Manager
 
-Windows Flutter app to manage Minecraft content from one place.
+A simple Windows desktop app to manage your Minecraft mods, shaders, and resource packs all in one place. No more hunting through folders or manually checking for updates!
 
-## What is new in 1.0.0-beta.2
+![Melon Mod Manager](https://raw.githubusercontent.com/xyrusL/melon_mod_manager/main/assets/logo/logo.png)
 
-- Added shader pack management support.
-- Added resource pack management support.
-- Fixed multiple bugs and runtime errors.
-- Improved internal logic for better stability.
+## What Does This App Do?
 
-## Core features
+**Melon Mod Manager** makes it easy to:
+- **Browse & Download** mods, shaders, and resource packs directly from Modrinth
+- **Update Everything** with one click - no need to check each mod individually
+- **Auto-Detect** your Minecraft installation and loader type
+- **Drag & Drop** files to quickly add new content
+- **Manage All Your Content** - view, organize, and delete unwanted items
+- **Import/Export** mod packs to share with friends or backup your setup
 
-- Select or auto-detect Minecraft folders
-- Browse and install mods from Modrinth
-- Check updates, review found updates, then update all
-- Add external `.jar` files
-- Manage shader packs and resource packs
-- Delete selected entries
-- Error overlay with copy/export logs for crashes
+Think of it as a one-stop shop for keeping your Minecraft mods organized and up-to-date!
 
-## Supported loaders
+## Compatible Devices
 
-- Fabric
-- Quilt
-- Forge
-- NeoForge
+- **Operating System:** Windows 10/11 (64-bit)
+- **Minecraft Loaders:** Fabric, Quilt, Forge, NeoForge
+- **Internet Required:** Yes (for downloading and checking updates from Modrinth)
 
-The app auto-detects loader + Minecraft version from the selected instance path when possible.
+## What's New in Beta 3
 
-## Quick start (Windows)
+- ✨ Added shader pack management
+- ✨ Added resource pack management  
+- 🐛 Fixed multiple bugs and crashes
+- ⚡ Improved stability and performance
+
+## Key Features
+
+✅ **Smart Detection** - Automatically finds your Minecraft folders and figures out which loader you're using  
+✅ **One-Click Updates** - Check all your mods for updates and install them together  
+✅ **Modrinth Integration** - Browse thousands of mods with easy search and filters  
+✅ **Drag & Drop** - Just drag `.jar` or `.zip` files into the app to add them  
+✅ **Mod Packs** - Export your mod list to share or import someone else's pack  
+✅ **External Mods** - Works with mods from any source, not just Modrinth  
+✅ **Error Logging** - If something goes wrong, easily export logs to get help
+
+## About This Project
+
+This is a **personal open-source project** created to make Minecraft modding easier for everyone. It's completely free to use and modify.
+
+### ⚠️ Antivirus Note
+Some antivirus software may flag this app as suspicious because it's a new/unsigned Windows application. This is a **false positive**. You can verify the app is safe by:
+- Checking the [full source code](https://github.com/xyrusL/melon_mod_manager) - everything is open and transparent
+- No data collection, no telemetry, no hidden behavior
+- Built with Flutter - a trusted framework by Google
+
+If you're concerned, feel free to review the code or build it yourself from source!
+
+## Quick Start
+
+1. Download the latest release from the [Releases page](https://github.com/xyrusL/melon_mod_manager/releases)
+2. Run the installer or extract the portable version
+3. Launch **Melon Mod Manager**
+4. Select your Minecraft folder (it usually auto-detects!)
+5. Start browsing and installing mods!
+
+## For Developers
+
+Want to build from source or contribute?
 
 ```bash
+# Get dependencies
 flutter pub get
+
+# Run the app
 flutter run -d windows
-```
 
-## Build and test
-
-```bash
+# Run tests
 flutter test
 dart analyze lib
 ```
 
-## Release (beta.2)
+## Important Notes
 
-1. Ensure `pubspec.yaml` version is `1.0.0-beta.2+1`.
-2. Commit and push changes to `main`.
-3. Create and push the matching tag:
+- Only mods downloaded through Modrinth can be auto-updated
+- External mods (added manually) will appear in your list but won't receive automatic updates
+- Always backup your saves before updating mods!
 
-```bash
-git tag v1.0.0-beta.2
-git push origin v1.0.0-beta.2
-```
+## Links
 
-Or use the helper script to create and push the beta tag in one step:
-
-```powershell
-.\scripts\release.ps1 -Channel beta -Push
-```
-
-The release workflow at `.github/workflows/release-windows.yml` will run analyze/test, build Windows assets, and publish the installer, portable zip, and checksums.
-
-## Notes
-
-- Only Modrinth-managed mods can be auto-updated.
-- External mods are shown in the list but are skipped by Modrinth update flow.
-
-## Repository
-
-`https://github.com/xyrusL/melon_mod_manager`
+- **Repository:** https://github.com/xyrusL/melon_mod_manager
+- **Issues:** https://github.com/xyrusL/melon_mod_manager/issues
+- **Modrinth:** https://modrinth.com
 
 ## License
 
-This project uses the MIT License. You are allowed to use, modify, and fork this project, including for redistribution, as long as you keep the original copyright and license notice.
+MIT License - Free to use, modify, and share! See the `LICENSE` file for details.
 
-- Full license text: `LICENSE`
-- Credit source: `https://github.com/xyrusL/melon_mod_manager`
+Made with 💚 for the Minecraft community
