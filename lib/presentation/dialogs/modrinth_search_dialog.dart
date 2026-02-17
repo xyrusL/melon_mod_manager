@@ -67,6 +67,7 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
   Map<String, String> _latestVersionByProject = const {};
   Set<String> _selectedProjectIds = <String>{};
   String? _error;
+  bool _didChangeContent = false;
 
   @override
   void initState() {
@@ -353,7 +354,7 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
     }
 
     if (widget.contentType != ContentType.mod) {
-      await showDialog<void>(
+      final summary = await showDialog<_BulkInstallSummary>(
         context: context,
         barrierDismissible: false,
         builder: (context) => _BulkInstallProgressDialog(
@@ -368,6 +369,9 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
       );
       if (!mounted) {
         return;
+      }
+      if (summary?.hasChanges == true) {
+        _didChangeContent = true;
       }
       setState(() {
         _selectedProjectIds = <String>{};
@@ -389,7 +393,7 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
       return;
     }
 
-    await showDialog<void>(
+    final summary = await showDialog<_BulkInstallSummary>(
       context: context,
       barrierDismissible: false,
       builder: (context) => _BulkInstallProgressDialog(
@@ -405,6 +409,9 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
 
     if (!mounted) {
       return;
+    }
+    if (summary?.hasChanges == true) {
+      _didChangeContent = true;
     }
 
     setState(() {
@@ -486,7 +493,7 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
                 const Spacer(),
                 IconButton(
                   tooltip: 'Close',
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed: () => Navigator.of(context).pop(_didChangeContent),
                   icon: const Icon(Icons.close_rounded),
                 ),
               ],
@@ -634,28 +641,26 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
                   style: TextStyle(color: Colors.white.withValues(alpha: 0.85)),
                 ),
                 const SizedBox(width: 12),
-                if (widget.contentType == ContentType.mod) ...[
-                  _StatusTag(
-                    label: 'Installed ($installedCount)',
-                    color: const Color(0xFF68DA97),
-                    selected: _statusFilter == _StatusFilter.installed,
-                    onTap: () => _toggleStatusFilter(_StatusFilter.installed),
-                  ),
-                  const SizedBox(width: 6),
-                  _StatusTag(
-                    label: 'Update ($updateCount)',
-                    color: const Color(0xFFFFB55A),
-                    selected: _statusFilter == _StatusFilter.update,
-                    onTap: () => _toggleStatusFilter(_StatusFilter.update),
-                  ),
-                  const SizedBox(width: 6),
-                  _StatusTag(
-                    label: 'On Disk ($onDiskCount)',
-                    color: const Color(0xFF86C5FF),
-                    selected: _statusFilter == _StatusFilter.onDisk,
-                    onTap: () => _toggleStatusFilter(_StatusFilter.onDisk),
-                  ),
-                ],
+                _StatusTag(
+                  label: 'Installed ($installedCount)',
+                  color: const Color(0xFF68DA97),
+                  selected: _statusFilter == _StatusFilter.installed,
+                  onTap: () => _toggleStatusFilter(_StatusFilter.installed),
+                ),
+                const SizedBox(width: 6),
+                _StatusTag(
+                  label: 'Update ($updateCount)',
+                  color: const Color(0xFFFFB55A),
+                  selected: _statusFilter == _StatusFilter.update,
+                  onTap: () => _toggleStatusFilter(_StatusFilter.update),
+                ),
+                const SizedBox(width: 6),
+                _StatusTag(
+                  label: 'On Disk ($onDiskCount)',
+                  color: const Color(0xFF86C5FF),
+                  selected: _statusFilter == _StatusFilter.onDisk,
+                  onTap: () => _toggleStatusFilter(_StatusFilter.onDisk),
+                ),
                 const Spacer(),
                 FilledButton.icon(
                   onPressed:
