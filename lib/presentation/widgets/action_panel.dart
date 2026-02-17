@@ -19,6 +19,7 @@ class ActionPanel extends ConsumerStatefulWidget {
     required this.isBusy,
     required this.hasDeleteSelection,
     required this.downloadLabel,
+    required this.actionsEnabled,
     this.canCheckUpdates = true,
     this.canZipTools = true,
     this.uiScale = 1.0,
@@ -34,6 +35,7 @@ class ActionPanel extends ConsumerStatefulWidget {
   final bool isBusy;
   final bool hasDeleteSelection;
   final String downloadLabel;
+  final bool actionsEnabled;
   final bool canCheckUpdates;
   final bool canZipTools;
   final double uiScale;
@@ -73,6 +75,7 @@ class _ActionPanelState extends ConsumerState<ActionPanel> {
     final primaryFont = (14 * widget.uiScale).clamp(12.5, 15.5).toDouble();
     final secondaryFont = (13 * widget.uiScale).clamp(11.5, 14.5).toDouble();
     final buttonIcon = (16 * widget.uiScale).clamp(14, 18).toDouble();
+    final actionsLocked = !widget.actionsEnabled || widget.isBusy;
     return Container(
       padding: EdgeInsets.all(panelPadding),
       decoration: BoxDecoration(
@@ -110,6 +113,51 @@ class _ActionPanelState extends ConsumerState<ActionPanel> {
                       right: (4 * widget.uiScale).clamp(4, 6),
                     ),
                     children: [
+                      if (actionsLocked) ...[
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal:
+                                (9 * widget.uiScale).clamp(8, 12).toDouble(),
+                            vertical:
+                                (7 * widget.uiScale).clamp(6, 10).toDouble(),
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0x33FFC15A),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: const Color(0x66FFC15A),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              SizedBox(
+                                width: (12 * widget.uiScale).clamp(10, 14),
+                                height: (12 * widget.uiScale).clamp(10, 14),
+                                child: const CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                              SizedBox(
+                                width: (8 * widget.uiScale).clamp(6, 10),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  'Preparing metadata...',
+                                  style: TextStyle(
+                                    color:
+                                        Colors.white.withValues(alpha: 0.88),
+                                    fontSize: (11.5 * widget.uiScale)
+                                        .clamp(10.5, 13)
+                                        .toDouble(),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: sectionGap),
+                      ],
                       _SectionLabel(label: 'PRIMARY'),
                       SizedBox(height: itemGap),
                       PanelActionButton(
@@ -117,7 +165,7 @@ class _ActionPanelState extends ConsumerState<ActionPanel> {
                         icon: Icons.download_rounded,
                         backgroundColor: const Color(0xFF50F0A8),
                         foregroundColor: Colors.black,
-                        onPressed: widget.isBusy ? null : widget.onDownloadMods,
+                        onPressed: actionsLocked ? null : widget.onDownloadMods,
                         height: primaryHeight,
                         fontSize: primaryFont,
                         iconSize: buttonIcon,
@@ -130,7 +178,7 @@ class _ActionPanelState extends ConsumerState<ActionPanel> {
                         icon: Icons.system_update_alt_rounded,
                         backgroundColor: const Color(0xFFFFC15A),
                         foregroundColor: Colors.black,
-                        onPressed: widget.isBusy || !widget.canCheckUpdates
+                        onPressed: actionsLocked || !widget.canCheckUpdates
                             ? null
                             : widget.onCheckUpdates,
                         height: primaryHeight,
@@ -145,7 +193,7 @@ class _ActionPanelState extends ConsumerState<ActionPanel> {
                         icon: Icons.add_circle_outline_rounded,
                         backgroundColor: const Color(0xFF6AB9FF),
                         foregroundColor: Colors.black,
-                        onPressed: widget.isBusy ? null : widget.onAddFile,
+                        onPressed: actionsLocked ? null : widget.onAddFile,
                         height: secondaryHeight,
                         fontSize: secondaryFont,
                         iconSize: buttonIcon,
@@ -156,7 +204,7 @@ class _ActionPanelState extends ConsumerState<ActionPanel> {
                         icon: Icons.archive_rounded,
                         backgroundColor: const Color(0xFF7AC8FF),
                         foregroundColor: Colors.black,
-                        onPressed: widget.isBusy || !widget.canZipTools
+                        onPressed: actionsLocked || !widget.canZipTools
                             ? null
                             : widget.onImportZip,
                         height: secondaryHeight,
@@ -169,7 +217,7 @@ class _ActionPanelState extends ConsumerState<ActionPanel> {
                         icon: Icons.outbox_rounded,
                         backgroundColor: const Color(0xFF7BE7B5),
                         foregroundColor: Colors.black,
-                        onPressed: widget.isBusy || !widget.canZipTools
+                        onPressed: actionsLocked || !widget.canZipTools
                             ? null
                             : widget.onExportZip,
                         height: secondaryHeight,
@@ -184,7 +232,7 @@ class _ActionPanelState extends ConsumerState<ActionPanel> {
                         icon: Icons.delete_forever_rounded,
                         backgroundColor: const Color(0xFFFF6A7D),
                         foregroundColor: Colors.black,
-                        onPressed: widget.isBusy || !widget.hasDeleteSelection
+                        onPressed: actionsLocked || !widget.hasDeleteSelection
                             ? null
                             : widget.onDeleteSelected,
                         height: dangerHeight,
