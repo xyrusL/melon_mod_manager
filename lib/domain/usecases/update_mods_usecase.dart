@@ -95,16 +95,16 @@ class UpdateModsUsecase {
             continue;
           }
 
-          await _cleanupOldMappedFiles(
-            modsPath: modsPath,
-            projectId: mapping.projectId,
-            incomingFileName: file.fileName,
-          );
-
           final targetPath = p.join(modsPath, file.fileName);
           await _commitStagedFile(
             stagedFile: downloaded,
             targetPath: targetPath,
+          );
+
+          await _cleanupOldMappedFiles(
+            modsPath: modsPath,
+            projectId: mapping.projectId,
+            incomingFileName: file.fileName,
           );
 
           await _mappingRepository.put(
@@ -113,6 +113,7 @@ class UpdateModsUsecase {
               projectId: mapping.projectId,
               versionId: latest.id,
               installedAt: DateTime.now(),
+              versionNumber: latest.versionNumber,
               sha1: file.sha1,
               sha512: file.sha512,
             ),

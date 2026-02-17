@@ -4,6 +4,7 @@ import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../core/providers.dart';
 import '../../core/theme/app_theme.dart';
@@ -361,6 +362,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     }
 
     await ref.read(modsControllerProvider.notifier).installExternalFiles(
+          modsPath: widget.modsPath,
           targetPath: targetPath,
           sourcePaths: paths,
           onConflict: _resolveConflict,
@@ -407,6 +409,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
         );
 
     await ref.read(modsControllerProvider.notifier).installExternalFiles(
+          modsPath: widget.modsPath,
           targetPath: targetPath,
           sourcePaths: acceptedPaths,
           onConflict: _resolveConflict,
@@ -733,10 +736,25 @@ class _MainScreenState extends ConsumerState<MainScreen> {
       setState(() => _isInitializing = false);
     }
     unawaited(
-      notifier.warmUpContentCaches(modsPath).catchError((_) {
+      _warmUpMetadataIfNeeded(modsPath, notifier).catchError((_) {
         // Warm-up should never block the primary UI load.
       }),
     );
+  }
+
+  Future<void> _warmUpMetadataIfNeeded(
+    String modsPath,
+    ModsController notifier,
+  ) async {
+    final settingsRepository = ref.read(settingsRepositoryProvider);
+    final appVersion = (await PackageInfo.fromPlatform()).version;
+    final shouldWarmUp =
+        await settingsRepository.shouldPrepareMetadataForAppVersion(appVersion);
+    if (!shouldWarmUp) {
+      return;
+    }
+    await notifier.warmUpContentCaches(modsPath);
+    await settingsRepository.markMetadataPreparedForAppVersion(appVersion);
   }
 
 }

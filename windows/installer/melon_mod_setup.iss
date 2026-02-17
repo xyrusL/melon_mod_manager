@@ -2,7 +2,7 @@
 ; Build app first, then point Source to your release output folder.
 
 #ifndef MyAppVersion
-  #define MyAppVersion "1.0.0-beta.1"
+  #define MyAppVersion "1.0.0-beta.4"
 #endif
 
 #ifndef MyOutputBaseFilename
@@ -43,6 +43,11 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop icon"; GroupDescription: "Additional icons:"
+
+[InstallDelete]
+; Keep upgrades clean across beta jumps:
+; remove old app payload files/folders before copying the new build.
+Type: filesandordirs; Name: "{app}\*"
 
 [Files]
 ; Update these paths to your real Windows release output.

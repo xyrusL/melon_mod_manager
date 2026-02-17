@@ -24,12 +24,13 @@ Think of it as a one-stop shop for keeping your Minecraft mods organized and up-
 - **Minecraft Loaders:** Fabric, Quilt, Forge, NeoForge
 - **Internet Required:** Yes (for downloading and checking updates from Modrinth)
 
-## What's New in Beta 3
+## What's New in Beta 4
 
-- ✨ Added shader pack management
-- ✨ Added resource pack management  
-- 🐛 Fixed multiple bugs and crashes
-- ⚡ Improved stability and performance
+- ⚡ Startup optimization: metadata warm-up now runs only when needed (first launch / app update), reducing repeated load overhead.
+- 🧠 Silent external file detection: externally added mods, shaders, and resource packs are matched in the background and auto-linked to Modrinth when possible.
+- 🛡️ Safer update/install flow: staged commit order prevents old-file cleanup from happening before new files are safely written.
+- ✅ Download integrity checks: Modrinth file hash verification added before install.
+- 🧹 Cleaner app upgrades: installer now removes stale legacy app files during upgrade.
 
 ## Key Features
 

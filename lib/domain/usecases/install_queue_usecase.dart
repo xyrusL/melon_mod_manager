@@ -66,16 +66,16 @@ class InstallQueueUsecase {
           ),
         );
 
-        await _cleanupOldMappedFiles(
-          modsPath: modsPath,
-          projectId: item.projectId,
-          incomingFileName: file.fileName,
-        );
-
         final targetPath = p.join(modsPath, file.fileName);
         await _commitStagedFile(
           stagedFile: downloaded,
           targetPath: targetPath,
+        );
+
+        await _cleanupOldMappedFiles(
+          modsPath: modsPath,
+          projectId: item.projectId,
+          incomingFileName: file.fileName,
         );
 
         await _mappingRepository.put(
@@ -84,6 +84,7 @@ class InstallQueueUsecase {
             projectId: item.projectId,
             versionId: item.version.id,
             installedAt: DateTime.now(),
+            versionNumber: item.version.versionNumber,
             sha1: file.sha1,
             sha512: file.sha512,
           ),

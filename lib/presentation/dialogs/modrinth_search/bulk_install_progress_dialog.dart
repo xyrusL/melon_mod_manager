@@ -133,6 +133,7 @@ class _BulkInstallProgressDialogState
               .installProjectFileFromModrinth(
                 targetPath: widget.targetPath,
                 project: project,
+                contentType: widget.contentType,
                 loader: null,
                 gameVersion: null,
               );

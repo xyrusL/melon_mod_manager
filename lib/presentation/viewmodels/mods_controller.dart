@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:async';
 import 'dart:io';
 import 'package:path/path.dart' as p;
 
@@ -497,6 +498,7 @@ class ModsController extends StateNotifier<ModsState> {
   Future<void> installProjectFileFromModrinth({
     required String targetPath,
     required ModrinthProject project,
+    required ContentType contentType,
     String? loader,
     String? gameVersion,
   }) async {
@@ -511,19 +513,38 @@ class ModsController extends StateNotifier<ModsState> {
         throw Exception('No compatible downloadable file found.');
       }
 
-      ModrinthFile selected = latest.files.first;
-      for (final file in latest.files) {
-        if (file.primary) {
-          selected = file;
-          break;
-        }
+      final selected = _selectFileForContentType(
+        version: latest,
+        contentType: contentType,
+      );
+      if (selected == null) {
+        throw Exception(
+          'No compatible downloadable ${contentType.singularLabel.toLowerCase()} file found.',
+        );
       }
 
       final fileName = selected.fileName;
-      final destination = p.join(targetPath, fileName);
-      await _modrinthRepository.downloadVersionFile(
+      final stagingPath = await _createStagingPath(
+        fileName: fileName,
+        folder: 'pack_install',
+      );
+      final staged = await _modrinthRepository.downloadVersionFile(
         file: selected,
+        targetPath: stagingPath,
+      );
+      if (!await staged.exists() || await staged.length() <= 0) {
+        throw Exception('Downloaded file is empty.');
+      }
+
+      final destination = p.join(targetPath, fileName);
+      await _commitStagedFile(
+        stagedFile: staged,
         targetPath: destination,
+      );
+      await _cleanupOldMappedContentFiles(
+        contentPath: targetPath,
+        projectId: project.id,
+        incomingFileName: fileName,
       );
       await _mappingRepository.put(
         ModrinthMapping(
@@ -531,6 +552,7 @@ class ModsController extends StateNotifier<ModsState> {
           projectId: project.id,
           versionId: latest.id,
           installedAt: DateTime.now(),
+          versionNumber: latest.versionNumber,
           sha1: selected.sha1,
           sha512: selected.sha512,
         ),
@@ -704,10 +726,12 @@ class ModsController extends StateNotifier<ModsState> {
   }
 
   Future<void> installExternalFiles({
+    required String modsPath,
     required String targetPath,
     required List<String> sourcePaths,
     required Future<ConflictResolution> Function(String fileName) onConflict,
   }) async {
+    final contentType = state.contentType;
     state = state.copyWith(isBusy: true, errorMessage: null, infoMessage: null);
     try {
       final results = await _fileInstallService.installFiles(
@@ -717,11 +741,14 @@ class ModsController extends StateNotifier<ModsState> {
       );
 
       var installedCount = 0;
+      final installedFileNames = <String>{};
       for (final result in results) {
         if (result.success) {
           installedCount++;
           if (result.installedFileName != null) {
-            await _mappingRepository.remove(result.installedFileName!);
+            final fileName = result.installedFileName!;
+            installedFileNames.add(fileName);
+            await _mappingRepository.remove(fileName);
           }
         }
       }
@@ -731,7 +758,14 @@ class ModsController extends StateNotifier<ModsState> {
         infoMessage:
             'Installed $installedCount external ${state.contentType.singularLabel.toLowerCase()} file(s).',
       );
-      await _reloadCurrentContent(targetPath);
+      await _reloadCurrentContent(modsPath);
+      unawaited(
+        _resolveExternalMappingsSilently(
+          modsPath: modsPath,
+          contentType: contentType,
+          fileNames: installedFileNames,
+        ),
+      );
     } catch (error) {
       state = state.copyWith(
         isBusy: false,
@@ -902,7 +936,6 @@ class ModsController extends StateNotifier<ModsState> {
       }
 
       var downloaded = 0;
-      var downloadedRenamed = 0;
       var downloadedSkippedIdentical = 0;
       var downloadedFailed = 0;
       final notes = <String>[...bundleResult.notes];
@@ -964,23 +997,23 @@ class ModsController extends StateNotifier<ModsState> {
             continue;
           }
 
-          var finalName = targetName;
-          var finalPath = p.join(contentPath, finalName);
-          final finalExisting = File(finalPath);
-          if (await finalExisting.exists()) {
-            finalName = '${p.basenameWithoutExtension(finalName)}_imported_${DateTime.now().millisecondsSinceEpoch}${p.extension(finalName)}';
-            finalPath = p.join(contentPath, finalName);
-            downloadedRenamed++;
-          }
-
-          await _moveFile(staged, finalPath);
+          await _commitStagedFile(
+            stagedFile: staged,
+            targetPath: destinationPath,
+          );
+          await _cleanupOldMappedContentFiles(
+            contentPath: contentPath,
+            projectId: ref.projectId,
+            incomingFileName: targetName,
+          );
           downloaded++;
           await _mappingRepository.put(
             ModrinthMapping(
-              jarFileName: finalName,
+              jarFileName: targetName,
               projectId: ref.projectId,
               versionId: ref.versionId,
               installedAt: DateTime.now(),
+              versionNumber: version.versionNumber,
               sha1: selectedFile.sha1,
               sha512: selectedFile.sha512,
             ),
@@ -997,7 +1030,7 @@ class ModsController extends StateNotifier<ModsState> {
           '${state.contentType.label} bundle import: ${bundleResult.entriesFound} entr${bundleResult.entriesFound == 1 ? 'y' : 'ies'} scanned | '
           '${bundleResult.embeddedImported} embedded imported | '
           '${bundleResult.modrinthReferences.length} Modrinth reference${bundleResult.modrinthReferences.length == 1 ? '' : 's'} | '
-          '$downloaded downloaded | ${bundleResult.renamed + downloadedRenamed} renamed | '
+          '$downloaded downloaded | ${bundleResult.renamed} renamed | '
           '${bundleResult.skippedIdenticalFile + downloadedSkippedIdentical} identical skipped | '
           '${bundleResult.failed + downloadedFailed} failed';
       final message =
@@ -1057,6 +1090,244 @@ class ModsController extends StateNotifier<ModsState> {
       await source.copy(target.path);
       await source.delete();
     }
+  }
+
+  Future<void> _commitStagedFile({
+    required File stagedFile,
+    required String targetPath,
+  }) async {
+    final target = File(targetPath);
+    final backup = File('$targetPath.bak');
+
+    if (await backup.exists()) {
+      await backup.delete();
+    }
+
+    try {
+      if (await target.exists()) {
+        await target.rename(backup.path);
+      }
+
+      try {
+        await _moveFile(stagedFile, target.path);
+        if (await backup.exists()) {
+          await backup.delete();
+        }
+      } catch (_) {
+        if (await target.exists()) {
+          await target.delete();
+        }
+        if (await backup.exists()) {
+          await backup.rename(target.path);
+        }
+        rethrow;
+      }
+    } finally {
+      if (await stagedFile.exists()) {
+        await stagedFile.delete();
+      }
+    }
+  }
+
+  Future<void> _cleanupOldMappedContentFiles({
+    required String contentPath,
+    required String projectId,
+    required String incomingFileName,
+  }) async {
+    final mappings = await _mappingRepository.getAll();
+    for (final mapping in mappings.values) {
+      if (mapping.projectId != projectId) {
+        continue;
+      }
+      if (mapping.jarFileName == incomingFileName) {
+        continue;
+      }
+      try {
+        final oldPath = p.join(contentPath, mapping.jarFileName);
+        final oldFile = File(oldPath);
+        if (await oldFile.exists()) {
+          await oldFile.delete();
+        }
+        await _mappingRepository.remove(mapping.jarFileName);
+      } catch (_) {
+        // Keep update/install flow resilient if stale file cleanup fails.
+      }
+    }
+  }
+
+  Future<String> _createStagingPath({
+    required String fileName,
+    required String folder,
+  }) async {
+    final stagingDir = Directory(
+      p.join(Directory.systemTemp.path, 'melon_mod', folder),
+    );
+    if (!await stagingDir.exists()) {
+      await stagingDir.create(recursive: true);
+    }
+    final timestamp = DateTime.now().microsecondsSinceEpoch;
+    return p.join(stagingDir.path, '${timestamp}_$fileName');
+  }
+
+  Future<String> _resolvePackVersion(ModrinthMapping? mapping) async {
+    if (mapping == null) {
+      return 'Unknown';
+    }
+    final cached = mapping.versionNumber?.trim();
+    if (cached != null && cached.isNotEmpty) {
+      return cached;
+    }
+    try {
+      final version = await _modrinthRepository.getVersionById(mapping.versionId);
+      if (version == null) {
+        return 'Unknown';
+      }
+      await _mappingRepository.put(
+        ModrinthMapping(
+          jarFileName: mapping.jarFileName,
+          projectId: mapping.projectId,
+          versionId: mapping.versionId,
+          installedAt: mapping.installedAt,
+          versionNumber: version.versionNumber,
+          sha1: mapping.sha1,
+          sha512: mapping.sha512,
+        ),
+      );
+      return version.versionNumber;
+    } catch (_) {
+      return 'Unknown';
+    }
+  }
+
+  Future<void> _resolveExternalMappingsSilently({
+    required String modsPath,
+    required ContentType contentType,
+    required Set<String> fileNames,
+  }) async {
+    if (fileNames.isEmpty) {
+      return;
+    }
+
+    final contentPath = _contentPathService.resolveContentPath(
+      modsPath: modsPath,
+      contentType: contentType,
+    );
+    final resolved = <String, ModrinthMapping>{};
+
+    for (final fileName in fileNames) {
+      final existing = await _mappingRepository.getByFileName(fileName);
+      if (existing != null) {
+        continue;
+      }
+
+      final filePath = p.join(contentPath, fileName);
+      final file = File(filePath);
+      if (!await file.exists()) {
+        continue;
+      }
+
+      final sha1 = await _fileHashService.computeSha1(filePath);
+      if (sha1 == null || sha1.isEmpty) {
+        continue;
+      }
+
+      try {
+        final matchedVersion = await _modrinthRepository.getVersionByFileHash(
+          sha1,
+        );
+        if (matchedVersion == null) {
+          continue;
+        }
+        final matchedFile = _selectMatchedFileBySha1(
+          version: matchedVersion,
+          sha1: sha1,
+        );
+        final mapping = ModrinthMapping(
+          jarFileName: fileName,
+          projectId: matchedVersion.projectId,
+          versionId: matchedVersion.id,
+          installedAt: DateTime.now(),
+          versionNumber: matchedVersion.versionNumber,
+          sha1: sha1,
+          sha512: matchedFile?.sha512,
+        );
+        await _mappingRepository.put(mapping);
+        resolved[fileName] = mapping;
+      } catch (_) {
+        // Silent background resolution should never surface errors to UI.
+      }
+    }
+
+    if (resolved.isEmpty) {
+      return;
+    }
+
+    _applyResolvedMappingsToCache(
+      modsPath: modsPath,
+      contentType: contentType,
+      resolved: resolved,
+    );
+  }
+
+  ModrinthFile? _selectMatchedFileBySha1({
+    required ModrinthVersion version,
+    required String sha1,
+  }) {
+    final target = sha1.toLowerCase();
+    for (final file in version.files) {
+      final fileSha1 = file.sha1;
+      if (fileSha1 != null && fileSha1.toLowerCase() == target) {
+        return file;
+      }
+    }
+    for (final file in version.files) {
+      if (file.primary) {
+        return file;
+      }
+    }
+    if (version.files.isEmpty) {
+      return null;
+    }
+    return version.files.first;
+  }
+
+  void _applyResolvedMappingsToCache({
+    required String modsPath,
+    required ContentType contentType,
+    required Map<String, ModrinthMapping> resolved,
+  }) {
+    final key = _cacheKey(modsPath, contentType);
+    final cached = _contentCache[key];
+    if (cached != null) {
+      _contentCache[key] = List<ModItem>.unmodifiable(
+        _applyResolvedMappingsToItems(cached, resolved),
+      );
+    }
+
+    if (state.contentType != contentType) {
+      return;
+    }
+
+    final nextItems = _applyResolvedMappingsToItems(state.mods, resolved);
+    state = state.copyWith(mods: List<ModItem>.unmodifiable(nextItems));
+  }
+
+  List<ModItem> _applyResolvedMappingsToItems(
+    List<ModItem> items,
+    Map<String, ModrinthMapping> resolved,
+  ) {
+    return items.map((item) {
+      final mapping = resolved[item.fileName];
+      if (mapping == null) {
+        return item;
+      }
+      return item.copyWith(
+        provider: ModProviderType.modrinth,
+        version: mapping.versionNumber ?? item.version,
+        modrinthProjectId: mapping.projectId,
+        modrinthVersionId: mapping.versionId,
+      );
+    }).toList();
   }
 
   Future<void> checkForUpdates(String modsPath) async {
@@ -1398,28 +1669,21 @@ class ModsController extends StateNotifier<ModsState> {
       final mapping = await _mappingRepository.getByFileName(file.fileName);
       final localIcon =
           await _contentIconService.extractPackIcon(file.filePath);
-      final resolved = await _resolveMatchFromFile(
-        fileName: file.fileName,
-        filePath: file.filePath,
-      );
-      final project = resolved?.project;
-      final version = resolved?.version;
-      final effectiveMapping = resolved?.mapping ?? mapping;
+      final version = await _resolvePackVersion(mapping);
       loaded.add(
         ModItem(
           fileName: file.fileName,
           filePath: file.filePath,
-          displayName:
-              project?.title ?? p.basenameWithoutExtension(file.fileName),
-          version: version?.versionNumber ?? 'Unknown',
+          displayName: p.basenameWithoutExtension(file.fileName),
+          version: version,
           modId: p.basenameWithoutExtension(file.fileName),
-          provider: effectiveMapping == null
+          provider: mapping == null
               ? ModProviderType.external
               : ModProviderType.modrinth,
           lastModified: file.lastModified,
           iconCachePath: localIcon,
-          modrinthProjectId: effectiveMapping?.projectId,
-          modrinthVersionId: effectiveMapping?.versionId,
+          modrinthProjectId: mapping?.projectId,
+          modrinthVersionId: mapping?.versionId,
         ),
       );
     }
@@ -1548,27 +1812,43 @@ class ModsController extends StateNotifier<ModsState> {
           continue;
         }
 
-        ModrinthFile selectedFile = latest.files.first;
-        for (final file in latest.files) {
-          if (file.primary) {
-            selectedFile = file;
-            break;
+        final selectedFile = _selectFileForContentType(
+          version: latest,
+          contentType: state.contentType,
+          preferredFileName: mod.fileName,
+        );
+        if (selectedFile == null) {
+          failed++;
+          failedMods.add(mod.displayName);
+          if (notes.length < 5) {
+            notes.add(
+              'Update failed for ${mod.displayName}: no compatible downloadable file.',
+            );
           }
+          continue;
         }
 
-        final destination = p.join(targetPath, selectedFile.fileName);
-        await _modrinthRepository.downloadVersionFile(
+        final stagingPath = await _createStagingPath(
+          fileName: selectedFile.fileName,
+          folder: 'pack_update',
+        );
+        final staged = await _modrinthRepository.downloadVersionFile(
           file: selectedFile,
+          targetPath: stagingPath,
+        );
+        if (!await staged.exists() || await staged.length() <= 0) {
+          throw Exception('Downloaded file is empty.');
+        }
+        final destination = p.join(targetPath, selectedFile.fileName);
+        await _commitStagedFile(
+          stagedFile: staged,
           targetPath: destination,
         );
-
-        if (selectedFile.fileName != mod.fileName) {
-          final old = File(mod.filePath);
-          if (await old.exists()) {
-            await old.delete();
-          }
-          await _mappingRepository.remove(mod.fileName);
-        }
+        await _cleanupOldMappedContentFiles(
+          contentPath: targetPath,
+          projectId: mapping.projectId,
+          incomingFileName: selectedFile.fileName,
+        );
 
         await _mappingRepository.put(
           ModrinthMapping(
@@ -1576,6 +1856,7 @@ class ModsController extends StateNotifier<ModsState> {
             projectId: mapping.projectId,
             versionId: latest.id,
             installedAt: DateTime.now(),
+            versionNumber: latest.versionNumber,
             sha1: selectedFile.sha1,
             sha512: selectedFile.sha512,
           ),
@@ -1607,19 +1888,12 @@ class ModsController extends StateNotifier<ModsState> {
   }
 
   Future<ModItem> _toModItem(ModMetadataResult metadata) async {
-    final resolved = await _resolveMatchFromFile(
-      fileName: metadata.fileName,
-      filePath: metadata.filePath,
-    );
-    final mapping = resolved?.mapping ??
-        await _mappingRepository.getByFileName(metadata.fileName);
-    final project = resolved?.project;
-    final version = resolved?.version;
+    final mapping = await _mappingRepository.getByFileName(metadata.fileName);
     return ModItem(
       fileName: metadata.fileName,
       filePath: metadata.filePath,
-      displayName: project?.title ?? metadata.name,
-      version: version?.versionNumber ?? metadata.version,
+      displayName: metadata.name,
+      version: metadata.version,
       modId: metadata.modId,
       provider:
           mapping == null ? ModProviderType.external : ModProviderType.modrinth,
@@ -1628,84 +1902,6 @@ class ModsController extends StateNotifier<ModsState> {
       modrinthProjectId: mapping?.projectId,
       modrinthVersionId: mapping?.versionId,
     );
-  }
-
-  Future<_ResolvedModrinthMatch?> _resolveMatchFromFile({
-    required String fileName,
-    required String filePath,
-  }) async {
-    try {
-      final existing = await _mappingRepository.getByFileName(fileName);
-      if (existing != null) {
-        final project =
-            await _modrinthRepository.getProjectById(existing.projectId);
-        final version =
-            await _modrinthRepository.getVersionById(existing.versionId);
-        if (version != null) {
-          return _ResolvedModrinthMatch(
-            mapping: existing,
-            project: project,
-            version: version,
-          );
-        }
-      }
-
-      final sha1 = await _fileHashService.computeSha1(filePath);
-      if (sha1 == null || sha1.isEmpty) {
-        return null;
-      }
-
-      final matchedVersion =
-          await _modrinthRepository.getVersionByFileHash(sha1);
-      if (matchedVersion == null) {
-        return null;
-      }
-      final matchedProject =
-          await _modrinthRepository.getProjectById(matchedVersion.projectId);
-
-      final inferredSha512 = _extractSha512ForFile(
-        matchedVersion: matchedVersion,
-        fileName: fileName,
-      );
-      final mapping = ModrinthMapping(
-        jarFileName: fileName,
-        projectId: matchedVersion.projectId,
-        versionId: matchedVersion.id,
-        installedAt: DateTime.now(),
-        sha1: sha1,
-        sha512: inferredSha512,
-      );
-      await _mappingRepository.put(mapping);
-
-      return _ResolvedModrinthMatch(
-        mapping: mapping,
-        project: matchedProject,
-        version: matchedVersion,
-      );
-    } catch (_) {
-      return null;
-    }
-  }
-
-  String? _extractSha512ForFile({
-    required ModrinthVersion matchedVersion,
-    required String fileName,
-  }) {
-    final localName = fileName.toLowerCase();
-    for (final file in matchedVersion.files) {
-      if (file.fileName.toLowerCase() == localName) {
-        return file.sha512;
-      }
-    }
-    for (final file in matchedVersion.files) {
-      if (file.primary) {
-        return file.sha512;
-      }
-    }
-    if (matchedVersion.files.isEmpty) {
-      return null;
-    }
-    return matchedVersion.files.first.sha512;
   }
 }
 
@@ -1717,16 +1913,4 @@ class _UpdateContext {
 
   final String loader;
   final String? gameVersion;
-}
-
-class _ResolvedModrinthMatch {
-  const _ResolvedModrinthMatch({
-    required this.mapping,
-    required this.project,
-    required this.version,
-  });
-
-  final ModrinthMapping mapping;
-  final ModrinthProject? project;
-  final ModrinthVersion version;
 }

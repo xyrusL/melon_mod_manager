@@ -10,11 +10,12 @@ class FileHashService {
     }
 
     try {
-      final bytes = await file.readAsBytes();
-      if (bytes.isEmpty) {
+      final stat = await file.stat();
+      if (stat.size <= 0) {
         return null;
       }
-      return sha1.convert(bytes).toString();
+      final digest = await sha1.bind(file.openRead()).first;
+      return digest.toString();
     } catch (_) {
       return null;
     }

@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:crypto/crypto.dart';
+
 import '../../domain/entities/modrinth_project.dart';
 import '../../domain/entities/modrinth_version.dart';
 import '../../domain/repositories/modrinth_repository.dart';
@@ -15,8 +17,11 @@ class ModrinthRepositoryImpl implements ModrinthRepository {
   Future<File> downloadVersionFile({
     required ModrinthFile file,
     required String targetPath,
-  }) {
-    return _apiClient.downloadFile(url: file.url, targetPath: targetPath);
+  }) async {
+    final downloaded =
+        await _apiClient.downloadFile(url: file.url, targetPath: targetPath);
+    await _verifyFileIntegrity(downloaded, file);
+    return downloaded;
   }
 
   @override
@@ -97,5 +102,36 @@ class ModrinthRepositoryImpl implements ModrinthRepository {
     );
 
     return result.map((m) => m.toEntity()).toList();
+  }
+
+  Future<void> _verifyFileIntegrity(File downloaded, ModrinthFile file) async {
+    final expectedSha1 = file.sha1?.trim().toLowerCase();
+    if (expectedSha1 != null && expectedSha1.isNotEmpty) {
+      final actual = (await sha1.bind(downloaded.openRead()).first).toString();
+      if (actual.toLowerCase() != expectedSha1) {
+        await _safeDelete(downloaded);
+        throw const FileSystemException('Downloaded file failed SHA-1 verification.');
+      }
+      return;
+    }
+
+    final expectedSha512 = file.sha512?.trim().toLowerCase();
+    if (expectedSha512 != null && expectedSha512.isNotEmpty) {
+      final actual = (await sha512.bind(downloaded.openRead()).first).toString();
+      if (actual.toLowerCase() != expectedSha512) {
+        await _safeDelete(downloaded);
+        throw const FileSystemException('Downloaded file failed SHA-512 verification.');
+      }
+    }
+  }
+
+  Future<void> _safeDelete(File file) async {
+    try {
+      if (await file.exists()) {
+        await file.delete();
+      }
+    } catch (_) {
+      // Best effort cleanup only.
+    }
   }
 }

@@ -151,18 +151,50 @@ class ModrinthApiClient {
     required String url,
     required String targetPath,
   }) async {
-    final response = await _client.get(Uri.parse(url), headers: _headers);
+    final request = http.Request('GET', Uri.parse(url))
+      ..headers.addAll(_headers);
+    final response = await _client.send(request);
     if (response.statusCode != 200) {
       throw HttpException('Failed to download file: ${response.statusCode}');
     }
 
-    if (response.bodyBytes.isEmpty) {
-      throw const FileSystemException('Downloaded file is empty.');
-    }
-
     final target = File(targetPath);
     final temp = File('$targetPath.part');
-    await temp.writeAsBytes(response.bodyBytes, flush: true);
+    if (!await target.parent.exists()) {
+      await target.parent.create(recursive: true);
+    }
+
+    IOSink? sink;
+    var totalBytes = 0;
+    try {
+      sink = temp.openWrite();
+      await for (final chunk in response.stream) {
+        if (chunk.isEmpty) {
+          continue;
+        }
+        sink.add(chunk);
+        totalBytes += chunk.length;
+      }
+      await sink.flush();
+      await sink.close();
+      sink = null;
+    } catch (_) {
+      if (sink != null) {
+        await sink.flush();
+        await sink.close();
+      }
+      if (await temp.exists()) {
+        await temp.delete();
+      }
+      rethrow;
+    }
+
+    if (totalBytes <= 0) {
+      if (await temp.exists()) {
+        await temp.delete();
+      }
+      throw const FileSystemException('Downloaded file is empty.');
+    }
 
     if (await target.exists()) {
       final backup = File('$targetPath.bak');
