@@ -3,17 +3,21 @@ part of '../modrinth_search_dialog.dart';
 class _BulkInstallProgressDialog extends ConsumerStatefulWidget {
   const _BulkInstallProgressDialog({
     required this.modsPath,
+    required this.targetPath,
     required this.projects,
     required this.installInfo,
     required this.loader,
     required this.gameVersion,
+    required this.contentType,
   });
 
   final String modsPath;
+  final String targetPath;
   final List<ModrinthProject> projects;
   final Map<String, ProjectInstallInfo> installInfo;
-  final String loader;
+  final String? loader;
   final String? gameVersion;
+  final ContentType contentType;
 
   @override
   ConsumerState<_BulkInstallProgressDialog> createState() =>
@@ -45,7 +49,8 @@ class _BulkInstallProgressDialogState
       final installState = widget.installInfo[project.id]?.state;
       final step = i + 1;
 
-      if (installState == ProjectInstallState.installed) {
+      if (widget.contentType == ContentType.mod &&
+          installState == ProjectInstallState.installed) {
         _skipped++;
         _logs.add('Skipped ${project.title}: already installed.');
         if (mounted) {
@@ -56,7 +61,8 @@ class _BulkInstallProgressDialogState
         }
         continue;
       }
-      if (installState == ProjectInstallState.installedUntracked) {
+      if (widget.contentType == ContentType.mod &&
+          installState == ProjectInstallState.installedUntracked) {
         _skipped++;
         _logs.add(
           'Skipped ${project.title}: already in mods folder (untracked).',
@@ -69,34 +75,57 @@ class _BulkInstallProgressDialogState
         continue;
       }
 
-      final result =
-          await ref.read(modsControllerProvider.notifier).installFromModrinth(
-                modsPath: widget.modsPath,
-                project: project,
-                loader: widget.loader,
-                gameVersion: widget.gameVersion,
-                onProgress: (progress) async {
-                  if (!mounted) {
-                    return;
-                  }
-                  setState(() {
-                    _message = '[$step/$total] ${progress.message}';
-                  });
-                },
-              );
+      if (widget.contentType == ContentType.mod) {
+        final result =
+            await ref.read(modsControllerProvider.notifier).installFromModrinth(
+                  modsPath: widget.modsPath,
+                  project: project,
+                  loader: widget.loader ?? 'fabric',
+                  gameVersion: widget.gameVersion,
+                  onProgress: (progress) async {
+                    if (!mounted) {
+                      return;
+                    }
+                    setState(() {
+                      _message = '[$step/$total] ${progress.message}';
+                    });
+                  },
+                );
 
-      if (!result.installed) {
-        _failed++;
-        _logs.add('Failed ${project.title}: ${result.message}');
-        continue;
-      }
+        if (!result.installed) {
+          _failed++;
+          _logs.add('Failed ${project.title}: ${result.message}');
+          continue;
+        }
 
-      if (installState == ProjectInstallState.updateAvailable) {
-        _updated++;
-        _logs.add('Updated ${project.title}.');
+        if (installState == ProjectInstallState.updateAvailable) {
+          _updated++;
+          _logs.add('Updated ${project.title}.');
+        } else {
+          _installed++;
+          _logs.add('Installed ${project.title}.');
+        }
       } else {
-        _installed++;
-        _logs.add('Installed ${project.title}.');
+        if (mounted) {
+          setState(() {
+            _message = '[$step/$total] Downloading ${project.title}...';
+          });
+        }
+        try {
+          await ref
+              .read(modsControllerProvider.notifier)
+              .installProjectFileFromModrinth(
+                targetPath: widget.targetPath,
+                project: project,
+                loader: null,
+                gameVersion: null,
+              );
+          _installed++;
+          _logs.add('Downloaded ${project.title}.');
+        } catch (_) {
+          _failed++;
+          _logs.add('Failed ${project.title}.');
+        }
       }
     }
 
@@ -114,7 +143,11 @@ class _BulkInstallProgressDialogState
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Installing Selected Mods'),
+      title: Text(
+        widget.contentType == ContentType.mod
+            ? 'Installing Selected Mods'
+            : 'Downloading Selected ${widget.contentType.label}',
+      ),
       content: SizedBox(
         width: 620,
         child: Column(

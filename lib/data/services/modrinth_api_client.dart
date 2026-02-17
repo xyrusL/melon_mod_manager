@@ -22,15 +22,16 @@ class ModrinthApiClient {
 
   Future<List<ModrinthSearchHitModel>> searchProjects(
     String query, {
-    String loader = 'fabric',
+    String? loader,
+    String projectType = 'mod',
     String? gameVersion,
     int limit = 20,
     int offset = 0,
     String index = 'relevance',
   }) async {
     final facets = <List<String>>[
-      ['project_type:mod'],
-      ['categories:$loader'],
+      ['project_type:$projectType'],
+      if (loader != null && loader.isNotEmpty) ['categories:$loader'],
       if (gameVersion != null && gameVersion.isNotEmpty)
         ['versions:$gameVersion'],
     ];
@@ -64,12 +65,13 @@ class ModrinthApiClient {
 
   Future<List<ModrinthVersionModel>> getProjectVersions(
     String projectId, {
-    String loader = 'fabric',
+    String? loader,
     String? gameVersion,
   }) async {
     final uri = Uri.parse('$_baseUrl/project/$projectId/version').replace(
       queryParameters: {
-        'loaders': jsonEncode([loader]),
+        if (loader != null && loader.isNotEmpty)
+          'loaders': jsonEncode([loader]),
         if (gameVersion != null && gameVersion.isNotEmpty)
           'game_versions': jsonEncode([gameVersion]),
       },
@@ -104,6 +106,45 @@ class ModrinthApiClient {
       throw const FormatException('Invalid version response.');
     }
     return ModrinthVersionModel.fromJson(decoded);
+  }
+
+  Future<ModrinthVersionModel?> getVersionByFileHash(
+    String hash, {
+    String algorithm = 'sha1',
+  }) async {
+    final uri = Uri.parse('$_baseUrl/version_file/$hash').replace(
+      queryParameters: {'algorithm': algorithm},
+    );
+    final response = await _client.get(uri, headers: _headers);
+    if (response.statusCode == 404) {
+      return null;
+    }
+    if (response.statusCode != 200) {
+      throw HttpException(
+          'Modrinth hash lookup failed: ${response.statusCode}');
+    }
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      return null;
+    }
+    return ModrinthVersionModel.fromJson(decoded);
+  }
+
+  Future<ModrinthSearchHitModel?> getProjectById(String projectId) async {
+    final uri = Uri.parse('$_baseUrl/project/$projectId');
+    final response = await _client.get(uri, headers: _headers);
+    if (response.statusCode == 404) {
+      return null;
+    }
+    if (response.statusCode != 200) {
+      throw HttpException(
+          'Modrinth project lookup failed: ${response.statusCode}');
+    }
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      return null;
+    }
+    return ModrinthSearchHitModel.fromProjectJson(decoded);
   }
 
   Future<File> downloadFile({

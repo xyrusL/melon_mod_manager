@@ -10,6 +10,10 @@ import '../data/repositories/modrinth_repository_impl.dart';
 import '../data/repositories/settings_repository_impl.dart';
 import '../data/services/file_install_service.dart';
 import '../data/services/app_update_service.dart';
+import '../data/services/content_icon_service.dart';
+import '../data/services/content_path_service.dart';
+import '../data/services/content_scanner_service.dart';
+import '../data/services/file_hash_service.dart';
 import '../data/services/minecraft_loader_service.dart';
 import '../data/services/minecraft_path_service.dart';
 import '../data/services/minecraft_version_service.dart';
@@ -137,6 +141,22 @@ final environmentInfoProvider =
 
 final modScannerServiceProvider = Provider<ModScannerService>((ref) {
   return ModScannerService();
+});
+
+final contentPathServiceProvider = Provider<ContentPathService>((ref) {
+  return ContentPathService();
+});
+
+final contentScannerServiceProvider = Provider<ContentScannerService>((ref) {
+  return ContentScannerService();
+});
+
+final contentIconServiceProvider = Provider<ContentIconService>((ref) {
+  return ContentIconService();
+});
+
+final fileHashServiceProvider = Provider<FileHashService>((ref) {
+  return FileHashService();
 });
 
 final fileInstallServiceProvider = Provider<FileInstallService>((ref) {

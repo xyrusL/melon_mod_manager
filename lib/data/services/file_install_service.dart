@@ -5,8 +5,8 @@ import 'package:path/path.dart' as p;
 enum ConflictResolution { overwrite, rename, skip }
 
 class FileInstallService {
-  Future<List<FileInstallResult>> installJarFiles({
-    required String modsFolderPath,
+  Future<List<FileInstallResult>> installFiles({
+    required String destinationFolderPath,
     required List<String> sourcePaths,
     required Future<ConflictResolution> Function(String fileName) onConflict,
   }) async {
@@ -26,7 +26,7 @@ class FileInstallService {
       }
 
       var fileName = p.basename(sourcePath);
-      var destination = File(p.join(modsFolderPath, fileName));
+      var destination = File(p.join(destinationFolderPath, fileName));
 
       if (await destination.exists()) {
         final resolution = await onConflict(fileName);
@@ -43,7 +43,7 @@ class FileInstallService {
 
         if (resolution == ConflictResolution.rename) {
           fileName = _buildRenamedFileName(fileName);
-          destination = File(p.join(modsFolderPath, fileName));
+          destination = File(p.join(destinationFolderPath, fileName));
         }
       }
 
@@ -59,6 +59,18 @@ class FileInstallService {
     }
 
     return results;
+  }
+
+  Future<List<FileInstallResult>> installJarFiles({
+    required String modsFolderPath,
+    required List<String> sourcePaths,
+    required Future<ConflictResolution> Function(String fileName) onConflict,
+  }) {
+    return installFiles(
+      destinationFolderPath: modsFolderPath,
+      sourcePaths: sourcePaths,
+      onConflict: onConflict,
+    );
   }
 
   String _buildRenamedFileName(String fileName) {

@@ -266,7 +266,7 @@ class _FakeModrinthRepository implements ModrinthRepository {
   @override
   Future<ModrinthVersion?> getLatestVersion(
     String projectId, {
-    String loader = 'fabric',
+    String? loader = 'fabric',
     String? gameVersion,
   }) async {
     final versions = byProjectId[projectId] ?? const [];
@@ -279,7 +279,7 @@ class _FakeModrinthRepository implements ModrinthRepository {
   @override
   Future<List<ModrinthVersion>> getProjectVersions(
     String projectId, {
-    String loader = 'fabric',
+    String? loader = 'fabric',
     String? gameVersion,
   }) async {
     return byProjectId[projectId] ?? const [];
@@ -288,7 +288,8 @@ class _FakeModrinthRepository implements ModrinthRepository {
   @override
   Future<List<ModrinthProject>> searchProjects(
     String query, {
-    String loader = 'fabric',
+    String? loader = 'fabric',
+    String projectType = 'mod',
     String? gameVersion,
     int limit = 20,
     int offset = 0,
@@ -300,6 +301,16 @@ class _FakeModrinthRepository implements ModrinthRepository {
   @override
   Future<ModrinthVersion?> getVersionById(String versionId) async {
     return byVersionId[versionId];
+  }
+
+  @override
+  Future<ModrinthVersion?> getVersionByFileHash(String sha1Hash) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<ModrinthProject?> getProjectById(String projectId) {
+    throw UnimplementedError();
   }
 }
 

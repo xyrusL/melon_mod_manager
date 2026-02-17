@@ -9,6 +9,7 @@ class ModrinthRepositoryImpl implements ModrinthRepository {
   ModrinthRepositoryImpl(this._apiClient);
 
   final ModrinthApiClient _apiClient;
+  final Map<String, ModrinthProject?> _projectCache = {};
 
   @override
   Future<File> downloadVersionFile({
@@ -21,7 +22,7 @@ class ModrinthRepositoryImpl implements ModrinthRepository {
   @override
   Future<ModrinthVersion?> getLatestVersion(
     String projectId, {
-    String loader = 'fabric',
+    String? loader,
     String? gameVersion,
   }) async {
     final versions = await _apiClient.getProjectVersions(
@@ -45,9 +46,26 @@ class ModrinthRepositoryImpl implements ModrinthRepository {
   }
 
   @override
+  Future<ModrinthVersion?> getVersionByFileHash(String sha1Hash) async {
+    final model = await _apiClient.getVersionByFileHash(sha1Hash);
+    return model?.toEntity();
+  }
+
+  @override
+  Future<ModrinthProject?> getProjectById(String projectId) async {
+    if (_projectCache.containsKey(projectId)) {
+      return _projectCache[projectId];
+    }
+    final model = await _apiClient.getProjectById(projectId);
+    final entity = model?.toEntity();
+    _projectCache[projectId] = entity;
+    return entity;
+  }
+
+  @override
   Future<List<ModrinthVersion>> getProjectVersions(
     String projectId, {
-    String loader = 'fabric',
+    String? loader,
     String? gameVersion,
   }) async {
     final models = await _apiClient.getProjectVersions(
@@ -61,7 +79,8 @@ class ModrinthRepositoryImpl implements ModrinthRepository {
   @override
   Future<List<ModrinthProject>> searchProjects(
     String query, {
-    String loader = 'fabric',
+    String? loader,
+    String projectType = 'mod',
     String? gameVersion,
     int limit = 20,
     int offset = 0,
@@ -70,6 +89,7 @@ class ModrinthRepositoryImpl implements ModrinthRepository {
     final result = await _apiClient.searchProjects(
       query,
       loader: loader,
+      projectType: projectType,
       gameVersion: gameVersion,
       limit: limit,
       offset: offset,

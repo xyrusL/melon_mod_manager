@@ -31,6 +31,18 @@ class ModrinthSearchHitModel {
     );
   }
 
+  factory ModrinthSearchHitModel.fromProjectJson(Map<String, dynamic> json) {
+    return ModrinthSearchHitModel(
+      projectId: json['id'] as String? ?? '',
+      slug: json['slug'] as String? ?? '',
+      title: json['title'] as String? ?? 'Untitled',
+      description: json['description'] as String? ?? '',
+      iconUrl: json['icon_url'] as String?,
+      downloads: json['downloads'] as int? ?? 0,
+      follows: json['followers'] as int? ?? (json['follows'] as int? ?? 0),
+    );
+  }
+
   ModrinthProject toEntity() {
     return ModrinthProject(
       id: projectId,

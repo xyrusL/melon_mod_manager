@@ -12,7 +12,7 @@ class _EmptyState extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            'No mods found.',
+            'No projects found.',
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.85),
               fontSize: 16,
@@ -22,7 +22,7 @@ class _EmptyState extends StatelessWidget {
           TextButton.icon(
             onPressed: onReloadPopular,
             icon: const Icon(Icons.refresh_rounded),
-            label: const Text('Load popular mods'),
+            label: const Text('Load popular projects'),
           ),
         ],
       ),
@@ -42,7 +42,7 @@ class _FilteredEmptyState extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            'No mods in this status filter.',
+            'No projects in this status filter.',
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.85),
               fontSize: 16,

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/error_reporter.dart';
 import '../../core/providers.dart';
+import '../../domain/entities/content_type.dart';
 import '../../domain/entities/modrinth_project.dart';
 import '../viewmodels/mods_controller.dart';
 
@@ -13,9 +14,16 @@ part 'modrinth_search/project_card.dart';
 part 'modrinth_search/status_tag.dart';
 
 class ModrinthSearchDialog extends ConsumerStatefulWidget {
-  const ModrinthSearchDialog({super.key, required this.modsPath});
+  const ModrinthSearchDialog({
+    super.key,
+    required this.modsPath,
+    required this.targetPath,
+    required this.contentType,
+  });
 
   final String modsPath;
+  final String targetPath;
+  final ContentType contentType;
 
   @override
   ConsumerState<ModrinthSearchDialog> createState() =>
@@ -67,39 +75,41 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
   }
 
   Future<void> _bootstrap() async {
-    try {
-      final detected = await ref
-          .read(minecraftVersionServiceProvider)
-          .detectVersionFromModsPath(widget.modsPath);
-      if (mounted) {
-        setState(() {
-          _detectedGameVersion = detected;
-          _versionSelection = detected ?? _anyVersionValue;
-        });
+    if (widget.contentType.supportsLoaderFilter) {
+      try {
+        final detected = await ref
+            .read(minecraftVersionServiceProvider)
+            .detectVersionFromModsPath(widget.modsPath);
+        if (mounted) {
+          setState(() {
+            _detectedGameVersion = detected;
+            _versionSelection = detected ?? _anyVersionValue;
+          });
+        }
+      } catch (_) {
+        // Best effort only.
       }
-    } catch (_) {
-      // Best effort only.
-    }
 
-    try {
-      final detected = await ref
-          .read(minecraftLoaderServiceProvider)
-          .detectLoaderFromModsPath(widget.modsPath);
-      if (mounted) {
-        setState(() {
-          _detectedLoader = detected?.loader;
-          _detectedLoaderVersion = detected?.version;
-          if (detected != null &&
-              (detected.loader == 'fabric' ||
-                  detected.loader == 'quilt' ||
-                  detected.loader == 'forge' ||
-                  detected.loader == 'neoforge')) {
-            _loader = detected.loader;
-          }
-        });
+      try {
+        final detected = await ref
+            .read(minecraftLoaderServiceProvider)
+            .detectLoaderFromModsPath(widget.modsPath);
+        if (mounted) {
+          setState(() {
+            _detectedLoader = detected?.loader;
+            _detectedLoaderVersion = detected?.version;
+            if (detected != null &&
+                (detected.loader == 'fabric' ||
+                    detected.loader == 'quilt' ||
+                    detected.loader == 'forge' ||
+                    detected.loader == 'neoforge')) {
+              _loader = detected.loader;
+            }
+          });
+        }
+      } catch (_) {
+        // Best effort only.
       }
-    } catch (_) {
-      // Best effort only.
     }
 
     await _loadPopular();
@@ -136,15 +146,19 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
     });
 
     try {
-      final projects =
-          await ref.read(modsControllerProvider.notifier).searchModrinth(
-                query,
-                loader: _loader,
-                gameVersion: _selectedGameVersion,
-                limit: _pageSize,
-                offset: (_currentPage - 1) * _pageSize,
-                index: _sortIndex,
-              );
+      final projects = await ref
+          .read(modsControllerProvider.notifier)
+          .searchModrinth(
+            query,
+            loader: widget.contentType.supportsLoaderFilter ? _loader : null,
+            projectType: widget.contentType.modrinthProjectType,
+            gameVersion: widget.contentType.supportsLoaderFilter
+                ? _selectedGameVersion
+                : null,
+            limit: _pageSize,
+            offset: (_currentPage - 1) * _pageSize,
+            index: _sortIndex,
+          );
       await _applyResults(projects);
     } catch (error) {
       setState(() => _error = ErrorReporter().toUserMessage(error));
@@ -193,8 +207,10 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
           .read(modsControllerProvider.notifier)
           .loadProjectInstallInfo(
             projects: projects,
-            loader: _loader,
-            gameVersion: _selectedGameVersion,
+            loader: widget.contentType.supportsLoaderFilter ? _loader : null,
+            gameVersion: widget.contentType.supportsLoaderFilter
+                ? _selectedGameVersion
+                : null,
           );
 
       final prunedSelected = _selectedProjectIds.where((id) {
@@ -237,8 +253,10 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
         try {
           final latest = await repository.getLatestVersion(
             project.id,
-            loader: _loader,
-            gameVersion: _selectedGameVersion,
+            loader: widget.contentType.supportsLoaderFilter ? _loader : null,
+            gameVersion: widget.contentType.supportsLoaderFilter
+                ? _selectedGameVersion
+                : null,
           );
           if (latest != null) {
             fetched[project.id] = latest.versionNumber;
@@ -310,7 +328,9 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
     }
     if (state == ProjectInstallState.installedUntracked) {
       setState(() {
-        _error = '${project.title} is already in your mods folder (untracked). '
+        final folderLabel = widget.contentType.label.toLowerCase();
+        _error =
+            '${project.title} is already in your $folderLabel folder (untracked). '
             'Skipped to avoid duplicate install.';
       });
       return;
@@ -332,6 +352,30 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
       return;
     }
 
+    if (widget.contentType != ContentType.mod) {
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => _BulkInstallProgressDialog(
+          modsPath: widget.modsPath,
+          targetPath: widget.targetPath,
+          projects: selected,
+          installInfo: const {},
+          loader: null,
+          gameVersion: null,
+          contentType: widget.contentType,
+        ),
+      );
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _selectedProjectIds = <String>{};
+      });
+      await _search();
+      return;
+    }
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => _CartConfirmDialog(
@@ -350,10 +394,12 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
       barrierDismissible: false,
       builder: (context) => _BulkInstallProgressDialog(
         modsPath: widget.modsPath,
+        targetPath: widget.targetPath,
         projects: selected,
         installInfo: _installInfo,
         loader: _loader,
         gameVersion: _selectedGameVersion,
+        contentType: widget.contentType,
       ),
     );
 
@@ -398,6 +444,7 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
   Widget build(BuildContext context) {
     final hasDetectedLoader =
         _detectedLoader != null && _supportedLoaders.contains(_detectedLoader);
+    final supportsLoader = widget.contentType.supportsLoaderFilter;
     final versionItems = <DropdownMenuItem<String>>[
       if (_detectedGameVersion != null)
         DropdownMenuItem(
@@ -447,8 +494,8 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
             const SizedBox(height: 4),
             Text(
               _mode == _BrowseMode.popular
-                  ? 'Showing $_sortLabel client mods for selected loader and detected game version.'
-                  : 'Showing $_sortLabel search results for selected loader and detected game version.',
+                  ? 'Showing $_sortLabel ${widget.contentType.label.toLowerCase()} for your selected filters.'
+                  : 'Showing $_sortLabel search results for ${widget.contentType.label.toLowerCase()}.',
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.72),
                 fontSize: 13,
@@ -461,57 +508,59 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
                   child: TextField(
                     controller: _queryController,
                     decoration: const InputDecoration(
-                      hintText: 'Search mods',
+                      hintText: 'Search projects',
                       prefixIcon: Icon(Icons.search),
                     ),
                     onSubmitted: (_) => _runNewQuery(),
                   ),
                 ),
-                const SizedBox(width: 10),
-                SizedBox(
-                  width: 150,
-                  child: DropdownButtonFormField<String>(
-                    key: ValueKey<String>(
-                      'loader_${hasDetectedLoader ? 1 : 0}_${_loader}_${_detectedLoaderVersion ?? ''}',
+                if (supportsLoader) ...[
+                  const SizedBox(width: 10),
+                  SizedBox(
+                    width: 150,
+                    child: DropdownButtonFormField<String>(
+                      key: ValueKey<String>(
+                        'loader_${hasDetectedLoader ? 1 : 0}_${_loader}_${_detectedLoaderVersion ?? ''}',
+                      ),
+                      initialValue: _loader,
+                      isExpanded: true,
+                      items: hasDetectedLoader
+                          ? [
+                              DropdownMenuItem(
+                                value: _loader,
+                                child: Text(_loaderDisplayLabel(_loader)),
+                              ),
+                            ]
+                          : const [
+                              DropdownMenuItem(
+                                value: 'fabric',
+                                child: Text('Fabric'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'quilt',
+                                child: Text('Quilt'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'forge',
+                                child: Text('Forge'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'neoforge',
+                                child: Text('NeoForge'),
+                              ),
+                            ],
+                      onChanged: hasDetectedLoader
+                          ? null
+                          : (value) async {
+                              if (value != null) {
+                                setState(() => _loader = value);
+                                await _runNewQuery();
+                              }
+                            },
+                      decoration: const InputDecoration(labelText: 'Loader'),
                     ),
-                    initialValue: _loader,
-                    isExpanded: true,
-                    items: hasDetectedLoader
-                        ? [
-                            DropdownMenuItem(
-                              value: _loader,
-                              child: Text(_loaderDisplayLabel(_loader)),
-                            ),
-                          ]
-                        : const [
-                            DropdownMenuItem(
-                              value: 'fabric',
-                              child: Text('Fabric'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'quilt',
-                              child: Text('Quilt'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'forge',
-                              child: Text('Forge'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'neoforge',
-                              child: Text('NeoForge'),
-                            ),
-                          ],
-                    onChanged: hasDetectedLoader
-                        ? null
-                        : (value) async {
-                            if (value != null) {
-                              setState(() => _loader = value);
-                              await _runNewQuery();
-                            }
-                          },
-                    decoration: const InputDecoration(labelText: 'Loader'),
                   ),
-                ),
+                ],
                 const SizedBox(width: 10),
                 SizedBox(
                   width: 170,
@@ -546,28 +595,30 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
                     decoration: const InputDecoration(labelText: 'Sort'),
                   ),
                 ),
-                const SizedBox(width: 10),
-                SizedBox(
-                  width: 220,
-                  child: DropdownButtonFormField<String>(
-                    key: ValueKey<String>(_versionSelection),
-                    initialValue: _versionSelection,
-                    isExpanded: true,
-                    items: versionItems,
-                    onChanged: _loading
-                        ? null
-                        : (value) async {
-                            if (value == null || value == _versionSelection) {
-                              return;
-                            }
-                            setState(() => _versionSelection = value);
-                            await _runNewQuery();
-                          },
-                    decoration: const InputDecoration(
-                      labelText: 'Minecraft Version',
+                if (supportsLoader) ...[
+                  const SizedBox(width: 10),
+                  SizedBox(
+                    width: 220,
+                    child: DropdownButtonFormField<String>(
+                      key: ValueKey<String>(_versionSelection),
+                      initialValue: _versionSelection,
+                      isExpanded: true,
+                      items: versionItems,
+                      onChanged: _loading
+                          ? null
+                          : (value) async {
+                              if (value == null || value == _versionSelection) {
+                                return;
+                              }
+                              setState(() => _versionSelection = value);
+                              await _runNewQuery();
+                            },
+                      decoration: const InputDecoration(
+                        labelText: 'Minecraft Version',
+                      ),
                     ),
                   ),
-                ),
+                ],
                 const SizedBox(width: 10),
                 FilledButton(
                   onPressed: _loading ? null : _runNewQuery,
@@ -583,26 +634,28 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
                   style: TextStyle(color: Colors.white.withValues(alpha: 0.85)),
                 ),
                 const SizedBox(width: 12),
-                _StatusTag(
-                  label: 'Installed ($installedCount)',
-                  color: const Color(0xFF68DA97),
-                  selected: _statusFilter == _StatusFilter.installed,
-                  onTap: () => _toggleStatusFilter(_StatusFilter.installed),
-                ),
-                const SizedBox(width: 6),
-                _StatusTag(
-                  label: 'Update ($updateCount)',
-                  color: const Color(0xFFFFB55A),
-                  selected: _statusFilter == _StatusFilter.update,
-                  onTap: () => _toggleStatusFilter(_StatusFilter.update),
-                ),
-                const SizedBox(width: 6),
-                _StatusTag(
-                  label: 'On Disk ($onDiskCount)',
-                  color: const Color(0xFF86C5FF),
-                  selected: _statusFilter == _StatusFilter.onDisk,
-                  onTap: () => _toggleStatusFilter(_StatusFilter.onDisk),
-                ),
+                if (widget.contentType == ContentType.mod) ...[
+                  _StatusTag(
+                    label: 'Installed ($installedCount)',
+                    color: const Color(0xFF68DA97),
+                    selected: _statusFilter == _StatusFilter.installed,
+                    onTap: () => _toggleStatusFilter(_StatusFilter.installed),
+                  ),
+                  const SizedBox(width: 6),
+                  _StatusTag(
+                    label: 'Update ($updateCount)',
+                    color: const Color(0xFFFFB55A),
+                    selected: _statusFilter == _StatusFilter.update,
+                    onTap: () => _toggleStatusFilter(_StatusFilter.update),
+                  ),
+                  const SizedBox(width: 6),
+                  _StatusTag(
+                    label: 'On Disk ($onDiskCount)',
+                    color: const Color(0xFF86C5FF),
+                    selected: _statusFilter == _StatusFilter.onDisk,
+                    onTap: () => _toggleStatusFilter(_StatusFilter.onDisk),
+                  ),
+                ],
                 const Spacer(),
                 FilledButton.icon(
                   onPressed:
@@ -610,7 +663,11 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
                           ? null
                           : _confirmAndInstallSelected,
                   icon: const Icon(Icons.shopping_cart_checkout_rounded),
-                  label: const Text('Review & Install'),
+                  label: Text(
+                    widget.contentType == ContentType.mod
+                        ? 'Review & Install'
+                        : 'Download Selected',
+                  ),
                 ),
               ],
             ),
@@ -680,6 +737,10 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
                                       info: info,
                                       selected: selected,
                                       versionLine: versionLine,
+                                      onDiskLabel:
+                                          widget.contentType == ContentType.mod
+                                              ? 'On Disk'
+                                              : 'Already Added',
                                       onTapAction: () => _toggleSelection(item),
                                     ),
                                   );

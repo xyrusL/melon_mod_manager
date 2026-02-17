@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/services/file_install_service.dart';
+import '../../domain/entities/content_type.dart';
 import '../dialogs/confirm_overwrite_dialog.dart';
 import '../dialogs/modrinth_search_dialog.dart';
 import '../viewmodels/app_controller.dart';
@@ -27,13 +30,12 @@ class MainScreen extends ConsumerStatefulWidget {
 class _MainScreenState extends ConsumerState<MainScreen> {
   ProviderSubscription<AppUpdateState>? _updateSub;
   bool _autoUpdatePromptShown = false;
+  bool _isInitializing = true;
 
   @override
   void initState() {
     super.initState();
-    Future.microtask(
-      () => ref.read(modsControllerProvider.notifier).loadMods(widget.modsPath),
-    );
+    Future.microtask(() => _initializeForPath(widget.modsPath));
     _updateSub = ref.listenManual<AppUpdateState>(
       appUpdateControllerProvider,
       (previous, next) {
@@ -58,7 +60,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   void didUpdateWidget(covariant MainScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.modsPath != widget.modsPath) {
-      ref.read(modsControllerProvider.notifier).loadMods(widget.modsPath);
+      Future.microtask(() => _initializeForPath(widget.modsPath));
     }
   }
 
@@ -73,6 +75,10 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     final state = ref.watch(modsControllerProvider);
     final notifier = ref.read(modsControllerProvider.notifier);
     final filteredMods = state.filteredMods();
+    final activePath = ref.read(contentPathServiceProvider).resolveContentPath(
+          modsPath: widget.modsPath,
+          contentType: state.contentType,
+        );
 
     return Container(
       decoration: AppTheme.appBackground(),
@@ -85,79 +91,144 @@ class _MainScreenState extends ConsumerState<MainScreen> {
               height: constraints.maxHeight,
             );
             final sidePanelWidth =
-                (constraints.maxWidth * 0.23).clamp(248.0, 330.0).toDouble();
-            final pagePadding = (18 * uiScale).clamp(18, 24).toDouble();
-            final contentGap = (14 * uiScale).clamp(14, 20).toDouble();
+                (constraints.maxWidth * 0.21).clamp(218.0, 300.0).toDouble();
+            final pagePadding = (10 * uiScale).clamp(8, 14).toDouble();
+            final contentGap = (10 * uiScale).clamp(8, 14).toDouble();
+            final maxBodyWidth = (constraints.maxWidth - (pagePadding * 2))
+                .clamp(1024.0, 1760.0)
+                .toDouble();
 
             return Padding(
               padding: EdgeInsets.all(pagePadding),
-              child: Column(
-                children: [
-                  TopBar(
-                    currentPath: widget.modsPath,
-                    isBusy: state.isScanning || state.isBusy,
-                    uiScale: uiScale,
-                    onRefresh: () async {
-                      ref.invalidate(developerSnapshotProvider);
-                      ref.invalidate(environmentInfoProvider(widget.modsPath));
-                      await notifier.loadMods(widget.modsPath);
-                    },
-                    onBrowsePath: _browseNewPath,
-                    onAutoDetectPath: _autoDetectPath,
-                  ),
-                  if (state.errorMessage != null ||
-                      state.infoMessage != null) ...[
-                    SizedBox(height: (10 * uiScale).clamp(10, 14).toDouble()),
-                    StatusBanner(
-                      message: state.errorMessage ?? state.infoMessage!,
-                      isError: state.errorMessage != null,
-                      onDismiss: notifier.clearMessages,
-                    ),
-                  ],
-                  SizedBox(height: contentGap),
-                  Expanded(
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Container(
-                            decoration: AppTheme.glassPanel(),
-                            padding: EdgeInsets.all(
-                              (8 * uiScale).clamp(8, 12).toDouble(),
-                            ),
-                            child: ModsTable(
-                              mods: filteredMods,
-                              selectedFiles: state.selectedFiles,
-                              onToggleSelected: notifier.toggleModSelection,
-                              onToggleSelectAllVisible: (selected) =>
-                                  notifier.toggleSelectAllVisible(
-                                      filteredMods, selected),
-                              isScanning: state.isScanning,
-                              processed: state.scanProcessed,
-                              total: state.scanTotal,
-                              uiScale: uiScale,
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: maxBodyWidth),
+                  child: Column(
+                    children: [
+                      TopBar(
+                        currentPath: activePath,
+                        isBusy: state.isScanning || state.isBusy,
+                        uiScale: uiScale,
+                        onRefresh: () async {
+                          ref.invalidate(developerSnapshotProvider);
+                          ref.invalidate(
+                              environmentInfoProvider(widget.modsPath));
+                          await notifier.loadContent(
+                            modsPath: widget.modsPath,
+                            contentType: state.contentType,
+                            forceRefresh: true,
+                          );
+                        },
+                        onBrowsePath: _browseNewPath,
+                        onAutoDetectPath: _autoDetectPath,
+                      ),
+                      SizedBox(height: (6 * uiScale).clamp(4, 9).toDouble()),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: _ContentTypeTabs(
+                          selected: state.contentType,
+                          enabled: !_isInitializing,
+                          onChanged: (value) => _switchContentType(value),
+                        ),
+                      ),
+                      if (_isInitializing) ...[
+                        SizedBox(height: (8 * uiScale).clamp(6, 10).toDouble()),
+                        Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: (12 * uiScale).clamp(10, 16).toDouble(),
+                            vertical: (8 * uiScale).clamp(7, 11).toDouble(),
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.06),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.08),
                             ),
                           ),
-                        ),
-                        SizedBox(width: contentGap),
-                        SizedBox(
-                          width: sidePanelWidth,
-                          child: ActionPanel(
-                            modsPath: widget.modsPath,
-                            isBusy: state.isBusy,
-                            hasDeleteSelection: state.selectedFiles.isNotEmpty,
-                            uiScale: uiScale,
-                            onDownloadMods: _openModrinthSearch,
-                            onCheckUpdates: _checkUpdatesWithReview,
-                            onAddFile: _addFiles,
-                            onImportZip: _importZipPack,
-                            onExportZip: _exportZipPack,
-                            onDeleteSelected: _deleteSelected,
+                          child: Row(
+                            children: [
+                              SizedBox(
+                                width: 14,
+                                height: 14,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  'Preparing local files and Modrinth metadata...',
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.8),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
-                    ),
+                      if (state.errorMessage != null ||
+                          state.infoMessage != null) ...[
+                        SizedBox(
+                            height: (10 * uiScale).clamp(10, 14).toDouble()),
+                        StatusBanner(
+                          message: state.errorMessage ?? state.infoMessage!,
+                          isError: state.errorMessage != null,
+                          onDismiss: notifier.clearMessages,
+                        ),
+                      ],
+                      SizedBox(height: contentGap),
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Container(
+                                decoration: AppTheme.glassPanel(),
+                                padding: EdgeInsets.all(
+                                  (6 * uiScale).clamp(4, 10).toDouble(),
+                                ),
+                                child: ModsTable(
+                                  title: state.contentType.label,
+                                  mods: filteredMods,
+                                  selectedFiles: state.selectedFiles,
+                                  onToggleSelected: notifier.toggleModSelection,
+                                  onToggleSelectAllVisible: (selected) =>
+                                      notifier.toggleSelectAllVisible(
+                                          filteredMods, selected),
+                                  isScanning: state.isScanning,
+                                  processed: state.scanProcessed,
+                                  total: state.scanTotal,
+                                  uiScale: uiScale,
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: contentGap),
+                            SizedBox(
+                              width: sidePanelWidth,
+                              child: ActionPanel(
+                                modsPath: widget.modsPath,
+                                isBusy: state.isBusy,
+                                hasDeleteSelection:
+                                    state.selectedFiles.isNotEmpty,
+                                uiScale: uiScale,
+                                downloadLabel:
+                                    'Download ${state.contentType.label}',
+                                canCheckUpdates: true,
+                                canZipTools: true,
+                                onDownloadMods: _openModrinthSearch,
+                                onCheckUpdates: _checkUpdatesWithReview,
+                                onAddFile: _addFiles,
+                                onImportZip: _importZipPack,
+                                onExportZip: _exportZipPack,
+                                onDeleteSelected: _deleteSelected,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             );
           },
@@ -167,25 +238,58 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   }
 
   double _computeUiScale({required double width, required double height}) {
-    const baseWidth = 1100.0;
-    const baseHeight = 650.0;
-    final scale = (width / baseWidth).clamp(1.0, 1.3);
-    final heightScale = (height / baseHeight).clamp(1.0, 1.2);
+    const baseWidth = 1024.0;
+    const baseHeight = 620.0;
+    final scale = (width / baseWidth).clamp(0.88, 1.25);
+    final heightScale = (height / baseHeight).clamp(0.88, 1.2);
     return (scale < heightScale ? scale : heightScale).toDouble();
   }
 
   Future<void> _openModrinthSearch() async {
+    final state = ref.read(modsControllerProvider);
+    final targetPath = ref.read(contentPathServiceProvider).resolveContentPath(
+          modsPath: widget.modsPath,
+          contentType: state.contentType,
+        );
     await showDialog<void>(
       context: context,
-      builder: (context) => ModrinthSearchDialog(modsPath: widget.modsPath),
+      builder: (context) => ModrinthSearchDialog(
+        modsPath: widget.modsPath,
+        targetPath: targetPath,
+        contentType: state.contentType,
+      ),
     );
+    if (!mounted) {
+      return;
+    }
+    await ref.read(modsControllerProvider.notifier).loadContent(
+          modsPath: widget.modsPath,
+          contentType: state.contentType,
+          forceRefresh: true,
+        );
   }
 
   Future<void> _addFiles() async {
+    final state = ref.read(modsControllerProvider);
+    final targetPath = ref.read(contentPathServiceProvider).resolveContentPath(
+          modsPath: widget.modsPath,
+          contentType: state.contentType,
+        );
+    final allowedExtensions = switch (state.contentType) {
+      ContentType.mod => const ['jar'],
+      ContentType.resourcePack => const ['zip'],
+      ContentType.shaderPack => const ['zip'],
+    };
+    final dialogTitle = switch (state.contentType) {
+      ContentType.mod => 'Select Mod File(s) (.jar)',
+      ContentType.resourcePack => 'Select Resource Pack File(s) (.zip)',
+      ContentType.shaderPack => 'Select Shader Pack File(s) (.zip)',
+    };
     final picked = await FilePicker.platform.pickFiles(
+      dialogTitle: dialogTitle,
       allowMultiple: true,
       type: FileType.custom,
-      allowedExtensions: const ['jar'],
+      allowedExtensions: allowedExtensions,
     );
 
     final paths = picked?.paths.whereType<String>().toList() ?? const [];
@@ -194,7 +298,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     }
 
     await ref.read(modsControllerProvider.notifier).installExternalFiles(
-          modsPath: widget.modsPath,
+          targetPath: targetPath,
           sourcePaths: paths,
           onConflict: _resolveConflict,
         );
@@ -211,18 +315,24 @@ class _MainScreenState extends ConsumerState<MainScreen> {
       return;
     }
 
-    await ref.read(modsControllerProvider.notifier).importModsFromZip(
+    await ref.read(modsControllerProvider.notifier).importContentFromZip(
           modsPath: widget.modsPath,
           zipPath: zipPath,
         );
   }
 
   Future<void> _exportZipPack() async {
+    final state = ref.read(modsControllerProvider);
     final timestamp = DateTime.now();
+    final prefix = switch (state.contentType) {
+      ContentType.mod => 'melon_mod_pack',
+      ContentType.resourcePack => 'melon_resource_pack',
+      ContentType.shaderPack => 'melon_shader_pack',
+    };
     final fileName =
-        'melon_mod_pack_${timestamp.year.toString().padLeft(4, '0')}${timestamp.month.toString().padLeft(2, '0')}${timestamp.day.toString().padLeft(2, '0')}_${timestamp.hour.toString().padLeft(2, '0')}${timestamp.minute.toString().padLeft(2, '0')}.zip';
+        '${prefix}_${timestamp.year.toString().padLeft(4, '0')}${timestamp.month.toString().padLeft(2, '0')}${timestamp.day.toString().padLeft(2, '0')}_${timestamp.hour.toString().padLeft(2, '0')}${timestamp.minute.toString().padLeft(2, '0')}.zip';
     final savePath = await FilePicker.platform.saveFile(
-      dialogTitle: 'Export Mods Pack',
+      dialogTitle: 'Export ${state.contentType.label}',
       fileName: fileName,
       type: FileType.custom,
       allowedExtensions: const ['zip'],
@@ -233,13 +343,18 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
     final normalized =
         savePath.toLowerCase().endsWith('.zip') ? savePath : '$savePath.zip';
-    await ref.read(modsControllerProvider.notifier).exportModsToZip(
+    await ref.read(modsControllerProvider.notifier).exportContentToZip(
           modsPath: widget.modsPath,
           zipPath: normalized,
         );
   }
 
   Future<void> _deleteSelected() async {
+    final state = ref.read(modsControllerProvider);
+    final targetPath = ref.read(contentPathServiceProvider).resolveContentPath(
+          modsPath: widget.modsPath,
+          contentType: state.contentType,
+        );
     final selectedCount = ref.read(modsControllerProvider).selectedFiles.length;
     if (selectedCount == 0 || !mounted) {
       return;
@@ -248,9 +363,10 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete selected mods?'),
+        title:
+            Text('Delete selected ${state.contentType.label.toLowerCase()}?'),
         content: Text(
-          'This will permanently delete $selectedCount selected mod file(s) from your mods folder.',
+          'This will permanently delete $selectedCount selected ${state.contentType.singularLabel.toLowerCase()} file(s) from:\n$targetPath',
         ),
         actions: [
           TextButton(
@@ -273,9 +389,9 @@ class _MainScreenState extends ConsumerState<MainScreen> {
       return;
     }
 
-    await ref.read(modsControllerProvider.notifier).deleteSelectedMods(
-          widget.modsPath,
-        );
+    await ref
+        .read(modsControllerProvider.notifier)
+        .deleteSelectedMods(targetPath);
   }
 
   Future<ConflictResolution> _resolveConflict(String fileName) async {
@@ -340,6 +456,8 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
   Future<void> _checkUpdatesWithReview() async {
     final notifier = ref.read(modsControllerProvider.notifier);
+    final contentLabel =
+        ref.read(modsControllerProvider).contentType.label.toLowerCase();
     final preview = await showDialog<UpdateCheckPreview>(
       context: context,
       barrierDismissible: false,
@@ -360,20 +478,21 @@ class _MainScreenState extends ConsumerState<MainScreen> {
         context: context,
         builder: (context) => const _UpdateResultDialog(
           title: 'Update Check Complete',
-          message: 'No mods available for update.',
+          message: 'No items available for update.',
         ),
       );
       return;
     }
 
     if (preview.updates.isEmpty) {
-      final scope = preview.selectedOnly ? 'selected mods' : 'all mods';
+      final scope =
+          preview.selectedOnly ? 'selected $contentLabel' : 'all $contentLabel';
       final detail = _buildNoUpdatesDetail(preview);
       await showDialog<void>(
         context: context,
         builder: (context) => _UpdateResultDialog(
           title: 'No Updates Found',
-          message: 'Checked ${preview.totalChecked} mod(s) in $scope.\n'
+          message: 'Checked ${preview.totalChecked} item(s) in $scope.\n'
               '$detail',
         ),
       );
@@ -400,7 +519,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
             mods: preview.updates.map((e) => e.mod).toList(),
             selectedOnly: preview.selectedOnly,
           );
-          return 'Checked ${summary.totalChecked} mod(s)\n'
+          return 'Checked ${summary.totalChecked} item(s)\n'
               'Updated: ${summary.updated}\n'
               'Up to date: ${summary.alreadyLatest}\n'
               'Skipped: ${summary.externalSkipped}\n'
@@ -456,9 +575,69 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     }
 
     await ref.read(appControllerProvider.notifier).saveModsPath(path);
-    if (mounted) {
-      await ref.read(modsControllerProvider.notifier).loadMods(path);
+    if (mounted && path == widget.modsPath) {
+      await _initializeForPath(path);
     }
+  }
+
+  Future<void> _switchContentType(ContentType contentType) async {
+    if (_isInitializing) {
+      return;
+    }
+    await ref.read(modsControllerProvider.notifier).loadContent(
+          modsPath: widget.modsPath,
+          contentType: contentType,
+        );
+  }
+
+  Future<void> _initializeForPath(String modsPath) async {
+    if (mounted) {
+      setState(() => _isInitializing = true);
+    }
+    final notifier = ref.read(modsControllerProvider.notifier);
+    final currentType = ref.read(modsControllerProvider).contentType;
+    await notifier.loadContent(
+      modsPath: modsPath,
+      contentType: currentType,
+      forceRefresh: true,
+    );
+    if (mounted) {
+      setState(() => _isInitializing = false);
+    }
+    unawaited(
+      notifier.warmUpContentCaches(modsPath).catchError((_) {
+        // Warm-up should never block the primary UI load.
+      }),
+    );
+  }
+
+}
+
+class _ContentTypeTabs extends StatelessWidget {
+  const _ContentTypeTabs({
+    required this.selected,
+    required this.onChanged,
+    this.enabled = true,
+  });
+
+  final ContentType selected;
+  final ValueChanged<ContentType> onChanged;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      children: ContentType.values
+          .map(
+            (type) => ChoiceChip(
+              label: Text(type.label),
+              selected: selected == type,
+              onSelected: enabled ? (_) => onChanged(type) : null,
+            ),
+          )
+          .toList(),
+    );
   }
 }
 

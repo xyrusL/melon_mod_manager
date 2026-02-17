@@ -7,6 +7,7 @@ class _ProjectCard extends StatelessWidget {
     required this.selected,
     required this.versionLine,
     required this.onTapAction,
+    this.onDiskLabel = 'On Disk',
   });
 
   final ModrinthProject project;
@@ -14,6 +15,7 @@ class _ProjectCard extends StatelessWidget {
   final bool selected;
   final String versionLine;
   final VoidCallback onTapAction;
+  final String onDiskLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -145,8 +147,8 @@ class _ProjectCard extends StatelessWidget {
                     color: Color(0xFFFFB55A),
                   ),
                 if (isUntracked)
-                  const _StatusTag(
-                    label: 'On Disk',
+                  _StatusTag(
+                    label: onDiskLabel,
                     color: Color(0xFF86C5FF),
                   ),
                 if (!isInstalled && !isUpdate && !isUntracked)
@@ -183,7 +185,7 @@ class _ProjectCard extends StatelessWidget {
                     isInstalled
                         ? 'Installed'
                         : isUntracked
-                            ? 'On Disk'
+                            ? onDiskLabel
                             : selected
                                 ? 'Selected'
                                 : isUpdate

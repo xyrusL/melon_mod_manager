@@ -6,6 +6,7 @@ import 'package:archive/archive.dart';
 import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
 
+import '../../domain/entities/content_type.dart';
 import 'jar_metadata_parser.dart';
 
 class InstalledModSnapshot {
@@ -66,8 +67,101 @@ class ModPackImportResult {
   final List<String> notes;
 }
 
+class ContentPackImportResult {
+  const ContentPackImportResult({
+    required this.zipPath,
+    required this.entriesFound,
+    required this.imported,
+    required this.renamed,
+    required this.skippedIdenticalFile,
+    required this.skippedDuplicateEntries,
+    required this.failed,
+    required this.touchedFileNames,
+    required this.notes,
+  });
+
+  final String zipPath;
+  final int entriesFound;
+  final int imported;
+  final int renamed;
+  final int skippedIdenticalFile;
+  final int skippedDuplicateEntries;
+  final int failed;
+  final Set<String> touchedFileNames;
+  final List<String> notes;
+}
+
+class ContentBundleExportItem {
+  const ContentBundleExportItem({
+    required this.fileName,
+    required this.provider,
+    this.filePath,
+    this.projectId,
+    this.versionId,
+  });
+
+  final String fileName;
+  final String provider;
+  final String? filePath;
+  final String? projectId;
+  final String? versionId;
+}
+
+class ContentBundleExportResult {
+  const ContentBundleExportResult({
+    required this.zipPath,
+    required this.totalEntries,
+    required this.embeddedEntries,
+    required this.modrinthEntries,
+  });
+
+  final String zipPath;
+  final int totalEntries;
+  final int embeddedEntries;
+  final int modrinthEntries;
+}
+
+class BundleModrinthReference {
+  const BundleModrinthReference({
+    required this.fileName,
+    required this.projectId,
+    required this.versionId,
+  });
+
+  final String fileName;
+  final String projectId;
+  final String versionId;
+}
+
+class ContentBundleImportResult {
+  const ContentBundleImportResult({
+    required this.zipPath,
+    required this.entriesFound,
+    required this.embeddedImported,
+    required this.renamed,
+    required this.skippedIdenticalFile,
+    required this.skippedDuplicateEntries,
+    required this.failed,
+    required this.touchedFileNames,
+    required this.modrinthReferences,
+    required this.notes,
+  });
+
+  final String zipPath;
+  final int entriesFound;
+  final int embeddedImported;
+  final int renamed;
+  final int skippedIdenticalFile;
+  final int skippedDuplicateEntries;
+  final int failed;
+  final Set<String> touchedFileNames;
+  final List<BundleModrinthReference> modrinthReferences;
+  final List<String> notes;
+}
+
 class ModPackService {
   static const _manifestName = 'melon_mod_pack.json';
+  static const _bundleManifestName = 'melon_content_bundle.json';
 
   Future<ModPackExportResult> exportModsToZip({
     required String modsPath,
@@ -364,6 +458,427 @@ class ModPackService {
       failed: failed,
       touchedFileNames: touchedFileNames,
       removedFileNames: removedFileNames,
+      notes: notes,
+    );
+  }
+
+  Future<ModPackExportResult> exportPackContentToZip({
+    required String contentPath,
+    required String zipPath,
+    required ContentType contentType,
+  }) async {
+    if (contentType == ContentType.mod) {
+      throw Exception('Use exportModsToZip for mod content.');
+    }
+
+    final contentDir = Directory(contentPath);
+    if (!await contentDir.exists()) {
+      throw Exception('${contentType.label} folder does not exist.');
+    }
+
+    final archive = Archive();
+    final zipFiles = <File>[];
+    await for (final entity in contentDir.list(followLinks: false)) {
+      if (entity is File && p.extension(entity.path).toLowerCase() == '.zip') {
+        zipFiles.add(entity);
+      }
+    }
+
+    zipFiles.sort(
+      (a, b) => p
+          .basename(a.path)
+          .toLowerCase()
+          .compareTo(p.basename(b.path).toLowerCase()),
+    );
+
+    for (final file in zipFiles) {
+      final fileName = p.basename(file.path);
+      final bytes = await file.readAsBytes();
+      archive.addFile(
+        ArchiveFile('${contentType.folderName}/$fileName', bytes.length, bytes),
+      );
+    }
+
+    final encoded = ZipEncoder().encode(archive);
+    if (encoded == null || encoded.isEmpty) {
+      throw Exception('Failed to create zip package.');
+    }
+
+    final target = File(zipPath);
+    if (!await target.parent.exists()) {
+      await target.parent.create(recursive: true);
+    }
+    await target.writeAsBytes(encoded, flush: true);
+
+    return ModPackExportResult(
+      zipPath: target.path,
+      exportedCount: zipFiles.length,
+    );
+  }
+
+  Future<ContentPackImportResult> importPackContentFromZip({
+    required String contentPath,
+    required String zipPath,
+    required ContentType contentType,
+  }) async {
+    if (contentType == ContentType.mod) {
+      throw Exception('Use importModsFromZip for mod content.');
+    }
+
+    final targetZip = File(zipPath);
+    if (!await targetZip.exists()) {
+      throw Exception('Zip file not found.');
+    }
+
+    final contentDir = Directory(contentPath);
+    if (!await contentDir.exists()) {
+      throw Exception('${contentType.label} folder does not exist.');
+    }
+
+    final bytes = await targetZip.readAsBytes();
+    final archive = ZipDecoder().decodeBytes(bytes, verify: false);
+
+    final zipEntries = archive.files.where((entry) {
+      if (!entry.isFile) {
+        return false;
+      }
+      return p.extension(entry.name).toLowerCase() == '.zip';
+    }).toList();
+
+    if (zipEntries.isEmpty) {
+      return ContentPackImportResult(
+        zipPath: zipPath,
+        entriesFound: 0,
+        imported: 0,
+        renamed: 0,
+        skippedIdenticalFile: 0,
+        skippedDuplicateEntries: 0,
+        failed: 0,
+        touchedFileNames: const <String>{},
+        notes: const ['No .zip files found in the selected zip file.'],
+      );
+    }
+
+    var imported = 0;
+    var renamed = 0;
+    var skippedIdenticalFile = 0;
+    var skippedDuplicateEntries = 0;
+    var failed = 0;
+    final notes = <String>[];
+    final touchedFileNames = <String>{};
+    final seenNames = <String>{};
+
+    for (final entry in zipEntries) {
+      try {
+        final rawName = p.basename(entry.name);
+        if (rawName.isEmpty) {
+          continue;
+        }
+
+        final lowerName = rawName.toLowerCase();
+        if (seenNames.contains(lowerName)) {
+          skippedDuplicateEntries++;
+          continue;
+        }
+        seenNames.add(lowerName);
+
+        final entryBytes = _asBytes(entry.content);
+        if (entryBytes == null || entryBytes.isEmpty) {
+          failed++;
+          if (notes.length < 8) {
+            notes.add('$rawName: empty or invalid zip entry.');
+          }
+          continue;
+        }
+
+        var targetName = rawName;
+        var targetPath = p.join(contentPath, targetName);
+        final existing = File(targetPath);
+        if (await existing.exists()) {
+          final sameBytes = await _hasSameBytes(existing, entryBytes);
+          if (sameBytes) {
+            skippedIdenticalFile++;
+            continue;
+          }
+          targetName = _buildRenamedFileName(targetName);
+          targetPath = p.join(contentPath, targetName);
+          renamed++;
+        }
+
+        await _writeBytesAtomic(targetPath, entryBytes);
+        touchedFileNames.add(targetName);
+        imported++;
+      } catch (error) {
+        failed++;
+        if (notes.length < 8) {
+          notes.add('${p.basename(entry.name)}: $error');
+        }
+      }
+    }
+
+    return ContentPackImportResult(
+      zipPath: zipPath,
+      entriesFound: zipEntries.length,
+      imported: imported,
+      renamed: renamed,
+      skippedIdenticalFile: skippedIdenticalFile,
+      skippedDuplicateEntries: skippedDuplicateEntries,
+      failed: failed,
+      touchedFileNames: touchedFileNames,
+      notes: notes,
+    );
+  }
+
+  Future<ContentBundleExportResult> exportContentBundleToZip({
+    required String zipPath,
+    required ContentType contentType,
+    required List<ContentBundleExportItem> items,
+  }) async {
+    final archive = Archive();
+    final manifestEntries = <Map<String, dynamic>>[];
+    var embeddedEntries = 0;
+    var modrinthEntries = 0;
+
+    final ordered = List<ContentBundleExportItem>.from(items)
+      ..sort((a, b) => a.fileName.toLowerCase().compareTo(b.fileName.toLowerCase()));
+
+    for (final item in ordered) {
+      final normalizedProvider = item.provider.toLowerCase();
+      final isModrinth = normalizedProvider == 'modrinth' &&
+          (item.projectId?.isNotEmpty ?? false) &&
+          (item.versionId?.isNotEmpty ?? false);
+
+      if (isModrinth) {
+        manifestEntries.add({
+          'file_name': item.fileName,
+          'source': 'modrinth',
+          'project_id': item.projectId,
+          'version_id': item.versionId,
+        });
+        modrinthEntries++;
+        continue;
+      }
+
+      final sourcePath = item.filePath;
+      if (sourcePath == null || sourcePath.isEmpty) {
+        continue;
+      }
+      final sourceFile = File(sourcePath);
+      if (!await sourceFile.exists()) {
+        continue;
+      }
+
+      final bytes = await sourceFile.readAsBytes();
+      final entryPath = 'files/${item.fileName}';
+      archive.addFile(ArchiveFile(entryPath, bytes.length, bytes));
+      manifestEntries.add({
+        'file_name': item.fileName,
+        'source': 'embedded',
+        'archive_path': entryPath,
+        'size': bytes.length,
+      });
+      embeddedEntries++;
+    }
+
+    final manifest = {
+      'type': 'melon_content_bundle',
+      'schema_version': 1,
+      'content_type': contentType.name,
+      'created_at': DateTime.now().toUtc().toIso8601String(),
+      'entries': manifestEntries,
+    };
+    final manifestBytes = utf8.encode(jsonEncode(manifest));
+    archive.addFile(
+      ArchiveFile(_bundleManifestName, manifestBytes.length, manifestBytes),
+    );
+
+    final encoded = ZipEncoder().encode(archive);
+    if (encoded == null || encoded.isEmpty) {
+      throw Exception('Failed to create zip package.');
+    }
+
+    final target = File(zipPath);
+    if (!await target.parent.exists()) {
+      await target.parent.create(recursive: true);
+    }
+    await target.writeAsBytes(encoded, flush: true);
+
+    return ContentBundleExportResult(
+      zipPath: target.path,
+      totalEntries: manifestEntries.length,
+      embeddedEntries: embeddedEntries,
+      modrinthEntries: modrinthEntries,
+    );
+  }
+
+  Future<ContentBundleImportResult?> importContentBundleFromZip({
+    required String contentPath,
+    required String zipPath,
+    required ContentType contentType,
+  }) async {
+    final targetZip = File(zipPath);
+    if (!await targetZip.exists()) {
+      throw Exception('Zip file not found.');
+    }
+
+    final contentDir = Directory(contentPath);
+    if (!await contentDir.exists()) {
+      throw Exception('${contentType.label} folder does not exist.');
+    }
+
+    final bytes = await targetZip.readAsBytes();
+    final archive = ZipDecoder().decodeBytes(bytes, verify: false);
+    final manifestEntry = archive.files.where((entry) {
+      if (!entry.isFile) {
+        return false;
+      }
+      return p.basename(entry.name).toLowerCase() == _bundleManifestName;
+    }).cast<ArchiveFile?>().firstWhere(
+          (entry) => entry != null,
+          orElse: () => null,
+        );
+
+    if (manifestEntry == null) {
+      return null;
+    }
+
+    final manifestBytes = _asBytes(manifestEntry.content);
+    if (manifestBytes == null || manifestBytes.isEmpty) {
+      throw Exception('Bundle manifest is empty or invalid.');
+    }
+
+    final decoded = jsonDecode(utf8.decode(manifestBytes));
+    if (decoded is! Map<String, dynamic>) {
+      throw Exception('Bundle manifest format is invalid.');
+    }
+
+    final manifestType = (decoded['type'] as String?)?.toLowerCase();
+    if (manifestType != 'melon_content_bundle') {
+      throw Exception('Unsupported bundle type.');
+    }
+
+    final entriesRaw = decoded['entries'];
+    if (entriesRaw is! List) {
+      throw Exception('Bundle entries are missing.');
+    }
+
+    var embeddedImported = 0;
+    var renamed = 0;
+    var skippedIdenticalFile = 0;
+    var skippedDuplicateEntries = 0;
+    var failed = 0;
+    final touchedFileNames = <String>{};
+    final modrinthReferences = <BundleModrinthReference>[];
+    final notes = <String>[];
+    final seenFileNames = <String>{};
+    final archiveByPath = <String, ArchiveFile>{};
+    for (final file in archive.files) {
+      if (!file.isFile) {
+        continue;
+      }
+      archiveByPath[file.name] = file;
+    }
+
+    for (final raw in entriesRaw) {
+      if (raw is! Map) {
+        failed++;
+        continue;
+      }
+      final entry = Map<String, dynamic>.from(raw);
+      final fileName = (entry['file_name'] as String?)?.trim();
+      if (fileName == null || fileName.isEmpty) {
+        failed++;
+        continue;
+      }
+
+      final lowerName = fileName.toLowerCase();
+      if (seenFileNames.contains(lowerName)) {
+        skippedDuplicateEntries++;
+        continue;
+      }
+      seenFileNames.add(lowerName);
+
+      final source = (entry['source'] as String?)?.toLowerCase().trim();
+      if (source == 'modrinth') {
+        final projectId = (entry['project_id'] as String?)?.trim();
+        final versionId = (entry['version_id'] as String?)?.trim();
+        if (projectId == null ||
+            projectId.isEmpty ||
+            versionId == null ||
+            versionId.isEmpty) {
+          failed++;
+          if (notes.length < 8) {
+            notes.add('$fileName: missing project_id/version_id.');
+          }
+          continue;
+        }
+        modrinthReferences.add(
+          BundleModrinthReference(
+            fileName: fileName,
+            projectId: projectId,
+            versionId: versionId,
+          ),
+        );
+        continue;
+      }
+
+      final archivePath = ((entry['archive_path'] as String?)?.trim().isNotEmpty ?? false)
+          ? (entry['archive_path'] as String).trim()
+          : 'files/$fileName';
+      final archiveFile = archiveByPath[archivePath];
+      if (archiveFile == null) {
+        failed++;
+        if (notes.length < 8) {
+          notes.add('$fileName: embedded file missing in archive.');
+        }
+        continue;
+      }
+
+      try {
+        final entryBytes = _asBytes(archiveFile.content);
+        if (entryBytes == null || entryBytes.isEmpty) {
+          failed++;
+          if (notes.length < 8) {
+            notes.add('$fileName: empty or invalid embedded file.');
+          }
+          continue;
+        }
+
+        var targetName = fileName;
+        var targetPath = p.join(contentPath, targetName);
+        final existing = File(targetPath);
+        if (await existing.exists()) {
+          final sameBytes = await _hasSameBytes(existing, entryBytes);
+          if (sameBytes) {
+            skippedIdenticalFile++;
+            continue;
+          }
+          targetName = _buildRenamedFileName(targetName);
+          targetPath = p.join(contentPath, targetName);
+          renamed++;
+        }
+
+        await _writeBytesAtomic(targetPath, entryBytes);
+        touchedFileNames.add(targetName);
+        embeddedImported++;
+      } catch (error) {
+        failed++;
+        if (notes.length < 8) {
+          notes.add('$fileName: $error');
+        }
+      }
+    }
+
+    return ContentBundleImportResult(
+      zipPath: zipPath,
+      entriesFound: entriesRaw.length,
+      embeddedImported: embeddedImported,
+      renamed: renamed,
+      skippedIdenticalFile: skippedIdenticalFile,
+      skippedDuplicateEntries: skippedDuplicateEntries,
+      failed: failed,
+      touchedFileNames: touchedFileNames,
+      modrinthReferences: modrinthReferences,
       notes: notes,
     );
   }

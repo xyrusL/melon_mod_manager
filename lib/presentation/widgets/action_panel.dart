@@ -18,6 +18,9 @@ class ActionPanel extends ConsumerStatefulWidget {
     required this.onDeleteSelected,
     required this.isBusy,
     required this.hasDeleteSelection,
+    required this.downloadLabel,
+    this.canCheckUpdates = true,
+    this.canZipTools = true,
     this.uiScale = 1.0,
   });
 
@@ -30,6 +33,9 @@ class ActionPanel extends ConsumerStatefulWidget {
   final VoidCallback onDeleteSelected;
   final bool isBusy;
   final bool hasDeleteSelection;
+  final String downloadLabel;
+  final bool canCheckUpdates;
+  final bool canZipTools;
   final double uiScale;
 
   @override
@@ -58,15 +64,15 @@ class _ActionPanelState extends ConsumerState<ActionPanel> {
       environmentInfoProvider(widget.modsPath),
     );
     final appUpdateState = ref.watch(appUpdateControllerProvider);
-    final itemGap = (6 * widget.uiScale).clamp(5, 8).toDouble();
-    final sectionGap = (12 * widget.uiScale).clamp(10, 14).toDouble();
-    final panelPadding = (14 * widget.uiScale).clamp(12, 16).toDouble();
-    final primaryHeight = (40 * widget.uiScale).clamp(38, 44).toDouble();
-    final secondaryHeight = (36 * widget.uiScale).clamp(34, 40).toDouble();
-    final dangerHeight = (38 * widget.uiScale).clamp(36, 42).toDouble();
-    final primaryFont = (15 * widget.uiScale).clamp(14, 16.5).toDouble();
-    final secondaryFont = (14 * widget.uiScale).clamp(13, 15.5).toDouble();
-    final buttonIcon = (18 * widget.uiScale).clamp(17, 20).toDouble();
+    final itemGap = (5 * widget.uiScale).clamp(4, 7).toDouble();
+    final sectionGap = (10 * widget.uiScale).clamp(8, 12).toDouble();
+    final panelPadding = (12 * widget.uiScale).clamp(10, 14).toDouble();
+    final primaryHeight = (37 * widget.uiScale).clamp(34, 41).toDouble();
+    final secondaryHeight = (34 * widget.uiScale).clamp(31, 37).toDouble();
+    final dangerHeight = (35 * widget.uiScale).clamp(32, 39).toDouble();
+    final primaryFont = (14 * widget.uiScale).clamp(12.5, 15.5).toDouble();
+    final secondaryFont = (13 * widget.uiScale).clamp(11.5, 14.5).toDouble();
+    final buttonIcon = (16 * widget.uiScale).clamp(14, 18).toDouble();
     return Container(
       padding: EdgeInsets.all(panelPadding),
       decoration: BoxDecoration(
@@ -107,7 +113,7 @@ class _ActionPanelState extends ConsumerState<ActionPanel> {
                       _SectionLabel(label: 'PRIMARY'),
                       SizedBox(height: itemGap),
                       PanelActionButton(
-                        label: 'Download Mods',
+                        label: widget.downloadLabel,
                         icon: Icons.download_rounded,
                         backgroundColor: const Color(0xFF50F0A8),
                         foregroundColor: Colors.black,
@@ -118,11 +124,15 @@ class _ActionPanelState extends ConsumerState<ActionPanel> {
                       ),
                       SizedBox(height: itemGap),
                       PanelActionButton(
-                        label: 'Check for Updates',
+                        label: widget.canCheckUpdates
+                            ? 'Check for Updates'
+                            : 'Updates (Mods Only)',
                         icon: Icons.system_update_alt_rounded,
                         backgroundColor: const Color(0xFFFFC15A),
                         foregroundColor: Colors.black,
-                        onPressed: widget.isBusy ? null : widget.onCheckUpdates,
+                        onPressed: widget.isBusy || !widget.canCheckUpdates
+                            ? null
+                            : widget.onCheckUpdates,
                         height: primaryHeight,
                         fontSize: primaryFont,
                         iconSize: buttonIcon,
@@ -146,7 +156,9 @@ class _ActionPanelState extends ConsumerState<ActionPanel> {
                         icon: Icons.archive_rounded,
                         backgroundColor: const Color(0xFF7AC8FF),
                         foregroundColor: Colors.black,
-                        onPressed: widget.isBusy ? null : widget.onImportZip,
+                        onPressed: widget.isBusy || !widget.canZipTools
+                            ? null
+                            : widget.onImportZip,
                         height: secondaryHeight,
                         fontSize: secondaryFont,
                         iconSize: buttonIcon,
@@ -157,7 +169,9 @@ class _ActionPanelState extends ConsumerState<ActionPanel> {
                         icon: Icons.outbox_rounded,
                         backgroundColor: const Color(0xFF7BE7B5),
                         foregroundColor: Colors.black,
-                        onPressed: widget.isBusy ? null : widget.onExportZip,
+                        onPressed: widget.isBusy || !widget.canZipTools
+                            ? null
+                            : widget.onExportZip,
                         height: secondaryHeight,
                         fontSize: secondaryFont,
                         iconSize: buttonIcon,
@@ -201,7 +215,7 @@ class _ActionPanelState extends ConsumerState<ActionPanel> {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.68),
-              fontSize: (11.5 * widget.uiScale).clamp(11.5, 13.5).toDouble(),
+              fontSize: (10.5 * widget.uiScale).clamp(9.5, 12.5).toDouble(),
             ),
           ),
           SizedBox(height: itemGap),
@@ -325,14 +339,14 @@ class _EnvironmentInfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final titleSize = (12 * uiScale).clamp(12, 13.5).toDouble();
-    final valueSize = (12.5 * uiScale).clamp(12.5, 14).toDouble();
+    final titleSize = (11 * uiScale).clamp(10, 13).toDouble();
+    final valueSize = (11.5 * uiScale).clamp(10.5, 13.5).toDouble();
 
     return Container(
-      padding: EdgeInsets.all((10 * uiScale).clamp(10, 12).toDouble()),
+      padding: EdgeInsets.all((8 * uiScale).clamp(7, 11).toDouble()),
       decoration: BoxDecoration(
         color: const Color(0x1129D79D),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         border:
             Border.all(color: const Color(0xFF2BCF99).withValues(alpha: 0.3)),
       ),
@@ -369,13 +383,13 @@ class _EnvironmentInfoCard extends StatelessWidget {
                   fontSize: titleSize,
                 ),
               ),
-              SizedBox(height: (4 * uiScale).clamp(4, 6).toDouble()),
+              SizedBox(height: (3 * uiScale).clamp(2, 5).toDouble()),
               _InfoRow(
                 label: 'Minecraft',
                 value: mcVersion,
                 uiScale: uiScale,
               ),
-              SizedBox(height: (3 * uiScale).clamp(3, 5).toDouble()),
+              SizedBox(height: (2 * uiScale).clamp(2, 4).toDouble()),
               _InfoRow(
                 label: 'Fabric',
                 value: fabricLabel,
@@ -400,7 +414,7 @@ class _SectionLabel extends StatelessWidget {
       label,
       style: TextStyle(
         color: Colors.white.withValues(alpha: 0.55),
-        fontSize: 11,
+        fontSize: 10,
         letterSpacing: 0.8,
         fontWeight: FontWeight.w700,
       ),
@@ -421,8 +435,8 @@ class _InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final labelSize = (12 * uiScale).clamp(12, 14).toDouble();
-    final valueSize = (13 * uiScale).clamp(13, 15).toDouble();
+    final labelSize = (11 * uiScale).clamp(10, 13).toDouble();
+    final valueSize = (12 * uiScale).clamp(10.5, 14).toDouble();
     return Row(
       children: [
         Text(
@@ -432,7 +446,7 @@ class _InfoRow extends StatelessWidget {
             fontSize: labelSize,
           ),
         ),
-        SizedBox(width: (8 * uiScale).clamp(8, 10).toDouble()),
+        SizedBox(width: (6 * uiScale).clamp(5, 9).toDouble()),
         Expanded(
           child: Text(
             value,
@@ -495,7 +509,7 @@ class _AboutDialog extends ConsumerWidget {
               ),
               const SizedBox(height: 6),
               Text(
-                'A simple Windows app to manage Fabric/Quilt mods: scan your mods folder, install from Modrinth with required dependencies, and update safely without duplicate files.',
+                'A simple Windows app to manage Minecraft content packs: scan local folders, install from Modrinth, and keep your setup clean and up to date.',
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.82),
                   height: 1.35,
