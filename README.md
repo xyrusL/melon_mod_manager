@@ -45,12 +45,6 @@ Think of it as a one-stop shop for keeping your Minecraft mods organized and up-
 
 This is a **personal open-source project** created to make Minecraft modding easier for everyone. It's completely free to use and modify.
 
-## Original Author
-
-- **Author:** Xyrus
-- **GitHub:** [@xyrusL](https://github.com/xyrusL)
-- **Original Repository:** https://github.com/xyrusL/melon_mod_manager
-
 ### ⚠️ Antivirus Note
 Some antivirus software may flag this app as suspicious because it's a new/unsigned Windows application. This is a **false positive**. You can verify the app is safe by:
 - Checking the [full source code](https://github.com/xyrusL/melon_mod_manager) - everything is open and transparent
@@ -99,4 +93,4 @@ dart analyze lib
 
 MIT License - Free to use, modify, and share! See the `LICENSE` file for details.
 
-Made with 💚 by Xyrus for the Minecraft community
+Made with 💚 for the Minecraft community
