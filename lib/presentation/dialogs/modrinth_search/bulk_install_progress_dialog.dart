@@ -1,5 +1,21 @@
 part of '../modrinth_search_dialog.dart';
 
+class _BulkInstallSummary {
+  const _BulkInstallSummary({
+    required this.installed,
+    required this.updated,
+    required this.skipped,
+    required this.failed,
+  });
+
+  final int installed;
+  final int updated;
+  final int skipped;
+  final int failed;
+
+  bool get hasChanges => installed > 0 || updated > 0;
+}
+
 class _BulkInstallProgressDialog extends ConsumerStatefulWidget {
   const _BulkInstallProgressDialog({
     required this.modsPath,
@@ -181,7 +197,16 @@ class _BulkInstallProgressDialogState
       ),
       actions: [
         FilledButton(
-          onPressed: _done ? () => Navigator.of(context).pop() : null,
+          onPressed: _done
+              ? () => Navigator.of(context).pop(
+                    _BulkInstallSummary(
+                      installed: _installed,
+                      updated: _updated,
+                      skipped: _skipped,
+                      failed: _failed,
+                    ),
+                  )
+              : null,
           child: const Text('Close'),
         ),
       ],
