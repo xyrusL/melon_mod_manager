@@ -1,8 +1,6 @@
-# 🍈 Melon Mod Manager
+# <img src="assets/logo/melon_logo.svg" alt="Melon Mod Manager logo" width="28" /> Melon Mod Manager
 
 A simple Windows desktop app to manage your Minecraft mods, shaders, and resource packs all in one place. No more hunting through folders or manually checking for updates!
-
-![Melon Mod Manager](assets/logo/melon_logo.svg)
 
 ## App Preview
 
