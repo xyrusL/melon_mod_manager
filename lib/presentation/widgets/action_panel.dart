@@ -144,8 +144,7 @@ class _ActionPanelState extends ConsumerState<ActionPanel> {
                                 child: Text(
                                   'Preparing metadata...',
                                   style: TextStyle(
-                                    color:
-                                        Colors.white.withValues(alpha: 0.88),
+                                    color: Colors.white.withValues(alpha: 0.88),
                                     fontSize: (11.5 * widget.uiScale)
                                         .clamp(10.5, 13)
                                         .toDouble(),
@@ -557,7 +556,7 @@ class _AboutDialog extends ConsumerWidget {
               ),
               const SizedBox(height: 6),
               Text(
-                'A simple Windows app to manage Minecraft content packs: scan local folders, install from Modrinth, and keep your setup clean and up to date.',
+                'Manage Minecraft mods, resource packs, and shader packs in one place: scan local folders, install and update from Modrinth, and safely import/export zip bundles.',
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.82),
                   height: 1.35,

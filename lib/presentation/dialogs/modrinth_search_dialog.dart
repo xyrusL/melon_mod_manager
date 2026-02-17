@@ -59,12 +59,14 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
   var _pageSize = 10;
   var _statusFilter = _StatusFilter.all;
   var _versionSelection = _anyVersionValue;
+  var _lastQueryWasEmpty = true;
   String? _detectedGameVersion;
   String? _detectedLoader;
   String? _detectedLoaderVersion;
   List<ModrinthProject> _results = const [];
   Map<String, ProjectInstallInfo> _installInfo = const {};
   Map<String, String> _latestVersionByProject = const {};
+  final Map<String, String> _versionCache = {};
   Set<String> _selectedProjectIds = <String>{};
   String? _error;
   bool _didChangeContent = false;
@@ -126,6 +128,7 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
     setState(() {
       _sortMode = _SortMode.popular;
       _queryController.clear();
+      _lastQueryWasEmpty = true;
       _currentPage = 1;
       _latestVersionByProject = const {};
     });
@@ -238,9 +241,30 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
   }
 
   Future<void> _loadLatestVersions(List<ModrinthProject> projects) async {
-    final candidates = projects
-        .where((project) => !_latestVersionByProject.containsKey(project.id))
-        .toList();
+    final cached = <String, String>{};
+    final candidates = <ModrinthProject>[];
+    for (final project in projects) {
+      if (_latestVersionByProject.containsKey(project.id)) {
+        continue;
+      }
+      final cacheKey = _buildVersionCacheKey(project.id);
+      final cachedVersion = _versionCache[cacheKey];
+      if (cachedVersion != null) {
+        cached[project.id] = cachedVersion;
+      } else {
+        candidates.add(project);
+      }
+    }
+
+    if (cached.isNotEmpty && mounted) {
+      setState(() {
+        _latestVersionByProject = {
+          ..._latestVersionByProject,
+          ...cached,
+        };
+      });
+    }
+
     if (candidates.isEmpty) {
       return;
     }
@@ -261,6 +285,8 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
           );
           if (latest != null) {
             fetched[project.id] = latest.versionNumber;
+            _versionCache[_buildVersionCacheKey(project.id)] =
+                latest.versionNumber;
           }
         } catch (_) {
           // Keep UI responsive if one project fails.
@@ -281,11 +307,24 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
   }
 
   Future<void> _runNewQuery() async {
+    _lastQueryWasEmpty = _queryController.text.trim().isEmpty;
     setState(() {
       _currentPage = 1;
       _latestVersionByProject = const {};
     });
     await _search();
+  }
+
+  Future<void> _handleQueryChanged(String value) async {
+    final isEmpty = value.trim().isEmpty;
+    if (isEmpty == _lastQueryWasEmpty) {
+      return;
+    }
+    _lastQueryWasEmpty = isEmpty;
+    if (!isEmpty || _loading) {
+      return;
+    }
+    await _loadPopular();
   }
 
   Future<void> _goToPreviousPage() async {
@@ -447,6 +486,13 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
   String? get _selectedGameVersion =>
       _versionSelection == _anyVersionValue ? null : _versionSelection;
 
+  String _buildVersionCacheKey(String projectId) {
+    if (!widget.contentType.supportsLoaderFilter) {
+      return '${widget.contentType.name}|$projectId';
+    }
+    return '${widget.contentType.name}|$projectId|$_loader|${_selectedGameVersion ?? ''}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final hasDetectedLoader =
@@ -518,6 +564,9 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
                       hintText: 'Search projects',
                       prefixIcon: Icon(Icons.search),
                     ),
+                    onChanged: (value) {
+                      _handleQueryChanged(value);
+                    },
                     onSubmitted: (_) => _runNewQuery(),
                   ),
                 ),

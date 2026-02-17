@@ -90,6 +90,8 @@ class ProjectInstallInfo {
 }
 
 class ModsState {
+  static final Expando<List<ModItem>> _filteredModsCache = Expando();
+
   const ModsState({
     this.mods = const [],
     this.contentType = ContentType.mod,
@@ -115,6 +117,16 @@ class ModsState {
   final String? errorMessage;
 
   List<ModItem> filteredMods() {
+    final cached = _filteredModsCache[this];
+    if (cached != null) {
+      return cached;
+    }
+    final computed = _buildFilteredMods();
+    _filteredModsCache[this] = computed;
+    return computed;
+  }
+
+  List<ModItem> _buildFilteredMods() {
     return mods.where((mod) {
       final matchesFilter = switch (filter) {
         ModFilter.all => true,
@@ -663,7 +675,6 @@ class ModsController extends StateNotifier<ModsState> {
     final candidates = <String>[
       project.slug,
       project.title,
-      project.description,
     ];
     for (final value in candidates) {
       final normalized = _normalizeForMatching(value);
@@ -719,10 +730,16 @@ class ModsController extends StateNotifier<ModsState> {
     if (a == b) {
       return true;
     }
-    if (a.length >= 4 && b.length >= 4) {
-      return a.contains(b) || b.contains(a);
+    if (a.length < 6 || b.length < 6) {
+      return false;
     }
-    return false;
+    final shorter = a.length <= b.length ? a : b;
+    final longer = a.length <= b.length ? b : a;
+    final lengthGap = longer.length - shorter.length;
+    if (lengthGap > 4) {
+      return false;
+    }
+    return longer.startsWith(shorter) || longer.endsWith(shorter);
   }
 
   Future<void> installExternalFiles({
@@ -920,8 +937,9 @@ class ModsController extends StateNotifier<ModsState> {
               '${state.contentType.label} import: ${fallback.entriesFound} zip entr${fallback.entriesFound == 1 ? 'y' : 'ies'} scanned | '
               '${fallback.imported} imported | ${fallback.renamed} renamed | '
               '${fallback.skippedIdenticalFile} identical skipped | ${fallback.failed} failed';
-          final message =
-              fallback.notes.isEmpty ? summary : '$summary\n${fallback.notes.first}';
+          final message = fallback.notes.isEmpty
+              ? summary
+              : '$summary\n${fallback.notes.first}';
           state = state.copyWith(
             isBusy: false,
             infoMessage: message,
@@ -942,7 +960,8 @@ class ModsController extends StateNotifier<ModsState> {
 
       for (final ref in bundleResult.modrinthReferences) {
         try {
-          final version = await _modrinthRepository.getVersionById(ref.versionId);
+          final version =
+              await _modrinthRepository.getVersionById(ref.versionId);
           if (version == null) {
             downloadedFailed++;
             if (notes.length < 8) {
@@ -959,7 +978,8 @@ class ModsController extends StateNotifier<ModsState> {
           if (selectedFile == null) {
             downloadedFailed++;
             if (notes.length < 8) {
-              notes.add('${ref.fileName}: no downloadable file for ${state.contentType.singularLabel}.');
+              notes.add(
+                  '${ref.fileName}: no downloadable file for ${state.contentType.singularLabel}.');
             }
             continue;
           }
@@ -968,16 +988,18 @@ class ModsController extends StateNotifier<ModsState> {
           final destinationPath = p.join(contentPath, targetName);
           final existing = File(destinationPath);
           if (await existing.exists() && selectedFile.sha1 != null) {
-            final existingSha1 = await _fileHashService.computeSha1(existing.path);
+            final existingSha1 =
+                await _fileHashService.computeSha1(existing.path);
             if (existingSha1 != null &&
-                existingSha1.toLowerCase() == selectedFile.sha1!.toLowerCase()) {
+                existingSha1.toLowerCase() ==
+                    selectedFile.sha1!.toLowerCase()) {
               downloadedSkippedIdentical++;
               continue;
             }
           }
 
-          final tempDir =
-              Directory(p.join(Directory.systemTemp.path, 'melon_mod', 'bundle_import'));
+          final tempDir = Directory(
+              p.join(Directory.systemTemp.path, 'melon_mod', 'bundle_import'));
           if (!await tempDir.exists()) {
             await tempDir.create(recursive: true);
           }
@@ -1033,8 +1055,7 @@ class ModsController extends StateNotifier<ModsState> {
           '$downloaded downloaded | ${bundleResult.renamed} renamed | '
           '${bundleResult.skippedIdenticalFile + downloadedSkippedIdentical} identical skipped | '
           '${bundleResult.failed + downloadedFailed} failed';
-      final message =
-          notes.isEmpty ? summary : '$summary\n${notes.first}';
+      final message = notes.isEmpty ? summary : '$summary\n${notes.first}';
 
       state = state.copyWith(
         isBusy: false,
@@ -1178,7 +1199,8 @@ class ModsController extends StateNotifier<ModsState> {
       return cached;
     }
     try {
-      final version = await _modrinthRepository.getVersionById(mapping.versionId);
+      final version =
+          await _modrinthRepository.getVersionById(mapping.versionId);
       if (version == null) {
         return 'Unknown';
       }
@@ -1421,9 +1443,6 @@ class ModsController extends StateNotifier<ModsState> {
           total,
           'Checking ${mod.displayName}...',
         );
-        // Keep progress readable for users (avoid big visual jumps like 1 -> 7).
-        await Future<void>.delayed(const Duration(milliseconds: 28));
-
         if (mod.provider != ModProviderType.modrinth) {
           externalOrUnknown++;
           if (notes.length < 6) {
@@ -1665,27 +1684,34 @@ class ModsController extends StateNotifier<ModsState> {
       contentType: contentType,
     );
     final loaded = <ModItem>[];
-    for (final file in files) {
-      final mapping = await _mappingRepository.getByFileName(file.fileName);
-      final localIcon =
-          await _contentIconService.extractPackIcon(file.filePath);
-      final version = await _resolvePackVersion(mapping);
-      loaded.add(
-        ModItem(
-          fileName: file.fileName,
-          filePath: file.filePath,
-          displayName: p.basenameWithoutExtension(file.fileName),
-          version: version,
-          modId: p.basenameWithoutExtension(file.fileName),
-          provider: mapping == null
-              ? ModProviderType.external
-              : ModProviderType.modrinth,
-          lastModified: file.lastModified,
-          iconCachePath: localIcon,
-          modrinthProjectId: mapping?.projectId,
-          modrinthVersionId: mapping?.versionId,
-        ),
+    const batchSize = 4;
+    for (var start = 0; start < files.length; start += batchSize) {
+      final end =
+          (start + batchSize) < files.length ? start + batchSize : files.length;
+      final batch = files.sublist(start, end);
+      final mapped = await Future.wait(
+        batch.map((file) async {
+          final mapping = await _mappingRepository.getByFileName(file.fileName);
+          final localIcon =
+              await _contentIconService.extractPackIcon(file.filePath);
+          final version = await _resolvePackVersion(mapping);
+          return ModItem(
+            fileName: file.fileName,
+            filePath: file.filePath,
+            displayName: p.basenameWithoutExtension(file.fileName),
+            version: version,
+            modId: p.basenameWithoutExtension(file.fileName),
+            provider: mapping == null
+                ? ModProviderType.external
+                : ModProviderType.modrinth,
+            lastModified: file.lastModified,
+            iconCachePath: localIcon,
+            modrinthProjectId: mapping?.projectId,
+            modrinthVersionId: mapping?.versionId,
+          );
+        }),
       );
+      loaded.addAll(mapped);
     }
     return loaded;
   }

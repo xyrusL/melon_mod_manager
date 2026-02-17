@@ -3,6 +3,8 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
+import 'instance_dir_utils.dart';
+
 class MinecraftVersionService {
   Future<String?> detectVersionFromModsPath(String modsPath) async {
     final pathVersion = _detectFromPathSegments(modsPath);
@@ -46,7 +48,7 @@ class MinecraftVersionService {
   }
 
   Future<String?> _detectFromPrismOrMmcMetadata(String modsPath) async {
-    final candidates = _candidateInstanceDirs(modsPath);
+    final candidates = candidateInstanceDirs(modsPath);
     for (final dir in candidates) {
       final mmcPack = File(p.join(dir.path, 'mmc-pack.json'));
       if (!await mmcPack.exists()) {
@@ -81,7 +83,7 @@ class MinecraftVersionService {
   }
 
   Future<String?> _detectFromInstanceCfg(String modsPath) async {
-    final candidates = _candidateInstanceDirs(modsPath);
+    final candidates = candidateInstanceDirs(modsPath);
     for (final dir in candidates) {
       final instanceCfg = File(p.join(dir.path, 'instance.cfg'));
       if (!await instanceCfg.exists()) {
@@ -105,23 +107,6 @@ class MinecraftVersionService {
     }
 
     return null;
-  }
-
-  List<Directory> _candidateInstanceDirs(String modsPath) {
-    final modsDir = Directory(modsPath);
-    final parent = Directory(p.dirname(modsDir.path));
-    final grandParent = Directory(p.dirname(parent.path));
-
-    final candidates = <Directory>[grandParent, parent, modsDir];
-    return candidates
-        .where((d) => d.path.trim().isNotEmpty)
-        .fold<List<Directory>>([], (acc, dir) {
-      if (acc.any((e) => p.normalize(e.path) == p.normalize(dir.path))) {
-        return acc;
-      }
-      acc.add(dir);
-      return acc;
-    });
   }
 
   String? _extractVersion(String raw) {

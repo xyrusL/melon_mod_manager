@@ -162,6 +162,7 @@ class ContentBundleImportResult {
 class ModPackService {
   static const _manifestName = 'melon_mod_pack.json';
   static const _bundleManifestName = 'melon_content_bundle.json';
+  static final _canonicalPattern = RegExp(r'[^a-z0-9]');
 
   Future<ModPackExportResult> exportModsToZip({
     required String modsPath,
@@ -590,6 +591,15 @@ class ModPackService {
           }
           continue;
         }
+        if (!_isValidContentArchive(entryBytes, contentType)) {
+          failed++;
+          if (notes.length < 8) {
+            notes.add(
+              '$rawName: not a valid ${contentType.singularLabel.toLowerCase()} archive.',
+            );
+          }
+          continue;
+        }
 
         var targetName = rawName;
         var targetPath = p.join(contentPath, targetName);
@@ -640,7 +650,8 @@ class ModPackService {
     var modrinthEntries = 0;
 
     final ordered = List<ContentBundleExportItem>.from(items)
-      ..sort((a, b) => a.fileName.toLowerCase().compareTo(b.fileName.toLowerCase()));
+      ..sort((a, b) =>
+          a.fileName.toLowerCase().compareTo(b.fileName.toLowerCase()));
 
     for (final item in ordered) {
       final normalizedProvider = item.provider.toLowerCase();
@@ -728,12 +739,15 @@ class ModPackService {
 
     final bytes = await targetZip.readAsBytes();
     final archive = ZipDecoder().decodeBytes(bytes, verify: false);
-    final manifestEntry = archive.files.where((entry) {
-      if (!entry.isFile) {
-        return false;
-      }
-      return p.basename(entry.name).toLowerCase() == _bundleManifestName;
-    }).cast<ArchiveFile?>().firstWhere(
+    final manifestEntry = archive.files
+        .where((entry) {
+          if (!entry.isFile) {
+            return false;
+          }
+          return p.basename(entry.name).toLowerCase() == _bundleManifestName;
+        })
+        .cast<ArchiveFile?>()
+        .firstWhere(
           (entry) => entry != null,
           orElse: () => null,
         );
@@ -755,6 +769,15 @@ class ModPackService {
     final manifestType = (decoded['type'] as String?)?.toLowerCase();
     if (manifestType != 'melon_content_bundle') {
       throw Exception('Unsupported bundle type.');
+    }
+    final manifestContentType =
+        (decoded['content_type'] as String?)?.trim().toLowerCase();
+    if (manifestContentType != null &&
+        manifestContentType.isNotEmpty &&
+        manifestContentType != contentType.name.toLowerCase()) {
+      throw Exception(
+        'Bundle content type mismatch. Expected ${contentType.name}, found $manifestContentType.',
+      );
     }
 
     final entriesRaw = decoded['entries'];
@@ -822,9 +845,10 @@ class ModPackService {
         continue;
       }
 
-      final archivePath = ((entry['archive_path'] as String?)?.trim().isNotEmpty ?? false)
-          ? (entry['archive_path'] as String).trim()
-          : 'files/$fileName';
+      final archivePath =
+          ((entry['archive_path'] as String?)?.trim().isNotEmpty ?? false)
+              ? (entry['archive_path'] as String).trim()
+              : 'files/$fileName';
       final archiveFile = archiveByPath[archivePath];
       if (archiveFile == null) {
         failed++;
@@ -840,6 +864,15 @@ class ModPackService {
           failed++;
           if (notes.length < 8) {
             notes.add('$fileName: empty or invalid embedded file.');
+          }
+          continue;
+        }
+        if (!_isValidContentArchive(entryBytes, contentType)) {
+          failed++;
+          if (notes.length < 8) {
+            notes.add(
+              '$fileName: not a valid ${contentType.singularLabel.toLowerCase()} archive.',
+            );
           }
           continue;
         }
@@ -900,12 +933,16 @@ class ModPackService {
   }
 
   String _canonical(String value) {
-    return value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+    return value.toLowerCase().replaceAll(_canonicalPattern, '');
   }
 
   Future<bool> _hasSameBytes(File existingFile, List<int> incomingBytes) async {
-    final existingBytes = await existingFile.readAsBytes();
-    final existingHash = sha1.convert(existingBytes).toString();
+    final stat = await existingFile.stat();
+    if (stat.size != incomingBytes.length) {
+      return false;
+    }
+    final existingHash =
+        (await sha1.bind(existingFile.openRead()).first).toString();
     final incomingHash = sha1.convert(incomingBytes).toString();
     return existingHash == incomingHash;
   }
@@ -921,6 +958,37 @@ class ModPackService {
       await target.delete();
     }
     await temp.rename(target.path);
+  }
+
+  bool _isValidContentArchive(List<int> bytes, ContentType contentType) {
+    try {
+      final archive = ZipDecoder().decodeBytes(bytes, verify: false);
+      final fileNames = archive.files
+          .where((entry) => entry.isFile)
+          .map((entry) => entry.name.toLowerCase())
+          .toList();
+      if (fileNames.isEmpty) {
+        return false;
+      }
+
+      switch (contentType) {
+        case ContentType.resourcePack:
+          return fileNames.any((name) => p.basename(name) == 'pack.mcmeta') ||
+              fileNames.any((name) => name.startsWith('assets/'));
+        case ContentType.shaderPack:
+          return fileNames.any((name) => name.startsWith('shaders/')) ||
+              fileNames.any(
+                (name) =>
+                    name.endsWith('.fsh') ||
+                    name.endsWith('.vsh') ||
+                    name.endsWith('.glsl'),
+              );
+        case ContentType.mod:
+          return true;
+      }
+    } catch (_) {
+      return false;
+    }
   }
 
   int? _compareLooseVersions(String current, String incoming) {

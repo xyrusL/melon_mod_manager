@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:archive/archive.dart';
+import 'package:archive/archive_io.dart';
 import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -14,8 +14,13 @@ class ContentIconService {
     }
 
     try {
-      final bytes = await file.readAsBytes();
-      final archive = ZipDecoder().decodeBytes(bytes, verify: false);
+      final inputStream = InputFileStream(archivePath);
+      late final Archive archive;
+      try {
+        archive = ZipDecoder().decodeBuffer(inputStream, verify: false);
+      } finally {
+        inputStream.close();
+      }
 
       ArchiveFile? candidate;
       ArchiveFile? fallbackImage;
