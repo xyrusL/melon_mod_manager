@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -31,6 +32,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   ProviderSubscription<AppUpdateState>? _updateSub;
   bool _autoUpdatePromptShown = false;
   bool _isInitializing = true;
+  bool _isDropHovering = false;
 
   @override
   void initState() {
@@ -182,23 +184,82 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                         child: Row(
                           children: [
                             Expanded(
-                              child: Container(
-                                decoration: AppTheme.glassPanel(),
-                                padding: EdgeInsets.all(
-                                  (6 * uiScale).clamp(4, 10).toDouble(),
-                                ),
-                                child: ModsTable(
-                                  title: state.contentType.label,
-                                  mods: filteredMods,
-                                  selectedFiles: state.selectedFiles,
-                                  onToggleSelected: notifier.toggleModSelection,
-                                  onToggleSelectAllVisible: (selected) =>
-                                      notifier.toggleSelectAllVisible(
-                                          filteredMods, selected),
-                                  isScanning: state.isScanning,
-                                  processed: state.scanProcessed,
-                                  total: state.scanTotal,
-                                  uiScale: uiScale,
+                              child: DropTarget(
+                                onDragEntered: (_) {
+                                  if (!mounted) {
+                                    return;
+                                  }
+                                  setState(() => _isDropHovering = true);
+                                },
+                                onDragExited: (_) {
+                                  if (!mounted) {
+                                    return;
+                                  }
+                                  setState(() => _isDropHovering = false);
+                                },
+                                onDragDone: (details) async {
+                                  if (mounted) {
+                                    setState(() => _isDropHovering = false);
+                                  }
+                                  final paths = details.files
+                                      .map((file) => file.path)
+                                      .where((path) => path.trim().isNotEmpty)
+                                      .toList();
+                                  await _handleDroppedFiles(paths);
+                                },
+                                child: Stack(
+                                  children: [
+                                    Container(
+                                      decoration: AppTheme.glassPanel(),
+                                      padding: EdgeInsets.all(
+                                        (6 * uiScale).clamp(4, 10).toDouble(),
+                                      ),
+                                      child: ModsTable(
+                                        title: state.contentType.label,
+                                        mods: filteredMods,
+                                        selectedFiles: state.selectedFiles,
+                                        onToggleSelected:
+                                            notifier.toggleModSelection,
+                                        onToggleSelectAllVisible: (selected) =>
+                                            notifier.toggleSelectAllVisible(
+                                                filteredMods, selected),
+                                        isScanning: state.isScanning,
+                                        processed: state.scanProcessed,
+                                        total: state.scanTotal,
+                                        uiScale: uiScale,
+                                      ),
+                                    ),
+                                    if (_isDropHovering)
+                                      Positioned.fill(
+                                        child: IgnorePointer(
+                                          child: DecoratedBox(
+                                            decoration: BoxDecoration(
+                                              color: const Color(0x2238E8A5),
+                                              borderRadius:
+                                                  BorderRadius.circular(16),
+                                              border: Border.all(
+                                                color: const Color(0xFF48E39F),
+                                                width: 1.8,
+                                              ),
+                                            ),
+                                            child: Center(
+                                              child: Text(
+                                                _dropHintLabel(
+                                                    state.contentType),
+                                                style: TextStyle(
+                                                  color:
+                                                      const Color(0xFFB7FEE0),
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: (16 * uiScale)
+                                                      .clamp(13, 20)
+                                                      .toDouble(),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
                                 ),
                               ),
                             ),
@@ -213,6 +274,8 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                                 uiScale: uiScale,
                                 downloadLabel:
                                     'Download ${state.contentType.label}',
+                                actionsEnabled:
+                                    !_isInitializing && !state.isScanning,
                                 canCheckUpdates: true,
                                 canZipTools: true,
                                 onDownloadMods: _openModrinthSearch,
@@ -251,7 +314,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
           modsPath: widget.modsPath,
           contentType: state.contentType,
         );
-    await showDialog<void>(
+    final changed = await showDialog<bool>(
       context: context,
       builder: (context) => ModrinthSearchDialog(
         modsPath: widget.modsPath,
@@ -259,7 +322,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
         contentType: state.contentType,
       ),
     );
-    if (!mounted) {
+    if (!mounted || changed != true) {
       return;
     }
     await ref.read(modsControllerProvider.notifier).loadContent(
@@ -302,6 +365,71 @@ class _MainScreenState extends ConsumerState<MainScreen> {
           sourcePaths: paths,
           onConflict: _resolveConflict,
         );
+  }
+
+  Future<void> _handleDroppedFiles(List<String> sourcePaths) async {
+    if (!mounted || sourcePaths.isEmpty || _isInitializing) {
+      return;
+    }
+
+    final state = ref.read(modsControllerProvider);
+    if (state.isBusy) {
+      return;
+    }
+
+    final allowedExtensions = switch (state.contentType) {
+      ContentType.mod => const ['jar'],
+      ContentType.resourcePack => const ['zip'],
+      ContentType.shaderPack => const ['zip'],
+    };
+    final allowedSuffixes =
+        allowedExtensions.map((ext) => '.${ext.toLowerCase()}').toList();
+
+    final acceptedPaths = sourcePaths.where((path) {
+      final normalized = path.toLowerCase();
+      return allowedSuffixes.any(normalized.endsWith);
+    }).toList();
+    final ignoredCount = sourcePaths.length - acceptedPaths.length;
+
+    if (acceptedPaths.isEmpty) {
+      final expected = allowedSuffixes.join(', ');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No valid file found. Expected: $expected'),
+        ),
+      );
+      return;
+    }
+
+    final targetPath = ref.read(contentPathServiceProvider).resolveContentPath(
+          modsPath: widget.modsPath,
+          contentType: state.contentType,
+        );
+
+    await ref.read(modsControllerProvider.notifier).installExternalFiles(
+          targetPath: targetPath,
+          sourcePaths: acceptedPaths,
+          onConflict: _resolveConflict,
+        );
+
+    if (!mounted || ignoredCount <= 0) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Added ${acceptedPaths.length} file(s). Ignored $ignoredCount invalid file(s).',
+        ),
+      ),
+    );
+  }
+
+  String _dropHintLabel(ContentType contentType) {
+    return switch (contentType) {
+      ContentType.mod => 'Drop .jar files to add mods',
+      ContentType.resourcePack => 'Drop .zip files to add resource packs',
+      ContentType.shaderPack => 'Drop .zip files to add shader packs',
+    };
   }
 
   Future<void> _importZipPack() async {
