@@ -1,14 +1,22 @@
 # Melon Mod Manager
 
-Windows Flutter app to manage Minecraft mods from one place.
+Windows Flutter app to manage Minecraft content from one place.
 
-## Features
+## What is new in 1.0.0-beta.2
 
-- Select or auto-detect a `mods` folder
+- Added shader pack management support.
+- Added resource pack management support.
+- Fixed multiple bugs and runtime errors.
+- Improved internal logic for better stability.
+
+## Core features
+
+- Select or auto-detect Minecraft folders
 - Browse and install mods from Modrinth
 - Check updates, review found updates, then update all
 - Add external `.jar` files
-- Delete selected mods
+- Manage shader packs and resource packs
+- Delete selected entries
 - Error overlay with copy/export logs for crashes
 
 ## Supported loaders
@@ -34,71 +42,24 @@ flutter test
 dart analyze lib
 ```
 
-## Create a GitHub release (Windows installer + portable zip)
+## Release (beta.2)
 
-The repository includes CI automation at `.github/workflows/release-windows.yml`.
-
-1. Update `pubspec.yaml` version.
-2. Commit and push to `main`.
-3. Create and push a matching tag in the format `v<pubspec-version-without-build>`.
-
-Example for current app version:
+1. Ensure `pubspec.yaml` version is `1.0.0-beta.2+1`.
+2. Commit and push changes to `main`.
+3. Create and push the matching tag:
 
 ```bash
-git tag v1.0.0-beta.1
-git push origin v1.0.0-beta.1
+git tag v1.0.0-beta.2
+git push origin v1.0.0-beta.2
 ```
 
-On tag push, GitHub Actions will:
-- run `flutter analyze` and `flutter test`
-- build Windows release binaries
-- generate:
-  - installer `.exe` (Inno Setup)
-  - portable `.zip`
-  - `SHA256SUMS.txt` for file integrity verification
-- publish both assets to the GitHub Release page
-
-### Release helper script (prerelease / beta)
-
-You can create release tags using:
-
-```powershell
-.\scripts\release.ps1 -Channel prerelease
-.\scripts\release.ps1 -Channel beta
-```
-
-To create and push the tag in one step:
+Or use the helper script to create and push the beta tag in one step:
 
 ```powershell
 .\scripts\release.ps1 -Channel beta -Push
 ```
 
-Rules:
-- `prerelease` requires a pubspec version containing `-` (example: `1.1.0-rc.1`).
-- `beta` requires `-beta` or `-beta.N` (example: `1.1.0-beta.2`).
-- Script checks for a clean git working tree and prevents duplicate tags.
-
-If you already created a tag before this workflow existed, go to:
-`Actions -> Release Windows -> Run workflow`
-and provide the existing tag (for example `v1.0.0-beta.1`).
-
-### Optional: Windows code signing in CI
-
-If you have a code-signing certificate (`.pfx`), the release workflow can sign:
-- `melon_mod_manager.exe` (app binary)
-- `MelonModManager-Win64-Setup-<version>.exe` (installer)
-
-Configure repository secrets:
-- `WINDOWS_SIGN_PFX_BASE64`
-- `WINDOWS_SIGN_PFX_PASSWORD`
-
-To create `WINDOWS_SIGN_PFX_BASE64` on Windows PowerShell:
-
-```powershell
-[Convert]::ToBase64String([IO.File]::ReadAllBytes("C:\path\to\codesign.pfx"))
-```
-
-If these secrets are not set, the workflow still works and skips signing.
+The release workflow at `.github/workflows/release-windows.yml` will run analyze/test, build Windows assets, and publish the installer, portable zip, and checksums.
 
 ## Notes
 
