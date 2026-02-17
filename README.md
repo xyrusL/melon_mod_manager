@@ -2,7 +2,11 @@
 
 A simple Windows desktop app to manage your Minecraft mods, shaders, and resource packs all in one place. No more hunting through folders or manually checking for updates!
 
-![Melon Mod Manager](https://raw.githubusercontent.com/xyrusL/melon_mod_manager/main/assets/logo/logo.png)
+![Melon Mod Manager](assets/logo/melon_logo.svg)
+
+## App Preview
+
+![Download from Modrinth Preview](assets/screenshots/download_mod.png)
 
 ## What Does This App Do?
 
@@ -42,6 +46,12 @@ Think of it as a one-stop shop for keeping your Minecraft mods organized and up-
 ## About This Project
 
 This is a **personal open-source project** created to make Minecraft modding easier for everyone. It's completely free to use and modify.
+
+## Original Author
+
+- **Author:** Xyrus
+- **GitHub:** [@xyrusL](https://github.com/xyrusL)
+- **Original Repository:** https://github.com/xyrusL/melon_mod_manager
 
 ### ⚠️ Antivirus Note
 Some antivirus software may flag this app as suspicious because it's a new/unsigned Windows application. This is a **false positive**. You can verify the app is safe by:
@@ -91,4 +101,4 @@ dart analyze lib
 
 MIT License - Free to use, modify, and share! See the `LICENSE` file for details.
 
-Made with 💚 for the Minecraft community
+Made with 💚 by Xyrus for the Minecraft community
