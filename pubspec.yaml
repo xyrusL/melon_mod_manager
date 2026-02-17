@@ -1,7 +1,7 @@
 name: melon_mod
 description: "Minecraft Fabric/Quilt mod manager for Windows desktop."
 publish_to: 'none'
-version: 1.0.0-beta.1+1
+version: 1.0.0-beta.2+1
 
 environment:
   sdk: '>=3.4.0 <4.0.0'
