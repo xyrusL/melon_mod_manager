@@ -92,6 +92,6 @@ dart analyze lib
 
 ## License
 
-GNU GPL v3.0 License - Free to use, modify, and share under GPL-3.0 terms. See the `LICENSE` file for details.
+GNU GPL v3.0 License - Free to use, modify, and share under GPL-3.0 terms. See the [LICENSE](LICENSE) file for details.
 
 Made with 💚 for the Minecraft community
