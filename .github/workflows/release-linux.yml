@@ -64,6 +64,9 @@ jobs:
       - name: Ensure Linux Runner Exists
         run: flutter create --platforms=linux .
 
+      - name: Remove Generated Template Test
+        run: rm -f test/widget_test.dart
+
       - name: Install Dependencies
         run: flutter pub get
 
