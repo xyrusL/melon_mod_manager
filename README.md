@@ -26,11 +26,12 @@ Think of it as a one-stop shop for keeping your Minecraft mods organized and up-
 
 ## What's New in Beta 6
 
-- ⚡ Faster browsing and search: latest-version results are cached in the Modrinth dialog, reducing repeated lookups.
-- 🧠 Better instance detection: loader and Minecraft version detection now reuses shared instance-directory logic for Prism/MMC-style layouts.
-- 🛡️ Safer bundle imports: resource pack and shader pack archives are validated before install, and bundle type mismatches are blocked.
-- ✅ Improved file handling performance: icon extraction and file comparison now use more efficient streaming paths for large archives/files.
-- 🧹 Smoother content list loading: pack metadata/icon loading is batched and filtered list results are cached for a more responsive UI.
+- ⚙️ New update settings panel: configure auto-check intervals for app updates, mods, resource packs, and shader packs.
+- 🔄 Scheduled checks on startup: automatic app/content update checks now run when due, based on your saved interval settings.
+- 🧰 Refresh local data action: manually rebuild metadata and icon caches directly from Update Settings.
+- 🗂️ Stronger cache reliability: scanner/icon cache now uses application support storage and validates cached icon paths.
+- 🐧 Linux release packaging: added Linux release workflow and Linux asset naming (`MelonModManager-Linux-Setup-<version>.tar.gz`).
+- 🎛️ Cleaner update controls UI: app update row is better organized with tuned spacing and settings button sizing.
 
 ## Key Features
 
