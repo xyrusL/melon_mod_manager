@@ -1,6 +1,6 @@
 # <img src="assets/logo/melon_logo.svg" alt="Melon Mod Manager logo" width="28" /> Melon Mod Manager
 
-A simple Windows desktop app to manage your Minecraft mods, shaders, and resource packs all in one place. No more hunting through folders or manually checking for updates!
+A desktop app to manage your Minecraft mods, shaders, and resource packs all in one place. No more hunting through folders or manually checking for updates!
 
 ## App Preview
 
@@ -20,11 +20,11 @@ Think of it as a one-stop shop for keeping your Minecraft mods organized and up-
 
 ## Compatible Devices
 
-- **Operating System:** Windows 10/11 (64-bit)
+- **Operating System:** Windows 10/11 (64-bit), Linux (x64)
 - **Minecraft Loaders:** Fabric, Quilt, Forge, NeoForge
 - **Internet Required:** Yes (for downloading and checking updates from Modrinth)
 
-## What's New in Beta 5
+## What's New in Beta 6
 
 - ⚡ Faster browsing and search: latest-version results are cached in the Modrinth dialog, reducing repeated lookups.
 - 🧠 Better instance detection: loader and Minecraft version detection now reuses shared instance-directory logic for Prism/MMC-style layouts.
@@ -57,10 +57,11 @@ If you're concerned, feel free to review the code or build it yourself from sour
 ## Quick Start
 
 1. Download the latest release from the [Releases page](https://github.com/xyrusL/melon_mod_manager/releases)
-2. Run the installer or extract the portable version
-3. Launch **Melon Mod Manager**
-4. Select your Minecraft folder (it usually auto-detects!)
-5. Start browsing and installing mods!
+2. Windows: run `MelonModManager-Win64-Setup-<version>.exe` or extract portable zip
+3. Linux: extract `MelonModManager-Linux-Setup-<version>.tar.gz` and run `melon_mod_manager`
+4. Launch **Melon Mod Manager**
+5. Select your Minecraft folder (it usually auto-detects!)
+6. Start browsing and installing mods!
 
 ## For Developers
 
@@ -72,6 +73,7 @@ flutter pub get
 
 # Run the app
 flutter run -d windows
+flutter run -d linux
 
 # Run tests
 flutter test

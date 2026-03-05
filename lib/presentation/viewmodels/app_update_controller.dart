@@ -44,15 +44,14 @@ final appUpdateControllerProvider =
 });
 
 class AppUpdateController extends StateNotifier<AppUpdateState> {
-  AppUpdateController(this._service) : super(const AppUpdateState()) {
-    Future<void>.microtask(() => checkForUpdates(silent: true));
-  }
+  AppUpdateController(this._service) : super(const AppUpdateState());
 
   final AppUpdateService _service;
 
   Future<void> checkForUpdates({bool silent = false}) async {
     if (!silent) {
-      state = state.copyWith(status: AppUpdateCheckStatus.checking, message: null);
+      state =
+          state.copyWith(status: AppUpdateCheckStatus.checking, message: null);
     }
 
     try {

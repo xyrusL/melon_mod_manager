@@ -296,6 +296,31 @@ class ModsController extends StateNotifier<ModsState> {
     }
   }
 
+  Future<void> forceRebuildContentData({
+    required String modsPath,
+  }) async {
+    try {
+      await _scanner.clearMetadataCache();
+      await _contentIconService.clearIconCache();
+      final prefix = '${p.normalize(modsPath)}::';
+      _contentCache.removeWhere((key, _) => key.startsWith(prefix));
+
+      await loadContent(
+        modsPath: modsPath,
+        contentType: state.contentType,
+        forceRefresh: true,
+      );
+      state = state.copyWith(
+        infoMessage: 'Rebuilt local metadata and icon cache.',
+        errorMessage: null,
+      );
+    } catch (error) {
+      state = state.copyWith(
+        errorMessage: _errorReporter.toUserMessage(error),
+      );
+    }
+  }
+
   Future<void> loadMods(String modsPath) async {
     _scanToken?.cancel();
     final token = ScanCancellationToken();

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/providers.dart';
+import '../../domain/entities/auto_update_settings.dart';
 import '../viewmodels/app_update_controller.dart';
 import 'panel_action_button.dart';
 
@@ -16,6 +17,7 @@ class ActionPanel extends ConsumerStatefulWidget {
     required this.onImportZip,
     required this.onExportZip,
     required this.onDeleteSelected,
+    required this.onForceRefreshData,
     required this.isBusy,
     required this.hasDeleteSelection,
     required this.downloadLabel,
@@ -32,6 +34,7 @@ class ActionPanel extends ConsumerStatefulWidget {
   final VoidCallback onImportZip;
   final VoidCallback onExportZip;
   final VoidCallback onDeleteSelected;
+  final Future<void> Function() onForceRefreshData;
   final bool isBusy;
   final bool hasDeleteSelection;
   final String downloadLabel;
@@ -66,11 +69,12 @@ class _ActionPanelState extends ConsumerState<ActionPanel> {
       environmentInfoProvider(widget.modsPath),
     );
     final appUpdateState = ref.watch(appUpdateControllerProvider);
-    final itemGap = (5 * widget.uiScale).clamp(4, 7).toDouble();
-    final sectionGap = (10 * widget.uiScale).clamp(8, 12).toDouble();
+    final itemGap = (4 * widget.uiScale).clamp(3, 5).toDouble();
+    final sectionGap = (8 * widget.uiScale).clamp(6, 9).toDouble();
     final panelPadding = (12 * widget.uiScale).clamp(10, 14).toDouble();
     final primaryHeight = (37 * widget.uiScale).clamp(34, 41).toDouble();
     final secondaryHeight = (34 * widget.uiScale).clamp(31, 37).toDouble();
+    final settingsButtonSize = (secondaryHeight * 0.88).clamp(28, 34).toDouble();
     final dangerHeight = (35 * widget.uiScale).clamp(32, 39).toDouble();
     final primaryFont = (14 * widget.uiScale).clamp(12.5, 15.5).toDouble();
     final secondaryFont = (13 * widget.uiScale).clamp(11.5, 14.5).toDouble();
@@ -266,35 +270,73 @@ class _ActionPanelState extends ConsumerState<ActionPanel> {
             ),
           ),
           SizedBox(height: itemGap),
-          PanelActionButton(
-            label: switch (appUpdateState.status) {
-              AppUpdateCheckStatus.checking => 'Checking Updates...',
-              AppUpdateCheckStatus.updateAvailable => 'New App Update',
-              AppUpdateCheckStatus.upToDate => 'App is Up to Date',
-              AppUpdateCheckStatus.error => 'Retry App Update Check',
-              AppUpdateCheckStatus.idle => 'Check App Updates',
-            },
-            icon: switch (appUpdateState.status) {
-              AppUpdateCheckStatus.checking => Icons.sync_rounded,
-              AppUpdateCheckStatus.updateAvailable =>
-                Icons.new_releases_rounded,
-              AppUpdateCheckStatus.upToDate => Icons.verified_rounded,
-              AppUpdateCheckStatus.error => Icons.error_outline_rounded,
-              AppUpdateCheckStatus.idle => Icons.system_update_rounded,
-            },
-            backgroundColor: switch (appUpdateState.status) {
-              AppUpdateCheckStatus.updateAvailable => const Color(0xFF8E79FF),
-              AppUpdateCheckStatus.upToDate => const Color(0xFF3C4E5F),
-              AppUpdateCheckStatus.error => const Color(0xFFB44F5E),
-              _ => const Color(0xFF2F4253),
-            },
-            foregroundColor: Colors.white,
-            onPressed: appUpdateState.status == AppUpdateCheckStatus.checking
-                ? null
-                : () => _checkAppUpdates(context, ref),
-            height: secondaryHeight,
-            fontSize: secondaryFont,
-            iconSize: buttonIcon,
+          Row(
+            children: [
+              Expanded(
+                child: PanelActionButton(
+                  label: switch (appUpdateState.status) {
+                    AppUpdateCheckStatus.checking => 'Checking',
+                    AppUpdateCheckStatus.updateAvailable => 'Update Ready',
+                    AppUpdateCheckStatus.upToDate => 'App Up to Date',
+                    AppUpdateCheckStatus.error => 'Retry Check',
+                    AppUpdateCheckStatus.idle => 'App Update',
+                  },
+                  icon: switch (appUpdateState.status) {
+                    AppUpdateCheckStatus.checking => Icons.sync_rounded,
+                    AppUpdateCheckStatus.updateAvailable =>
+                      Icons.new_releases_rounded,
+                    AppUpdateCheckStatus.upToDate => Icons.verified_rounded,
+                    AppUpdateCheckStatus.error => Icons.error_outline_rounded,
+                    AppUpdateCheckStatus.idle => Icons.system_update_rounded,
+                  },
+                  backgroundColor: switch (appUpdateState.status) {
+                    AppUpdateCheckStatus.updateAvailable =>
+                      const Color(0xFF8E79FF),
+                    AppUpdateCheckStatus.upToDate => const Color(0xFF3C4E5F),
+                    AppUpdateCheckStatus.error => const Color(0xFFB44F5E),
+                    _ => const Color(0xFF2F4253),
+                  },
+                  foregroundColor: Colors.white,
+                  onPressed:
+                      appUpdateState.status == AppUpdateCheckStatus.checking
+                          ? null
+                          : () => _checkAppUpdates(context, ref),
+                  height: secondaryHeight,
+                  fontSize: secondaryFont,
+                  iconSize: buttonIcon,
+                ),
+              ),
+              SizedBox(width: (3 * widget.uiScale).clamp(2.5, 6).toDouble()),
+              SizedBox(
+                width: settingsButtonSize,
+                height: settingsButtonSize,
+                child: Tooltip(
+                  message: 'Update Settings',
+                  child: FilledButton(
+                    onPressed: () => _showUpdateSettingsDialog(context),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF2E3E4E),
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.zero,
+                      minimumSize:
+                          Size(settingsButtonSize, settingsButtonSize),
+                      maximumSize:
+                          Size(settingsButtonSize, settingsButtonSize),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(
+                          (11.5 * widget.uiScale).clamp(10, 13.5).toDouble(),
+                        ),
+                      ),
+                    ),
+                    child: Icon(
+                      Icons.settings_rounded,
+                      size: (buttonIcon * 0.98).clamp(16, 22).toDouble(),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
           SizedBox(height: itemGap),
           PanelActionButton(
@@ -316,6 +358,15 @@ class _ActionPanelState extends ConsumerState<ActionPanel> {
     await showDialog<void>(
       context: context,
       builder: (context) => const _AboutDialog(),
+    );
+  }
+
+  Future<void> _showUpdateSettingsDialog(BuildContext context) async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) => _UpdateSettingsDialog(
+        onForceRefreshData: widget.onForceRefreshData,
+      ),
     );
   }
 
@@ -372,6 +423,385 @@ class _ActionPanelState extends ConsumerState<ActionPanel> {
       case AppUpdateCheckStatus.checking:
         break;
     }
+  }
+}
+
+class _UpdateSettingsDialog extends ConsumerStatefulWidget {
+  const _UpdateSettingsDialog({
+    required this.onForceRefreshData,
+  });
+
+  final Future<void> Function() onForceRefreshData;
+
+  @override
+  ConsumerState<_UpdateSettingsDialog> createState() =>
+      _UpdateSettingsDialogState();
+}
+
+class _UpdateSettingsDialogState extends ConsumerState<_UpdateSettingsDialog> {
+  static const _targets = <AutoUpdateTarget>[
+    AutoUpdateTarget.app,
+    AutoUpdateTarget.mods,
+    AutoUpdateTarget.resourcePacks,
+    AutoUpdateTarget.shaderPacks,
+  ];
+
+  final TextEditingController _customDaysController = TextEditingController(
+    text: '7',
+  );
+  AutoUpdateIntervalSetting _globalInterval =
+      const AutoUpdateIntervalSetting.off();
+  final Map<AutoUpdateTarget, DateTime?> _lastChecked = {};
+  bool _loading = true;
+  bool _saving = false;
+  bool _runningForceRefresh = false;
+
+  @override
+  void initState() {
+    super.initState();
+    for (final target in _targets) {
+      _lastChecked[target] = null;
+    }
+    Future<void>.microtask(_loadSettings);
+  }
+
+  @override
+  void dispose() {
+    _customDaysController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadSettings() async {
+    final repo = ref.read(settingsRepositoryProvider);
+    AutoUpdateIntervalSetting? global;
+    final loadedLastChecked = <AutoUpdateTarget, DateTime?>{};
+    for (final target in _targets) {
+      final interval = await repo.getAutoUpdateInterval(target);
+      global ??= interval;
+      loadedLastChecked[target] = await repo.getLastAutoUpdateCheckAt(target);
+    }
+    global ??= const AutoUpdateIntervalSetting.off();
+
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _globalInterval = global!;
+      _lastChecked
+        ..clear()
+        ..addAll(loadedLastChecked);
+      _customDaysController.text = _globalInterval.customDays.toString();
+      _loading = false;
+    });
+  }
+
+  Future<void> _saveSettings() async {
+    setState(() => _saving = true);
+    final repo = ref.read(settingsRepositoryProvider);
+    try {
+      final customDaysRaw = int.tryParse(_customDaysController.text.trim()) ??
+          _globalInterval.customDays;
+      final next =
+          _globalInterval.copyWith(customDays: customDaysRaw.clamp(1, 365));
+      for (final target in _targets) {
+        await repo.saveAutoUpdateInterval(target, next);
+      }
+      if (!mounted) {
+        return;
+      }
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Update settings saved.')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _saving = false);
+      }
+    }
+  }
+
+  Future<void> _forceRefreshData() async {
+    setState(() => _runningForceRefresh = true);
+    try {
+      await widget.onForceRefreshData();
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Rebuild requested. Refreshing data...')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _runningForceRefresh = false);
+      }
+    }
+  }
+
+  String _targetLabel(AutoUpdateTarget target) => switch (target) {
+        AutoUpdateTarget.app => 'App updates',
+        AutoUpdateTarget.mods => 'Mod updates',
+        AutoUpdateTarget.resourcePacks => 'Resource pack updates',
+        AutoUpdateTarget.shaderPacks => 'Shader updates',
+      };
+
+  String _lastCheckedLabel(DateTime? value) {
+    if (value == null) {
+      return 'Never';
+    }
+    final month = value.month.toString().padLeft(2, '0');
+    final day = value.day.toString().padLeft(2, '0');
+    final hour = value.hour.toString().padLeft(2, '0');
+    final minute = value.minute.toString().padLeft(2, '0');
+    return '${value.year}-$month-$day $hour:$minute';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Update Settings'),
+      content: SizedBox(
+        width: 540,
+        child: _loading
+            ? const SizedBox(
+                height: 120,
+                child: Center(child: CircularProgressIndicator()),
+              )
+            : SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Choose how often Melon checks for updates.',
+                      style: TextStyle(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.76),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    _buildUnifiedIntervalCard(),
+                    const SizedBox(height: 12),
+                    _buildLastCheckedSummary(),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: _runningForceRefresh || _saving
+                            ? null
+                            : _forceRefreshData,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF1E3A2F),
+                          foregroundColor: const Color(0xFF2BCF99),
+                          side: const BorderSide(
+                            color: Color(0xFF2BCF99),
+                            width: 1,
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 12,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        icon: _runningForceRefresh
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Color(0xFF2BCF99),
+                                ),
+                              )
+                            : const Icon(Icons.refresh_rounded, size: 16),
+                        label: const Text(
+                          'Refresh Local Data',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _saving ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: _loading || _saving ? null : _saveSettings,
+          child: Text(_saving ? 'Saving...' : 'Save'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildUnifiedIntervalCard() {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Check Frequency',
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<AutoUpdateIntervalPreset>(
+                  initialValue: _globalInterval.preset,
+                  decoration: const InputDecoration(
+                    labelText: 'How often to check',
+                    isDense: true,
+                    border: OutlineInputBorder(),
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                      value: AutoUpdateIntervalPreset.off,
+                      child: Text('Off'),
+                    ),
+                    DropdownMenuItem(
+                      value: AutoUpdateIntervalPreset.day1,
+                      child: Text('Every 1 day'),
+                    ),
+                    DropdownMenuItem(
+                      value: AutoUpdateIntervalPreset.day3,
+                      child: Text('Every 3 days'),
+                    ),
+                    DropdownMenuItem(
+                      value: AutoUpdateIntervalPreset.week1,
+                      child: Text('Every week'),
+                    ),
+                    DropdownMenuItem(
+                      value: AutoUpdateIntervalPreset.month1,
+                      child: Text('Every month'),
+                    ),
+                    DropdownMenuItem(
+                      value: AutoUpdateIntervalPreset.custom,
+                      child: Text('Custom'),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    if (value == null) {
+                      return;
+                    }
+                    setState(() {
+                      _globalInterval = _globalInterval.copyWith(preset: value);
+                    });
+                  },
+                ),
+              ),
+              if (_globalInterval.preset ==
+                  AutoUpdateIntervalPreset.custom) ...[
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 130,
+                  child: TextField(
+                    controller: _customDaysController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Days',
+                      isDense: true,
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLastCheckedSummary() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.history_rounded,
+                size: 14,
+                color: Colors.white.withValues(alpha: 0.55),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'Last Checked Time',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                  color: Colors.white.withValues(alpha: 0.85),
+                  letterSpacing: 0.4,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          for (final target in _targets) ...[
+            _buildLastCheckedRow(target),
+            if (target != _targets.last) const SizedBox(height: 6),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLastCheckedRow(AutoUpdateTarget target) {
+    final value = _lastChecked[target];
+    final isNever = value == null;
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            _targetLabel(target),
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.white.withValues(alpha: 0.65),
+            ),
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          decoration: BoxDecoration(
+            color: isNever
+                ? Colors.white.withValues(alpha: 0.06)
+                : const Color(0xFF1E3A2F),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: isNever
+                  ? Colors.white.withValues(alpha: 0.10)
+                  : const Color(0xFF2BCF99).withValues(alpha: 0.35),
+            ),
+          ),
+          child: Text(
+            _lastCheckedLabel(value),
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: isNever
+                  ? Colors.white.withValues(alpha: 0.38)
+                  : const Color(0xFF2BCF99),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }
 

@@ -9,7 +9,9 @@ import 'package:package_info_plus/package_info_plus.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/services/file_install_service.dart';
+import '../../domain/entities/auto_update_settings.dart';
 import '../../domain/entities/content_type.dart';
+import '../../domain/services/auto_update_scheduler.dart';
 import '../dialogs/confirm_overwrite_dialog.dart';
 import '../dialogs/modrinth_search_dialog.dart';
 import '../viewmodels/app_controller.dart';
@@ -30,6 +32,7 @@ class MainScreen extends ConsumerStatefulWidget {
 }
 
 class _MainScreenState extends ConsumerState<MainScreen> {
+  static const _autoUpdateScheduler = AutoUpdateScheduler();
   ProviderSubscription<AppUpdateState>? _updateSub;
   bool _autoUpdatePromptShown = false;
   bool _isInitializing = true;
@@ -285,6 +288,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                                 onImportZip: _importZipPack,
                                 onExportZip: _exportZipPack,
                                 onDeleteSelected: _deleteSelected,
+                                onForceRefreshData: _forceRefreshData,
                               ),
                             ),
                           ],
@@ -719,6 +723,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
           modsPath: widget.modsPath,
           contentType: contentType,
         );
+    await _runAutoContentUpdateCheckIfDue(contentType);
   }
 
   Future<void> _initializeForPath(String modsPath) async {
@@ -735,11 +740,100 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     if (mounted) {
       setState(() => _isInitializing = false);
     }
+    await _runAutoChecksAfterInitialLoad(currentType);
     unawaited(
       _warmUpMetadataIfNeeded(modsPath, notifier).catchError((_) {
         // Warm-up should never block the primary UI load.
       }),
     );
+  }
+
+  Future<void> _runAutoChecksAfterInitialLoad(ContentType contentType) async {
+    await _runAutoAppUpdateCheckIfDue();
+    await _runAutoContentUpdateCheckIfDue(contentType);
+  }
+
+  Future<void> _runAutoAppUpdateCheckIfDue() async {
+    final settingsRepository = ref.read(settingsRepositoryProvider);
+    final interval =
+        await settingsRepository.getAutoUpdateInterval(AutoUpdateTarget.app);
+    final lastChecked =
+        await settingsRepository.getLastAutoUpdateCheckAt(AutoUpdateTarget.app);
+    final shouldRun = _autoUpdateScheduler.shouldRun(
+      interval: interval,
+      lastCheckedAt: lastChecked,
+    );
+    if (!shouldRun) {
+      return;
+    }
+
+    try {
+      await ref.read(appUpdateControllerProvider.notifier).checkForUpdates(
+            silent: true,
+          );
+      await settingsRepository.markAutoUpdateCheckAt(
+        AutoUpdateTarget.app,
+        DateTime.now(),
+      );
+    } catch (_) {
+      // Auto-check should never block the main screen flow.
+    }
+  }
+
+  Future<void> _runAutoContentUpdateCheckIfDue(ContentType contentType) async {
+    final settingsRepository = ref.read(settingsRepositoryProvider);
+    final target = _targetForContentType(contentType);
+    final interval = await settingsRepository.getAutoUpdateInterval(target);
+    final lastChecked =
+        await settingsRepository.getLastAutoUpdateCheckAt(target);
+    final shouldRun = _autoUpdateScheduler.shouldRun(
+      interval: interval,
+      lastCheckedAt: lastChecked,
+    );
+    if (!shouldRun) {
+      return;
+    }
+
+    UpdateCheckPreview preview;
+    try {
+      preview = await ref
+          .read(modsControllerProvider.notifier)
+          .checkForUpdatesPreview(
+            modsPath: widget.modsPath,
+          );
+      await settingsRepository.markAutoUpdateCheckAt(target, DateTime.now());
+    } catch (_) {
+      return;
+    }
+
+    if (!mounted || preview.totalChecked == 0) {
+      return;
+    }
+    if (preview.updates.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Auto check: ${preview.updates.length} ${contentType.singularLabel.toLowerCase()} update(s) found.',
+          ),
+        ),
+      );
+    }
+  }
+
+  AutoUpdateTarget _targetForContentType(ContentType type) {
+    return switch (type) {
+      ContentType.mod => AutoUpdateTarget.mods,
+      ContentType.resourcePack => AutoUpdateTarget.resourcePacks,
+      ContentType.shaderPack => AutoUpdateTarget.shaderPacks,
+    };
+  }
+
+  Future<void> _forceRefreshData() async {
+    ref.invalidate(developerSnapshotProvider);
+    ref.invalidate(environmentInfoProvider(widget.modsPath));
+    await ref.read(modsControllerProvider.notifier).forceRebuildContentData(
+          modsPath: widget.modsPath,
+        );
   }
 
   Future<void> _warmUpMetadataIfNeeded(
@@ -756,7 +850,6 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     await notifier.warmUpContentCaches(modsPath);
     await settingsRepository.markMetadataPreparedForAppVersion(appVersion);
   }
-
 }
 
 class _ContentTypeTabs extends StatelessWidget {

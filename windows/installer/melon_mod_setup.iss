@@ -2,7 +2,7 @@
 ; Build app first, then point Source to your release output folder.
 
 #ifndef MyAppVersion
-  #define MyAppVersion "1.0.0-beta.5"
+  #define MyAppVersion "1.0.0-beta.6"
 #endif
 
 #ifndef MyOutputBaseFilename

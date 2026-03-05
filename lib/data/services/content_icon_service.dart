@@ -54,9 +54,9 @@ class ContentIconService {
           '${file.path}|${stat.size}|${stat.modified.millisecondsSinceEpoch}';
       final hash = sha1.convert(utf8.encode(key)).toString();
 
-      final tempDir = await getTemporaryDirectory();
+      final supportDir = await getApplicationSupportDirectory();
       final iconDir =
-          Directory(p.join(tempDir.path, 'melon_mod', 'content_icon_cache'));
+          Directory(p.join(supportDir.path, 'melon_mod', 'content_icon_cache'));
       if (!await iconDir.exists()) {
         await iconDir.create(recursive: true);
       }
@@ -73,6 +73,19 @@ class ContentIconService {
       return iconFile.path;
     } catch (_) {
       return null;
+    }
+  }
+
+  Future<void> clearIconCache() async {
+    try {
+      final supportDir = await getApplicationSupportDirectory();
+      final iconDir =
+          Directory(p.join(supportDir.path, 'melon_mod', 'content_icon_cache'));
+      if (await iconDir.exists()) {
+        await iconDir.delete(recursive: true);
+      }
+    } catch (_) {
+      // Cache cleanup should be best-effort only.
     }
   }
 }

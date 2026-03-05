@@ -84,7 +84,8 @@ class ModScannerService {
       try {
         if (cached != null &&
             cached.lastModifiedMs == stat.modified.millisecondsSinceEpoch &&
-            cached.fileSize == stat.size) {
+            cached.fileSize == stat.size &&
+            await _isCachedIconAvailable(cached.iconCachePath)) {
           metadata = cached.toMetadata(file.path);
         } else {
           metadata = await _readMetadataFromFile(file);
@@ -200,8 +201,9 @@ class ModScannerService {
       return null;
     }
 
-    final tempDir = await getTemporaryDirectory();
-    final iconDir = Directory(p.join(tempDir.path, 'melon_mod', 'icon_cache'));
+    final supportDir = await getApplicationSupportDirectory();
+    final iconDir =
+        Directory(p.join(supportDir.path, 'melon_mod', 'icon_cache'));
     if (!await iconDir.exists()) {
       await iconDir.create(recursive: true);
     }
@@ -214,6 +216,35 @@ class ModScannerService {
     }
 
     return iconFile.path;
+  }
+
+  Future<void> clearMetadataCache() async {
+    try {
+      final file = await _metadataCacheFile();
+      if (await file.exists()) {
+        await file.delete();
+      }
+    } catch (_) {
+      // Cache cleanup should be best-effort only.
+    }
+
+    try {
+      final supportDir = await getApplicationSupportDirectory();
+      final iconDir =
+          Directory(p.join(supportDir.path, 'melon_mod', 'icon_cache'));
+      if (await iconDir.exists()) {
+        await iconDir.delete(recursive: true);
+      }
+    } catch (_) {
+      // Cache cleanup should be best-effort only.
+    }
+  }
+
+  Future<bool> _isCachedIconAvailable(String? iconPath) async {
+    if (iconPath == null || iconPath.trim().isEmpty) {
+      return true;
+    }
+    return File(iconPath).exists();
   }
 }
 

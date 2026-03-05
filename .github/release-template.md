@@ -1,6 +1,6 @@
 # 🍈 Melon Mod Manager
 
-Melon Mod Manager is a Windows desktop app focused on making Minecraft mod management simple and safe.
+Melon Mod Manager is a desktop app focused on making Minecraft mod management simple and safe.
 
 ## Goal
 
@@ -16,8 +16,9 @@ Help players quickly download mods from Modrinth and manage the Minecraft `mods`
 
 ## Included assets
 
-- Windows installer (`.exe`)
+- Windows installer (`MelonModManager-Win64-Setup-<version>.exe`)
 - Portable Windows build (`.zip`)
+- Linux package (`MelonModManager-Linux-Setup-<version>.tar.gz`)
 
 ## Notes
 

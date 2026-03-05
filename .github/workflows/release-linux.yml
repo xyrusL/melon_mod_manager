@@ -1,0 +1,109 @@
+name: Release Linux
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Existing git tag to release (example: v1.0.0-beta.1)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-upload-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref }}
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Resolve App Version
+        id: meta
+        shell: bash
+        run: |
+          pubspec_version="$(sed -nE 's/^version:[[:space:]]*(.+)$/\1/p' pubspec.yaml | head -n1 | tr -d '\r')"
+          app_version="${pubspec_version%%+*}"
+          dispatch_tag="${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || '' }}"
+          if [[ -n "$dispatch_tag" ]]; then
+            tag_name="$dispatch_tag"
+          else
+            tag_name="${{ github.ref_name }}"
+          fi
+          if [[ -z "$tag_name" ]]; then
+            tag_name="v$app_version"
+          fi
+          expected_tag="v$app_version"
+          if [[ "$tag_name" != "$expected_tag" ]]; then
+            echo "Tag/version mismatch. Tag is '$tag_name' but pubspec.yaml is '$expected_tag'."
+            exit 1
+          fi
+          echo "app_version=$app_version" >> "$GITHUB_OUTPUT"
+          echo "tag_name=$tag_name" >> "$GITHUB_OUTPUT"
+
+      - name: Install Linux Build Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
+
+      - name: Enable Linux Desktop
+        run: flutter config --enable-linux-desktop
+
+      - name: Ensure Linux Runner Exists
+        run: flutter create --platforms=linux .
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test
+        run: flutter test
+
+      - name: Build Linux Release
+        run: flutter build linux --release
+
+      - name: Create Linux Archive
+        id: linux_asset
+        shell: bash
+        run: |
+          app_version="${{ steps.meta.outputs.app_version }}"
+          bundle_dir="build/linux/x64/release/bundle"
+          if [[ ! -d "$bundle_dir" ]]; then
+            echo "Linux release output not found at $bundle_dir"
+            exit 1
+          fi
+          asset_name="MelonModManager-Linux-Setup-$app_version.tar.gz"
+          tar -C "$bundle_dir" -czf "$asset_name" .
+          echo "asset_file=$asset_name" >> "$GITHUB_OUTPUT"
+
+      - name: Generate SHA256 Checksums
+        id: checksums
+        shell: bash
+        run: |
+          asset="${{ steps.linux_asset.outputs.asset_file }}"
+          checksum_file="SHA256SUMS-linux.txt"
+          sha256sum "$asset" > "$checksum_file"
+          echo "checksums_file=$checksum_file" >> "$GITHUB_OUTPUT"
+
+      - name: Upload Linux Assets to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag_name }}
+          overwrite_files: true
+          files: |
+            ${{ steps.linux_asset.outputs.asset_file }}
+            ${{ steps.checksums.outputs.checksums_file }}
