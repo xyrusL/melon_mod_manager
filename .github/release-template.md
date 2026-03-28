@@ -1,26 +1,17 @@
-# 🍈 Melon Mod Manager
+## Melon Mod Manager Beta 6.1
 
-Melon Mod Manager is a desktop app focused on making Minecraft mod management simple and safe.
+This Beta 6.1 update focuses on fixing shader and pack icons so installed content is represented more reliably in the app.
 
-## Goal
+### Fixes and improvements
 
-Help players quickly download mods from Modrinth and manage the Minecraft `mods` folder without manual file juggling.
+- Fixed shader pack icons not showing in the Shaders tab for Modrinth-tracked packs.
+- Added Modrinth project icon fallback when a local `pack.png` or `icon.png` is missing.
+- Removed the incorrect fallback that could show a random internal texture as the item icon.
+- Improved local icon caching so pack icons persist more reliably after rescans and app restarts.
 
-## Highlights
-
-- Browse and install mods directly from Modrinth
-- Manage local `.jar` mods in one place
-- Check updates with review before applying
-- Import and export mod packs as `.zip`
-- Support for Fabric, Quilt, Forge, and NeoForge instances
-
-## Included assets
+### Included assets
 
 - Windows installer (`MelonModManager-Win64-Setup-<version>.exe`)
-- Portable Windows build (`.zip`)
+- Portable Windows build (`melon_mod_manager_windows_portable.zip`)
 - Linux package (`MelonModManager-Linux-Setup-<version>.tar.gz`)
-
-## Notes
-
-- This release is generated automatically from the repository CI workflow.
-- Release notes below are generated from recent changes.
+- Checksums (`SHA256SUMS.txt`, `SHA256SUMS-linux.txt`)

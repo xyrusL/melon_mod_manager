@@ -592,6 +592,7 @@ class ModsController extends StateNotifier<ModsState> {
           versionNumber: latest.versionNumber,
           sha1: selected.sha1,
           sha512: selected.sha512,
+          projectIconUrl: project.iconUrl,
         ),
       );
 
@@ -1230,20 +1231,48 @@ class ModsController extends StateNotifier<ModsState> {
         return 'Unknown';
       }
       await _mappingRepository.put(
-        ModrinthMapping(
-          jarFileName: mapping.jarFileName,
-          projectId: mapping.projectId,
-          versionId: mapping.versionId,
-          installedAt: mapping.installedAt,
-          versionNumber: version.versionNumber,
-          sha1: mapping.sha1,
-          sha512: mapping.sha512,
-        ),
+        mapping.copyWith(versionNumber: version.versionNumber),
       );
       return version.versionNumber;
     } catch (_) {
       return 'Unknown';
     }
+  }
+
+  Future<String?> _resolvePackIcon({
+    required String filePath,
+    required ModrinthMapping? mapping,
+  }) async {
+    final localIcon = await _contentIconService.extractPackIcon(filePath);
+    if (localIcon != null && localIcon.isNotEmpty) {
+      return localIcon;
+    }
+
+    if (mapping == null || mapping.projectId.trim().isEmpty) {
+      return null;
+    }
+
+    var iconUrl = mapping.projectIconUrl?.trim();
+    if (iconUrl == null || iconUrl.isEmpty) {
+      try {
+        final project = await _modrinthRepository.getProjectById(
+          mapping.projectId,
+        );
+        iconUrl = project?.iconUrl?.trim();
+        if (iconUrl != null && iconUrl.isNotEmpty) {
+          await _mappingRepository.put(
+            mapping.copyWith(projectIconUrl: iconUrl),
+          );
+        }
+      } catch (_) {
+        return null;
+      }
+    }
+
+    return _contentIconService.cacheProjectIcon(
+      projectId: mapping.projectId,
+      iconUrl: iconUrl,
+    );
   }
 
   Future<void> _resolveExternalMappingsSilently({
@@ -1289,6 +1318,13 @@ class ModsController extends StateNotifier<ModsState> {
           version: matchedVersion,
           sha1: sha1,
         );
+        String? projectIconUrl;
+        if (contentType != ContentType.mod) {
+          final project = await _modrinthRepository.getProjectById(
+            matchedVersion.projectId,
+          );
+          projectIconUrl = project?.iconUrl?.trim();
+        }
         final mapping = ModrinthMapping(
           jarFileName: fileName,
           projectId: matchedVersion.projectId,
@@ -1297,6 +1333,7 @@ class ModsController extends StateNotifier<ModsState> {
           versionNumber: matchedVersion.versionNumber,
           sha1: sha1,
           sha512: matchedFile?.sha512,
+          projectIconUrl: projectIconUrl,
         );
         await _mappingRepository.put(mapping);
         resolved[fileName] = mapping;
@@ -1717,8 +1754,10 @@ class ModsController extends StateNotifier<ModsState> {
       final mapped = await Future.wait(
         batch.map((file) async {
           final mapping = await _mappingRepository.getByFileName(file.fileName);
-          final localIcon =
-              await _contentIconService.extractPackIcon(file.filePath);
+          final iconPath = await _resolvePackIcon(
+            filePath: file.filePath,
+            mapping: mapping,
+          );
           final version = await _resolvePackVersion(mapping);
           return ModItem(
             fileName: file.fileName,
@@ -1730,7 +1769,7 @@ class ModsController extends StateNotifier<ModsState> {
                 ? ModProviderType.external
                 : ModProviderType.modrinth,
             lastModified: file.lastModified,
-            iconCachePath: localIcon,
+            iconCachePath: iconPath,
             modrinthProjectId: mapping?.projectId,
             modrinthVersionId: mapping?.versionId,
           );

@@ -228,32 +228,7 @@ jobs:
           tag_name: ${{ steps.meta.outputs.tag_name }}
           name: ${{ steps.meta.outputs.release_title }}
           prerelease: ${{ steps.meta.outputs.is_prerelease }}
-          body: |
-            ## 🍈 Melon Mod Manager
-            **Channel:** ${{ steps.meta.outputs.release_channel }}
-
-            Melon Mod Manager helps players download mods from Modrinth and safely manage the Minecraft `mods` folder.
-
-            ### Core features
-            - Select or auto-detect your Minecraft `mods` folder
-            - Browse and install mods directly from Modrinth
-            - Check updates, review updates, then apply them
-            - Add and manage external `.jar` mods
-            - Import/export mod packs as `.zip`
-            - Supports Fabric, Quilt, Forge, and NeoForge
-
-            ### Included assets
-            - Windows installer (`.exe`) for easiest setup
-            - Portable Windows build (`.zip`) for no-install usage
-            - Linux package (`.tar.gz`) for Linux desktop usage
-            - SHA256 checksums (`SHA256SUMS.txt`, `SHA256SUMS-linux.txt`) for integrity verification
-
-            ### Notes
-            - Use installer for most Windows users
-            - Portable zip can run without installation on Windows
-            - Linux package extracts to a runnable bundle
-            - Verify downloads using the included checksum files
-          generate_release_notes: true
+          body_path: .github/release-template.md
           overwrite_files: true
           files: |
             ${{ steps.portable.outputs.portable_zip }}

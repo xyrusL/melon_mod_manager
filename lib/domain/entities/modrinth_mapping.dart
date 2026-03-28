@@ -7,6 +7,7 @@ class ModrinthMapping {
     this.versionNumber,
     this.sha1,
     this.sha512,
+    this.projectIconUrl,
   });
 
   final String jarFileName;
@@ -16,6 +17,29 @@ class ModrinthMapping {
   final String? versionNumber;
   final String? sha1;
   final String? sha512;
+  final String? projectIconUrl;
+
+  ModrinthMapping copyWith({
+    String? jarFileName,
+    String? projectId,
+    String? versionId,
+    DateTime? installedAt,
+    String? versionNumber,
+    String? sha1,
+    String? sha512,
+    String? projectIconUrl,
+  }) {
+    return ModrinthMapping(
+      jarFileName: jarFileName ?? this.jarFileName,
+      projectId: projectId ?? this.projectId,
+      versionId: versionId ?? this.versionId,
+      installedAt: installedAt ?? this.installedAt,
+      versionNumber: versionNumber ?? this.versionNumber,
+      sha1: sha1 ?? this.sha1,
+      sha512: sha512 ?? this.sha512,
+      projectIconUrl: projectIconUrl ?? this.projectIconUrl,
+    );
+  }
 
   Map<String, dynamic> toJson() => {
         'jarFileName': jarFileName,
@@ -25,6 +49,7 @@ class ModrinthMapping {
         'versionNumber': versionNumber,
         'sha1': sha1,
         'sha512': sha512,
+        'projectIconUrl': projectIconUrl,
       };
 
   factory ModrinthMapping.fromJson(Map<String, dynamic> json) {
@@ -36,6 +61,7 @@ class ModrinthMapping {
       versionNumber: json['versionNumber'] as String?,
       sha1: json['sha1'] as String?,
       sha512: json['sha512'] as String?,
+      projectIconUrl: json['projectIconUrl'] as String?,
     );
   }
 }
