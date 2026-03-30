@@ -1,7 +1,7 @@
 name: melon_mod
 description: "Minecraft Fabric/Quilt mod manager for desktop."
 publish_to: 'none'
-version: 1.6.4-2026.03.30+1
+version: 1.6.5-2026.03.30+1
 homepage: https://github.com/xyrusL/melon_mod_manager
 repository: https://github.com/xyrusL/melon_mod_manager
 issue_tracker: https://github.com/xyrusL/melon_mod_manager/issues

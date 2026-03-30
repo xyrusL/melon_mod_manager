@@ -7,6 +7,7 @@ import '../../domain/entities/auto_update_settings.dart';
 import '../viewmodels/app_update_controller.dart';
 import 'app_modal.dart';
 import 'panel_action_button.dart';
+import 'refresh_progress_dialog.dart';
 
 class ActionPanel extends ConsumerStatefulWidget {
   const ActionPanel({
@@ -35,7 +36,7 @@ class ActionPanel extends ConsumerStatefulWidget {
   final VoidCallback onImportZip;
   final VoidCallback onExportZip;
   final VoidCallback onDeleteSelected;
-  final Future<void> Function() onForceRefreshData;
+  final RunRefreshWithProgress onForceRefreshData;
   final bool isBusy;
   final bool hasDeleteSelection;
   final String downloadLabel;
@@ -262,7 +263,7 @@ class _ActionPanelState extends ConsumerState<ActionPanel> {
             versionLabel.when(
               data: (v) => v,
               loading: () => 'Loading version...',
-              error: (_, __) => 'v1.6.4-2026.03.30',
+              error: (_, __) => 'v1.6.5-2026.03.30',
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -433,7 +434,7 @@ class _UpdateSettingsDialog extends ConsumerStatefulWidget {
     required this.onForceRefreshData,
   });
 
-  final Future<void> Function() onForceRefreshData;
+  final RunRefreshWithProgress onForceRefreshData;
 
   @override
   ConsumerState<_UpdateSettingsDialog> createState() =>
@@ -525,13 +526,19 @@ class _UpdateSettingsDialogState extends ConsumerState<_UpdateSettingsDialog> {
   Future<void> _forceRefreshData() async {
     setState(() => _runningForceRefresh = true);
     try {
-      await widget.onForceRefreshData();
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => RefreshProgressDialog(
+          title: 'Refreshing Local Data',
+          subtitle: 'Rebuilding cached local data for Melon.',
+          startingMessage: 'Preparing local data refresh...',
+          runRefresh: widget.onForceRefreshData,
+        ),
+      );
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Rebuild requested. Refreshing data...')),
-      );
     } finally {
       if (mounted) {
         setState(() => _runningForceRefresh = false);
@@ -993,7 +1000,7 @@ class _AboutDialog extends ConsumerWidget {
         versionLabel.when(
           data: (v) => v,
           loading: () => 'Loading version...',
-          error: (_, __) => 'v1.6.4-2026.03.30',
+          error: (_, __) => 'v1.6.5-2026.03.30',
         ),
       ),
       width: 560,

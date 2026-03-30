@@ -88,7 +88,11 @@ final developerSnapshotProvider =
 
 final appVersionLabelProvider = FutureProvider.autoDispose<String>((ref) async {
   final info = await PackageInfo.fromPlatform();
-  return 'v${info.version} (Beta)';
+  final version = info.version.trim();
+  if (version.contains('-beta')) {
+    return 'v$version (Beta)';
+  }
+  return 'v$version';
 });
 
 final modrinthRepositoryProvider = Provider<ModrinthRepository>((ref) {

@@ -21,6 +21,7 @@ import '../viewmodels/mods_controller.dart';
 import '../widgets/action_panel.dart';
 import '../widgets/app_modal.dart';
 import '../widgets/mods_table.dart';
+import '../widgets/refresh_progress_dialog.dart';
 import '../widgets/status_banner.dart';
 import '../widgets/top_bar.dart';
 
@@ -837,12 +838,56 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     };
   }
 
-  Future<void> _forceRefreshData() async {
+  Future<String> _forceRefreshData(RefreshProgressCallback onProgress) async {
+    const totalSteps = 5;
+    final notifier = ref.read(modsControllerProvider.notifier);
+    final initialType = ref.read(modsControllerProvider).contentType;
+    final notes = <String>[];
+
+    onProgress(
+      const RefreshProgressSnapshot(
+        detail: 'Clearing local metadata and icon cache...',
+        step: 1,
+        totalSteps: totalSteps,
+      ),
+    );
     ref.invalidate(developerSnapshotProvider);
     ref.invalidate(environmentInfoProvider(widget.modsPath));
-    await ref.read(modsControllerProvider.notifier).forceRebuildContentData(
-          modsPath: widget.modsPath,
-        );
+    await notifier.clearLocalContentCaches();
+
+    var step = 1;
+    for (final type in ContentType.values) {
+      step++;
+      onProgress(
+        RefreshProgressSnapshot(
+          detail: 'Rebuilding ${type.label.toLowerCase()} local data...',
+          step: step,
+          totalSteps: totalSteps,
+        ),
+      );
+      await notifier.loadContent(
+        modsPath: widget.modsPath,
+        contentType: type,
+        forceRefresh: true,
+      );
+      notes.add(
+          '${type.label}: ${ref.read(modsControllerProvider).mods.length} item(s) refreshed.');
+    }
+
+    onProgress(
+      const RefreshProgressSnapshot(
+        detail: 'Restoring your current view...',
+        step: totalSteps,
+        totalSteps: totalSteps,
+      ),
+    );
+    await notifier.loadContent(
+      modsPath: widget.modsPath,
+      contentType: initialType,
+      forceRefresh: true,
+    );
+
+    return 'Local data refresh complete.\n\n${notes.join('\n')}';
   }
 
   Future<void> _showPostUpdateRefreshPromptIfNeeded() async {
@@ -880,20 +925,36 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (context) => _PostUpdateDataRefreshDialog(
+      builder: (context) => RefreshProgressDialog(
+        title: 'Refreshing Data',
+        subtitle:
+            'Checking Modrinth-backed mods, shader packs, and resource packs.',
+        startingMessage: 'Preparing Modrinth data refresh...',
         runRefresh: _refreshDataAfterAppUpdate,
       ),
     );
   }
 
-  Future<String> _refreshDataAfterAppUpdate() async {
+  Future<String> _refreshDataAfterAppUpdate(
+    RefreshProgressCallback onProgress,
+  ) async {
     final notifier = ref.read(modsControllerProvider.notifier);
     final initialType = ref.read(modsControllerProvider).contentType;
     var refreshedFromModrinth = 0;
     var skippedExternal = 0;
     final notes = <String>[];
+    final totalSteps = (ContentType.values.length * 2) + 1;
+    var step = 0;
 
     for (final type in ContentType.values) {
+      step++;
+      onProgress(
+        RefreshProgressSnapshot(
+          detail: 'Loading ${type.label.toLowerCase()} from your library...',
+          step: step,
+          totalSteps: totalSteps,
+        ),
+      );
       await notifier.loadContent(
         modsPath: widget.modsPath,
         contentType: type,
@@ -909,11 +970,28 @@ class _MainScreenState extends ConsumerState<MainScreen> {
       refreshedFromModrinth += tracked;
       skippedExternal += skipped;
 
+      step++;
       if (tracked == 0) {
+        onProgress(
+          RefreshProgressSnapshot(
+            detail:
+                'No Modrinth refresh needed for ${type.label.toLowerCase()}.',
+            step: step,
+            totalSteps: totalSteps,
+          ),
+        );
         notes.add('${type.label}: nothing from Modrinth to refresh.');
         continue;
       }
 
+      onProgress(
+        RefreshProgressSnapshot(
+          detail:
+              'Refreshing ${type.label.toLowerCase()} data from Modrinth...',
+          step: step,
+          totalSteps: totalSteps,
+        ),
+      );
       await notifier.checkForUpdatesPreview(modsPath: widget.modsPath);
       notes.add(
         '${type.label}: refreshed $tracked Modrinth item(s)'
@@ -921,6 +999,13 @@ class _MainScreenState extends ConsumerState<MainScreen> {
       );
     }
 
+    onProgress(
+      RefreshProgressSnapshot(
+        detail: 'Restoring your current view...',
+        step: totalSteps,
+        totalSteps: totalSteps,
+      ),
+    );
     await notifier.loadContent(
       modsPath: widget.modsPath,
       contentType: initialType,
@@ -1007,84 +1092,6 @@ class _AppUpdatedRefreshDialog extends StatelessWidget {
         FilledButton(
           onPressed: () => Navigator.of(context).pop(true),
           child: const Text('Refresh Data'),
-        ),
-      ],
-    );
-  }
-}
-
-class _PostUpdateDataRefreshDialog extends StatefulWidget {
-  const _PostUpdateDataRefreshDialog({required this.runRefresh});
-
-  final Future<String> Function() runRefresh;
-
-  @override
-  State<_PostUpdateDataRefreshDialog> createState() =>
-      _PostUpdateDataRefreshDialogState();
-}
-
-class _PostUpdateDataRefreshDialogState
-    extends State<_PostUpdateDataRefreshDialog> {
-  String _message = 'Refreshing Modrinth data...';
-  bool _done = false;
-  bool _failed = false;
-
-  @override
-  void initState() {
-    super.initState();
-    Future.microtask(_run);
-  }
-
-  Future<void> _run() async {
-    try {
-      final result = await widget.runRefresh();
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _done = true;
-        _failed = false;
-        _message = result;
-      });
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _done = true;
-        _failed = true;
-        _message = 'Could not refresh Modrinth data.\n$error';
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AppModal(
-      title: const AppModalTitle('Refreshing Data'),
-      subtitle: const Text(
-        'Checking Modrinth-backed mods, shader packs, and resource packs.',
-      ),
-      showCloseButton: false,
-      width: 520,
-      content: SizedBox(
-        width: 520,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(_message),
-            if (!_done) ...[
-              const SizedBox(height: 12),
-              const LinearProgressIndicator(),
-            ],
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: _done ? () => Navigator.of(context).pop() : null,
-          child: Text(_failed ? 'Close' : 'Done'),
         ),
       ],
     );

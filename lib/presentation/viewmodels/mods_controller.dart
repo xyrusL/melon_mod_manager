@@ -321,6 +321,12 @@ class ModsController extends StateNotifier<ModsState> {
     }
   }
 
+  Future<void> clearLocalContentCaches() async {
+    await _scanner.clearMetadataCache();
+    await _contentIconService.clearIconCache();
+    _contentCache.clear();
+  }
+
   Future<void> loadMods(String modsPath) async {
     _scanToken?.cancel();
     final token = ScanCancellationToken();
