@@ -1,6 +1,6 @@
-## Melon Mod Manager Beta 6.2
+## Melon Mod Manager 1.6.3
 
-This Beta 6.2 update focuses on polishing the app flow after an update and making popup dialogs feel consistent across the whole app.
+This 1.6.3 update moves Melon to the new stable date-based version format and polishes the app flow after an update with more consistent popup dialogs.
 
 ### Fixes and improvements
 
@@ -8,7 +8,9 @@ This Beta 6.2 update focuses on polishing the app flow after an update and makin
 - Added a post-update modal that tells users the app update is complete and offers a data refresh right away.
 - Added refresh handling for Modrinth-backed mods, shader packs, and resource packs after an app update.
 - Clarified the refresh result so users can see that non-Modrinth items are skipped instead of treated like an error.
+- Prevented users from closing update settings or saving while local data refresh is still running, with a short wait message.
 - Removed leftover legacy modal code to keep the UI layer cleaner and easier to maintain.
+- Switched app versioning to the stable `UPGRADE.MAJOR.MINOR-YYYY.MM.DD` format.
 
 ### Included assets
 

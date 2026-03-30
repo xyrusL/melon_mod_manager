@@ -2,7 +2,7 @@
 ; Build app first, then point Source to your release output folder.
 
 #ifndef MyAppVersion
-  #define MyAppVersion "1.0.0-beta.6"
+  #define MyAppVersion "1.6.3-2026.03.30"
 #endif
 
 #ifndef MyOutputBaseFilename
@@ -45,7 +45,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "Create a desktop icon"; GroupDescription: "Additional icons:"
 
 [InstallDelete]
-; Keep upgrades clean across beta jumps:
+; Keep upgrades clean across app upgrades:
 ; remove old app payload files/folders before copying the new build.
 Type: filesandordirs; Name: "{app}\*"
 

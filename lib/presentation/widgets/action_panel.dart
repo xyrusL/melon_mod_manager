@@ -262,7 +262,7 @@ class _ActionPanelState extends ConsumerState<ActionPanel> {
             versionLabel.when(
               data: (v) => v,
               loading: () => 'Loading version...',
-              error: (_, __) => 'v1.0.0-beta.6.2',
+              error: (_, __) => 'v1.6.3-2026.03.30',
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -538,6 +538,50 @@ class _UpdateSettingsDialogState extends ConsumerState<_UpdateSettingsDialog> {
     }
   }
 
+  Future<void> _showWaitUntilRefreshDoneDialog() async {
+    if (!mounted) {
+      return;
+    }
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AppModal(
+        title: const AppModalTitle('Please wait'),
+        subtitle: const Text('Local data is still refreshing.'),
+        content: const Text(
+          'Wait until the refresh is done before you close this dialog or save changes.',
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _handleDismissAttempt() async {
+    if (_runningForceRefresh) {
+      await _showWaitUntilRefreshDoneDialog();
+      return;
+    }
+    if (!mounted) {
+      return;
+    }
+    Navigator.of(context).pop();
+  }
+
+  Future<void> _handleSaveAttempt() async {
+    if (_runningForceRefresh) {
+      await _showWaitUntilRefreshDoneDialog();
+      return;
+    }
+    if (_loading || _saving) {
+      return;
+    }
+    await _saveSettings();
+  }
+
   String _targetLabel(AutoUpdateTarget target) => switch (target) {
         AutoUpdateTarget.app => 'App updates',
         AutoUpdateTarget.mods => 'Mod updates',
@@ -558,76 +602,85 @@ class _UpdateSettingsDialogState extends ConsumerState<_UpdateSettingsDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AppModal(
-      title: const AppModalTitle('Update Settings'),
-      subtitle: const Text('Choose how often Melon checks for updates.'),
-      width: 540,
-      content: SizedBox(
+    return PopScope(
+      canPop: !_runningForceRefresh,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (!didPop && _runningForceRefresh) {
+          await _showWaitUntilRefreshDoneDialog();
+        }
+      },
+      child: AppModal(
+        title: const AppModalTitle('Update Settings'),
+        subtitle: const Text('Choose how often Melon checks for updates.'),
         width: 540,
-        child: _loading
-            ? const SizedBox(
-                height: 120,
-                child: Center(child: CircularProgressIndicator()),
-              )
-            : SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildUnifiedIntervalCard(),
-                    const SizedBox(height: 12),
-                    _buildLastCheckedSummary(),
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        onPressed: _runningForceRefresh || _saving
-                            ? null
-                            : _forceRefreshData,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFF1E3A2F),
-                          foregroundColor: const Color(0xFF2BCF99),
-                          side: const BorderSide(
-                            color: Color(0xFF2BCF99),
-                            width: 1,
+        onClose: _handleDismissAttempt,
+        content: SizedBox(
+          width: 540,
+          child: _loading
+              ? const SizedBox(
+                  height: 120,
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              : SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildUnifiedIntervalCard(),
+                      const SizedBox(height: 12),
+                      _buildLastCheckedSummary(),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed: _runningForceRefresh || _saving
+                              ? null
+                              : _forceRefreshData,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFF1E3A2F),
+                            foregroundColor: const Color(0xFF2BCF99),
+                            side: const BorderSide(
+                              color: Color(0xFF2BCF99),
+                              width: 1,
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 12,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
                           ),
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 12,
+                          icon: _runningForceRefresh
+                              ? const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Color(0xFF2BCF99),
+                                  ),
+                                )
+                              : const Icon(Icons.refresh_rounded, size: 16),
+                          label: const Text(
+                            'Refresh Local Data',
+                            style: TextStyle(fontWeight: FontWeight.w600),
                           ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        icon: _runningForceRefresh
-                            ? const SizedBox(
-                                width: 14,
-                                height: 14,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Color(0xFF2BCF99),
-                                ),
-                              )
-                            : const Icon(Icons.refresh_rounded, size: 16),
-                        label: const Text(
-                          'Refresh Local Data',
-                          style: TextStyle(fontWeight: FontWeight.w600),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: _saving ? null : _handleDismissAttempt,
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: _saving ? null : _handleSaveAttempt,
+            child: Text(_saving ? 'Saving...' : 'Save'),
+          ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: _saving ? null : () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: _loading || _saving ? null : _saveSettings,
-          child: Text(_saving ? 'Saving...' : 'Save'),
-        ),
-      ],
     );
   }
 
@@ -939,7 +992,7 @@ class _AboutDialog extends ConsumerWidget {
         versionLabel.when(
           data: (v) => v,
           loading: () => 'Loading version...',
-          error: (_, __) => 'v1.0.0-beta.6.2',
+          error: (_, __) => 'v1.6.3-2026.03.30',
         ),
       ),
       width: 560,

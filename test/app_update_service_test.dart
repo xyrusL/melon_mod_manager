@@ -9,12 +9,14 @@ import 'package:melon_mod/data/services/github_api_client.dart';
 void main() {
   test('returns update available when GitHub release is newer', () async {
     final client = MockClient((request) async {
-      if (request.url.path == '/repos/xyrusL/melon_mod_manager/releases/latest') {
+      if (request.url.path ==
+          '/repos/xyrusL/melon_mod_manager/releases/latest') {
         return http.Response(
           jsonEncode({
             'tag_name': 'v1.0.1',
             'name': 'v1.0.1',
-            'html_url': 'https://github.com/xyrusL/melon_mod_manager/releases/tag/v1.0.1',
+            'html_url':
+                'https://github.com/xyrusL/melon_mod_manager/releases/tag/v1.0.1',
           }),
           200,
         );
@@ -37,12 +39,14 @@ void main() {
 
   test('treats stable release as newer than prerelease build', () async {
     final client = MockClient((request) async {
-      if (request.url.path == '/repos/xyrusL/melon_mod_manager/releases/latest') {
+      if (request.url.path ==
+          '/repos/xyrusL/melon_mod_manager/releases/latest') {
         return http.Response(
           jsonEncode({
             'tag_name': 'v1.0.0',
             'name': 'v1.0.0',
-            'html_url': 'https://github.com/xyrusL/melon_mod_manager/releases/tag/v1.0.0',
+            'html_url':
+                'https://github.com/xyrusL/melon_mod_manager/releases/tag/v1.0.0',
           }),
           200,
         );
@@ -60,5 +64,35 @@ void main() {
     final result = await service.checkForUpdate();
 
     expect(result.hasUpdate, isTrue);
+  });
+
+  test('treats newer stable date release as an update', () async {
+    final client = MockClient((request) async {
+      if (request.url.path ==
+          '/repos/xyrusL/melon_mod_manager/releases/latest') {
+        return http.Response(
+          jsonEncode({
+            'tag_name': 'v1.6.3-2026.03.30',
+            'name': 'v1.6.3-2026.03.30',
+            'html_url':
+                'https://github.com/xyrusL/melon_mod_manager/releases/tag/v1.6.3-2026.03.30',
+          }),
+          200,
+        );
+      }
+      return http.Response('Not found', 404);
+    });
+
+    final service = AppUpdateService(
+      apiClient: GitHubApiClient(client: client),
+      owner: 'xyrusL',
+      repository: 'melon_mod_manager',
+      currentVersionProvider: () async => '1.6.2-2026.03.01',
+    );
+
+    final result = await service.checkForUpdate();
+
+    expect(result.hasUpdate, isTrue);
+    expect(result.latestRelease.tagName, 'v1.6.3-2026.03.30');
   });
 }

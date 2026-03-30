@@ -1,6 +1,6 @@
 param(
   [Parameter(Mandatory = $true)]
-  [ValidateSet('prerelease', 'beta')]
+  [ValidateSet('stable', 'prerelease', 'beta')]
   [string]$Channel,
 
   [string]$Remote = 'origin',
@@ -51,6 +51,13 @@ function Validate-ChannelVersion {
   if ($Channel -eq 'beta') {
     if ($Version -notmatch '-beta(\.\d+)*$') {
       throw "Channel 'beta' requires version suffix '-beta' or '-beta.N[.N]'. Current: $Version"
+    }
+    return
+  }
+
+  if ($Channel -eq 'stable') {
+    if ($Version -notmatch '^\d+\.\d+\.\d+-\d{4}\.\d{2}\.\d{2}$') {
+      throw "Channel 'stable' requires version format 'UPGRADE.MAJOR.MINOR-YYYY.MM.DD'. Current: $Version"
     }
     return
   }
