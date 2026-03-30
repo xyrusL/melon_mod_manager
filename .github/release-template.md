@@ -1,13 +1,14 @@
-## Melon Mod Manager Beta 6.1
+## Melon Mod Manager Beta 6.2
 
-This Beta 6.1 update focuses on fixing shader and pack icons so installed content is represented more reliably in the app.
+This Beta 6.2 update focuses on polishing the app flow after an update and making popup dialogs feel consistent across the whole app.
 
 ### Fixes and improvements
 
-- Fixed shader pack icons not showing in the Shaders tab for Modrinth-tracked packs.
-- Added Modrinth project icon fallback when a local `pack.png` or `icon.png` is missing.
-- Removed the incorrect fallback that could show a random internal texture as the item icon.
-- Improved local icon caching so pack icons persist more reliably after rescans and app restarts.
+- Updated popup dialogs to use the new shared modal layout across update flows, folder prompts, file conflicts, and Modrinth install flows.
+- Added a post-update modal that tells users the app update is complete and offers a data refresh right away.
+- Added refresh handling for Modrinth-backed mods, shader packs, and resource packs after an app update.
+- Clarified the refresh result so users can see that non-Modrinth items are skipped instead of treated like an error.
+- Removed leftover legacy modal code to keep the UI layer cleaner and easier to maintain.
 
 ### Included assets
 

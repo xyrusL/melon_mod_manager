@@ -23,12 +23,12 @@ Melon Mod Manager makes it easy to:
 - Minecraft Loaders: Fabric, Quilt, Forge, NeoForge
 - Internet Required: Yes, for Modrinth search and update checks
 
-## What's New in Beta 6.1
+## What's New in Beta 6.2
 
-- Fixed shader pack icons not showing in the Shaders tab for Modrinth-tracked packs.
-- Added Modrinth project icon fallback for shader packs and resource packs when a local `pack.png` or `icon.png` is missing.
-- Removed the incorrect fallback that could display a random texture from inside a shader zip as the item icon.
-- Improved local icon persistence so pack icons recover more reliably after rescans and app restarts.
+- Updated the app modal design so dialogs now use the same layout across update flows, folder prompts, file conflicts, and Modrinth install flows.
+- Added a post-update prompt that lets you refresh Modrinth data after installing a new app version.
+- Improved the refresh messaging so mods, shader packs, and resource packs from Modrinth are refreshed clearly, while non-Modrinth items are skipped with a helpful note.
+- Removed leftover legacy modal code to keep the UI layer cleaner and easier to maintain.
 
 ## Key Features
 
