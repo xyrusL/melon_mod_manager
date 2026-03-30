@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/providers.dart';
 import '../../domain/entities/auto_update_settings.dart';
 import '../viewmodels/app_update_controller.dart';
+import 'app_modal.dart';
 import 'panel_action_button.dart';
 
 class ActionPanel extends ConsumerStatefulWidget {
@@ -74,7 +75,8 @@ class _ActionPanelState extends ConsumerState<ActionPanel> {
     final panelPadding = (12 * widget.uiScale).clamp(10, 14).toDouble();
     final primaryHeight = (37 * widget.uiScale).clamp(34, 41).toDouble();
     final secondaryHeight = (34 * widget.uiScale).clamp(31, 37).toDouble();
-    final settingsButtonSize = (secondaryHeight * 0.88).clamp(28, 34).toDouble();
+    final settingsButtonSize =
+        (secondaryHeight * 0.88).clamp(28, 34).toDouble();
     final dangerHeight = (35 * widget.uiScale).clamp(32, 39).toDouble();
     final primaryFont = (14 * widget.uiScale).clamp(12.5, 15.5).toDouble();
     final secondaryFont = (13 * widget.uiScale).clamp(11.5, 14.5).toDouble();
@@ -318,10 +320,8 @@ class _ActionPanelState extends ConsumerState<ActionPanel> {
                       backgroundColor: const Color(0xFF2E3E4E),
                       foregroundColor: Colors.white,
                       padding: EdgeInsets.zero,
-                      minimumSize:
-                          Size(settingsButtonSize, settingsButtonSize),
-                      maximumSize:
-                          Size(settingsButtonSize, settingsButtonSize),
+                      minimumSize: Size(settingsButtonSize, settingsButtonSize),
+                      maximumSize: Size(settingsButtonSize, settingsButtonSize),
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(
@@ -385,11 +385,12 @@ class _ActionPanelState extends ConsumerState<ActionPanel> {
             : (release?.tagName ?? 'latest release');
         final open = await showDialog<bool>(
           context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('App Update Available'),
-            content: Text(
-              'Current: ${state.currentVersion ?? '-'}\nLatest: ${release?.tagName ?? '-'}\n\n$title',
+          builder: (context) => AppModal(
+            title: const AppModalTitle('App Update Available'),
+            subtitle: Text(
+              'Current: ${state.currentVersion ?? '-'}\nLatest: ${release?.tagName ?? '-'}',
             ),
+            content: Text(title),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(false),
@@ -557,8 +558,10 @@ class _UpdateSettingsDialogState extends ConsumerState<_UpdateSettingsDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Update Settings'),
+    return AppModal(
+      title: const AppModalTitle('Update Settings'),
+      subtitle: const Text('Choose how often Melon checks for updates.'),
+      width: 540,
       content: SizedBox(
         width: 540,
         child: _loading
@@ -571,16 +574,6 @@ class _UpdateSettingsDialogState extends ConsumerState<_UpdateSettingsDialog> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Choose how often Melon checks for updates.',
-                      style: TextStyle(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withValues(alpha: 0.76),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
                     _buildUnifiedIntervalCard(),
                     const SizedBox(height: 12),
                     _buildLastCheckedSummary(),
@@ -639,12 +632,8 @@ class _UpdateSettingsDialogState extends ConsumerState<_UpdateSettingsDialog> {
   }
 
   Widget _buildUnifiedIntervalCard() {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      ),
+    return AppModalSectionCard(
+      padding: const EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -723,13 +712,8 @@ class _UpdateSettingsDialogState extends ConsumerState<_UpdateSettingsDialog> {
   }
 
   Widget _buildLastCheckedSummary() {
-    return Container(
+    return AppModalSectionCard(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -949,18 +933,16 @@ class _AboutDialog extends ConsumerWidget {
     final snapshot = ref.watch(developerSnapshotProvider);
     final versionLabel = ref.watch(appVersionLabelProvider);
 
-    return AlertDialog(
-      titlePadding: const EdgeInsets.fromLTRB(24, 20, 12, 0),
-      title: Row(
-        children: [
-          const Expanded(child: Text('About Melon Mod Manager')),
-          IconButton(
-            tooltip: 'Close',
-            onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.close_rounded),
-          ),
-        ],
+    return AppModal(
+      title: const AppModalTitle('About Melon Mod Manager'),
+      subtitle: Text(
+        versionLabel.when(
+          data: (v) => v,
+          loading: () => 'Loading version...',
+          error: (_, __) => 'v1.0.0-beta',
+        ),
       ),
+      width: 560,
       content: SizedBox(
         width: 560,
         child: SingleChildScrollView(
@@ -968,18 +950,6 @@ class _AboutDialog extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                versionLabel.when(
-                  data: (v) => v,
-                  loading: () => 'Loading version...',
-                  error: (_, __) => 'v1.0.0-beta',
-                ),
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.72),
-                  fontSize: 12,
-                ),
-              ),
-              const SizedBox(height: 12),
               const Text(
                 'Goal',
                 style: TextStyle(fontWeight: FontWeight.w700),

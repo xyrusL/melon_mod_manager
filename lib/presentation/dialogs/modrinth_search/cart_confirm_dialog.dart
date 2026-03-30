@@ -44,8 +44,11 @@ class _CartConfirmDialogState extends State<_CartConfirmDialog> {
         ? _CartConfirmDialog._listMaxHeight
         : desiredHeight.clamp(0, _CartConfirmDialog._listMaxHeight).toDouble();
 
-    return AlertDialog(
-      title: const Text('Confirm Installation'),
+    return AppModal(
+      title: const AppModalTitle('Confirm Installation'),
+      subtitle:
+          const Text('Review the selected mods before Melon installs them.'),
+      width: 620,
       content: SizedBox(
         width: 620,
         child: Column(
@@ -95,15 +98,8 @@ class _CartConfirmDialogState extends State<_CartConfirmDialog> {
                       padding: EdgeInsets.only(
                         bottom: index == widget.projects.length - 1 ? 0 : 8,
                       ),
-                      child: Container(
+                      child: AppModalSectionCard(
                         padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.18),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.06),
-                          ),
-                        ),
                         child: Row(
                           children: [
                             ClipRRect(

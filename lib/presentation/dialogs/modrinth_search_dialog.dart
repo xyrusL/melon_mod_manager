@@ -5,6 +5,7 @@ import '../../core/error_reporter.dart';
 import '../../core/providers.dart';
 import '../../domain/entities/content_type.dart';
 import '../../domain/entities/modrinth_project.dart';
+import '../widgets/app_modal.dart';
 import '../viewmodels/mods_controller.dart';
 
 part 'modrinth_search/bulk_install_progress_dialog.dart';
@@ -522,338 +523,316 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
     final filteredResults =
         _results.where((p) => _matchesStatusFilter(_projectState(p))).toList();
 
-    return Dialog(
-      child: Container(
-        width: 980,
-        height: 680,
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Text(
-                  'Download from Modrinth',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+    return AppModal(
+      title: const AppModalTitle('Download from Modrinth'),
+      subtitle: Text(
+        _mode == _BrowseMode.popular
+            ? 'Showing $_sortLabel ${widget.contentType.label.toLowerCase()} for your selected filters.'
+            : 'Showing $_sortLabel search results for ${widget.contentType.label.toLowerCase()}.',
+      ),
+      width: 980,
+      height: 680,
+      onClose: () => Navigator.of(context).pop(_didChangeContent),
+      contentPadding: const EdgeInsets.only(top: 16),
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _queryController,
+                  decoration: const InputDecoration(
+                    hintText: 'Search projects',
+                    prefixIcon: Icon(Icons.search),
+                  ),
+                  onChanged: (value) {
+                    _handleQueryChanged(value);
+                  },
+                  onSubmitted: (_) => _runNewQuery(),
                 ),
-                const Spacer(),
-                IconButton(
-                  tooltip: 'Close',
-                  onPressed: () => Navigator.of(context).pop(_didChangeContent),
-                  icon: const Icon(Icons.close_rounded),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              _mode == _BrowseMode.popular
-                  ? 'Showing $_sortLabel ${widget.contentType.label.toLowerCase()} for your selected filters.'
-                  : 'Showing $_sortLabel search results for ${widget.contentType.label.toLowerCase()}.',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.72),
-                fontSize: 13,
               ),
-            ),
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _queryController,
-                    decoration: const InputDecoration(
-                      hintText: 'Search projects',
-                      prefixIcon: Icon(Icons.search),
-                    ),
-                    onChanged: (value) {
-                      _handleQueryChanged(value);
-                    },
-                    onSubmitted: (_) => _runNewQuery(),
-                  ),
-                ),
-                if (supportsLoader) ...[
-                  const SizedBox(width: 10),
-                  SizedBox(
-                    width: 150,
-                    child: DropdownButtonFormField<String>(
-                      key: ValueKey<String>(
-                        'loader_${hasDetectedLoader ? 1 : 0}_${_loader}_${_detectedLoaderVersion ?? ''}',
-                      ),
-                      initialValue: _loader,
-                      isExpanded: true,
-                      items: hasDetectedLoader
-                          ? [
-                              DropdownMenuItem(
-                                value: _loader,
-                                child: Text(_loaderDisplayLabel(_loader)),
-                              ),
-                            ]
-                          : const [
-                              DropdownMenuItem(
-                                value: 'fabric',
-                                child: Text('Fabric'),
-                              ),
-                              DropdownMenuItem(
-                                value: 'quilt',
-                                child: Text('Quilt'),
-                              ),
-                              DropdownMenuItem(
-                                value: 'forge',
-                                child: Text('Forge'),
-                              ),
-                              DropdownMenuItem(
-                                value: 'neoforge',
-                                child: Text('NeoForge'),
-                              ),
-                            ],
-                      onChanged: hasDetectedLoader
-                          ? null
-                          : (value) async {
-                              if (value != null) {
-                                setState(() => _loader = value);
-                                await _runNewQuery();
-                              }
-                            },
-                      decoration: const InputDecoration(labelText: 'Loader'),
-                    ),
-                  ),
-                ],
+              if (supportsLoader) ...[
                 const SizedBox(width: 10),
                 SizedBox(
-                  width: 170,
-                  child: DropdownButtonFormField<_SortMode>(
-                    initialValue: _sortMode,
+                  width: 150,
+                  child: DropdownButtonFormField<String>(
+                    key: ValueKey<String>(
+                      'loader_${hasDetectedLoader ? 1 : 0}_${_loader}_${_detectedLoaderVersion ?? ''}',
+                    ),
+                    initialValue: _loader,
                     isExpanded: true,
-                    items: const [
-                      DropdownMenuItem(
-                        value: _SortMode.popular,
-                        child: Text('Popular'),
-                      ),
-                      DropdownMenuItem(
-                        value: _SortMode.relevance,
-                        child: Text('Relevance'),
-                      ),
-                      DropdownMenuItem(
-                        value: _SortMode.newest,
-                        child: Text('Newest'),
-                      ),
-                      DropdownMenuItem(
-                        value: _SortMode.updated,
-                        child: Text('Updated'),
-                      ),
-                    ],
-                    onChanged: (value) async {
-                      if (value == null) {
-                        return;
-                      }
-                      setState(() => _sortMode = value);
-                      await _runNewQuery();
-                    },
-                    decoration: const InputDecoration(labelText: 'Sort'),
-                  ),
-                ),
-                if (supportsLoader) ...[
-                  const SizedBox(width: 10),
-                  SizedBox(
-                    width: 220,
-                    child: DropdownButtonFormField<String>(
-                      key: ValueKey<String>(_versionSelection),
-                      initialValue: _versionSelection,
-                      isExpanded: true,
-                      items: versionItems,
-                      onChanged: _loading
-                          ? null
-                          : (value) async {
-                              if (value == null || value == _versionSelection) {
-                                return;
-                              }
-                              setState(() => _versionSelection = value);
+                    items: hasDetectedLoader
+                        ? [
+                            DropdownMenuItem(
+                              value: _loader,
+                              child: Text(_loaderDisplayLabel(_loader)),
+                            ),
+                          ]
+                        : const [
+                            DropdownMenuItem(
+                              value: 'fabric',
+                              child: Text('Fabric'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'quilt',
+                              child: Text('Quilt'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'forge',
+                              child: Text('Forge'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'neoforge',
+                              child: Text('NeoForge'),
+                            ),
+                          ],
+                    onChanged: hasDetectedLoader
+                        ? null
+                        : (value) async {
+                            if (value != null) {
+                              setState(() => _loader = value);
                               await _runNewQuery();
-                            },
-                      decoration: const InputDecoration(
-                        labelText: 'Minecraft Version',
-                      ),
+                            }
+                          },
+                    decoration: const InputDecoration(labelText: 'Loader'),
+                  ),
+                ),
+              ],
+              const SizedBox(width: 10),
+              SizedBox(
+                width: 170,
+                child: DropdownButtonFormField<_SortMode>(
+                  initialValue: _sortMode,
+                  isExpanded: true,
+                  items: const [
+                    DropdownMenuItem(
+                      value: _SortMode.popular,
+                      child: Text('Popular'),
                     ),
-                  ),
-                ],
-                const SizedBox(width: 10),
-                FilledButton(
-                  onPressed: _loading ? null : _runNewQuery,
-                  child: const Text('Search'),
+                    DropdownMenuItem(
+                      value: _SortMode.relevance,
+                      child: Text('Relevance'),
+                    ),
+                    DropdownMenuItem(
+                      value: _SortMode.newest,
+                      child: Text('Newest'),
+                    ),
+                    DropdownMenuItem(
+                      value: _SortMode.updated,
+                      child: Text('Updated'),
+                    ),
+                  ],
+                  onChanged: (value) async {
+                    if (value == null) {
+                      return;
+                    }
+                    setState(() => _sortMode = value);
+                    await _runNewQuery();
+                  },
+                  decoration: const InputDecoration(labelText: 'Sort'),
                 ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Text(
-                  'Selected: ${_selectedProjectIds.length}',
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.85)),
-                ),
-                const SizedBox(width: 12),
-                _StatusTag(
-                  label: 'Installed ($installedCount)',
-                  color: const Color(0xFF68DA97),
-                  selected: _statusFilter == _StatusFilter.installed,
-                  onTap: () => _toggleStatusFilter(_StatusFilter.installed),
-                ),
-                const SizedBox(width: 6),
-                _StatusTag(
-                  label: 'Update ($updateCount)',
-                  color: const Color(0xFFFFB55A),
-                  selected: _statusFilter == _StatusFilter.update,
-                  onTap: () => _toggleStatusFilter(_StatusFilter.update),
-                ),
-                const SizedBox(width: 6),
-                _StatusTag(
-                  label: 'On Disk ($onDiskCount)',
-                  color: const Color(0xFF86C5FF),
-                  selected: _statusFilter == _StatusFilter.onDisk,
-                  onTap: () => _toggleStatusFilter(_StatusFilter.onDisk),
-                ),
-                const Spacer(),
-                FilledButton.icon(
-                  onPressed:
-                      _selectedProjectIds.isEmpty || _loading || _statusLoading
-                          ? null
-                          : _confirmAndInstallSelected,
-                  icon: const Icon(Icons.shopping_cart_checkout_rounded),
-                  label: Text(
-                    widget.contentType == ContentType.mod
-                        ? 'Review & Install'
-                        : 'Download Selected',
-                  ),
-                ),
-              ],
-            ),
-            if (_error != null) ...[
-              const SizedBox(height: 8),
-              Text(_error!, style: const TextStyle(color: Colors.redAccent)),
-            ],
-            if (_statusLoading) ...[
-              const SizedBox(height: 8),
-              const LinearProgressIndicator(minHeight: 4),
-            ],
-            const SizedBox(height: 10),
-            Expanded(
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 220),
-                child: _loading
-                    ? const Center(child: CircularProgressIndicator())
-                    : _results.isEmpty
-                        ? _EmptyState(onReloadPopular: _loadPopular)
-                        : filteredResults.isEmpty
-                            ? _FilteredEmptyState(
-                                onClearFilter: () => setState(
-                                  () => _statusFilter = _StatusFilter.all,
-                                ),
-                              )
-                            : ListView.builder(
-                                itemCount: filteredResults.length,
-                                itemBuilder: (context, index) {
-                                  final item = filteredResults[index];
-                                  final info = _installInfo[item.id];
-                                  final selected =
-                                      _selectedProjectIds.contains(item.id);
-                                  final latestVersion =
-                                      info?.latestVersionNumber ??
-                                          _latestVersionByProject[item.id];
-                                  final installedVersion =
-                                      info?.installedVersionNumber;
-
-                                  final versionLine = switch (info?.state) {
-                                    ProjectInstallState.updateAvailable =>
-                                      installedVersion != null &&
-                                              latestVersion != null
-                                          ? 'Version: $installedVersion -> $latestVersion'
-                                          : latestVersion != null
-                                              ? 'Latest compatible: $latestVersion'
-                                              : 'Update available',
-                                    ProjectInstallState.installed =>
-                                      installedVersion != null
-                                          ? 'Installed version: $installedVersion'
-                                          : latestVersion != null
-                                              ? 'Installed, latest: $latestVersion'
-                                              : 'Installed',
-                                    _ => latestVersion != null
-                                        ? 'Latest compatible: $latestVersion'
-                                        : 'Latest version not available',
-                                  };
-
-                                  return Padding(
-                                    padding: EdgeInsets.only(
-                                      bottom:
-                                          index == filteredResults.length - 1
-                                              ? 8
-                                              : 8,
-                                    ),
-                                    child: _ProjectCard(
-                                      project: item,
-                                      info: info,
-                                      selected: selected,
-                                      versionLine: versionLine,
-                                      onDiskLabel:
-                                          widget.contentType == ContentType.mod
-                                              ? 'On Disk'
-                                              : 'Already Added',
-                                      onTapAction: () => _toggleSelection(item),
-                                    ),
-                                  );
-                                },
-                              ),
               ),
-            ),
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                Text(
-                  'Per page',
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.78)),
-                ),
-                const SizedBox(width: 8),
+              if (supportsLoader) ...[
+                const SizedBox(width: 10),
                 SizedBox(
-                  width: 96,
-                  child: DropdownButtonFormField<int>(
-                    initialValue: _pageSize,
+                  width: 220,
+                  child: DropdownButtonFormField<String>(
+                    key: ValueKey<String>(_versionSelection),
+                    initialValue: _versionSelection,
                     isExpanded: true,
-                    items: _pageSizeOptions
-                        .map(
-                          (size) => DropdownMenuItem<int>(
-                            value: size,
-                            child: Text('$size'),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: _loading ? null : _changePageSize,
+                    items: versionItems,
+                    onChanged: _loading
+                        ? null
+                        : (value) async {
+                            if (value == null || value == _versionSelection) {
+                              return;
+                            }
+                            setState(() => _versionSelection = value);
+                            await _runNewQuery();
+                          },
                     decoration: const InputDecoration(
-                      isDense: true,
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                      labelText: 'Minecraft Version',
                     ),
                   ),
                 ),
-                const Spacer(),
-                Text(
-                  'Page $_currentPage',
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.85)),
-                ),
-                const SizedBox(width: 10),
-                IconButton.filledTonal(
-                  tooltip: 'Previous page',
-                  onPressed: (_loading || _currentPage <= 1)
-                      ? null
-                      : _goToPreviousPage,
-                  icon: const Icon(Icons.chevron_left_rounded),
-                ),
-                const SizedBox(width: 4),
-                IconButton.filled(
-                  tooltip: 'Next page',
-                  onPressed: (_loading || !_hasNextPage) ? null : _goToNextPage,
-                  icon: const Icon(Icons.chevron_right_rounded),
-                ),
               ],
-            ),
+              const SizedBox(width: 10),
+              FilledButton(
+                onPressed: _loading ? null : _runNewQuery,
+                child: const Text('Search'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Text(
+                'Selected: ${_selectedProjectIds.length}',
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.85)),
+              ),
+              const SizedBox(width: 12),
+              _StatusTag(
+                label: 'Installed ($installedCount)',
+                color: const Color(0xFF68DA97),
+                selected: _statusFilter == _StatusFilter.installed,
+                onTap: () => _toggleStatusFilter(_StatusFilter.installed),
+              ),
+              const SizedBox(width: 6),
+              _StatusTag(
+                label: 'Update ($updateCount)',
+                color: const Color(0xFFFFB55A),
+                selected: _statusFilter == _StatusFilter.update,
+                onTap: () => _toggleStatusFilter(_StatusFilter.update),
+              ),
+              const SizedBox(width: 6),
+              _StatusTag(
+                label: 'On Disk ($onDiskCount)',
+                color: const Color(0xFF86C5FF),
+                selected: _statusFilter == _StatusFilter.onDisk,
+                onTap: () => _toggleStatusFilter(_StatusFilter.onDisk),
+              ),
+              const Spacer(),
+              FilledButton.icon(
+                onPressed:
+                    _selectedProjectIds.isEmpty || _loading || _statusLoading
+                        ? null
+                        : _confirmAndInstallSelected,
+                icon: const Icon(Icons.shopping_cart_checkout_rounded),
+                label: Text(
+                  widget.contentType == ContentType.mod
+                      ? 'Review & Install'
+                      : 'Download Selected',
+                ),
+              ),
+            ],
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 8),
+            Text(_error!, style: const TextStyle(color: Colors.redAccent)),
           ],
-        ),
+          if (_statusLoading) ...[
+            const SizedBox(height: 8),
+            const LinearProgressIndicator(minHeight: 4),
+          ],
+          const SizedBox(height: 10),
+          Expanded(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 220),
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _results.isEmpty
+                      ? _EmptyState(onReloadPopular: _loadPopular)
+                      : filteredResults.isEmpty
+                          ? _FilteredEmptyState(
+                              onClearFilter: () => setState(
+                                () => _statusFilter = _StatusFilter.all,
+                              ),
+                            )
+                          : ListView.builder(
+                              itemCount: filteredResults.length,
+                              itemBuilder: (context, index) {
+                                final item = filteredResults[index];
+                                final info = _installInfo[item.id];
+                                final selected =
+                                    _selectedProjectIds.contains(item.id);
+                                final latestVersion =
+                                    info?.latestVersionNumber ??
+                                        _latestVersionByProject[item.id];
+                                final installedVersion =
+                                    info?.installedVersionNumber;
+
+                                final versionLine = switch (info?.state) {
+                                  ProjectInstallState.updateAvailable =>
+                                    installedVersion != null &&
+                                            latestVersion != null
+                                        ? 'Version: $installedVersion -> $latestVersion'
+                                        : latestVersion != null
+                                            ? 'Latest compatible: $latestVersion'
+                                            : 'Update available',
+                                  ProjectInstallState.installed =>
+                                    installedVersion != null
+                                        ? 'Installed version: $installedVersion'
+                                        : latestVersion != null
+                                            ? 'Installed, latest: $latestVersion'
+                                            : 'Installed',
+                                  _ => latestVersion != null
+                                      ? 'Latest compatible: $latestVersion'
+                                      : 'Latest version not available',
+                                };
+
+                                return Padding(
+                                  padding: EdgeInsets.only(
+                                    bottom: index == filteredResults.length - 1
+                                        ? 8
+                                        : 8,
+                                  ),
+                                  child: _ProjectCard(
+                                    project: item,
+                                    info: info,
+                                    selected: selected,
+                                    versionLine: versionLine,
+                                    onDiskLabel:
+                                        widget.contentType == ContentType.mod
+                                            ? 'On Disk'
+                                            : 'Already Added',
+                                    onTapAction: () => _toggleSelection(item),
+                                  ),
+                                );
+                              },
+                            ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Text(
+                'Per page',
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.78)),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 96,
+                child: DropdownButtonFormField<int>(
+                  initialValue: _pageSize,
+                  isExpanded: true,
+                  items: _pageSizeOptions
+                      .map(
+                        (size) => DropdownMenuItem<int>(
+                          value: size,
+                          child: Text('$size'),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: _loading ? null : _changePageSize,
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                  ),
+                ),
+              ),
+              const Spacer(),
+              Text(
+                'Page $_currentPage',
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.85)),
+              ),
+              const SizedBox(width: 10),
+              IconButton.filledTonal(
+                tooltip: 'Previous page',
+                onPressed:
+                    (_loading || _currentPage <= 1) ? null : _goToPreviousPage,
+                icon: const Icon(Icons.chevron_left_rounded),
+              ),
+              const SizedBox(width: 4),
+              IconButton.filled(
+                tooltip: 'Next page',
+                onPressed: (_loading || !_hasNextPage) ? null : _goToNextPage,
+                icon: const Icon(Icons.chevron_right_rounded),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

@@ -4,8 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers.dart';
 import '../../core/theme/app_theme.dart';
-import '../widgets/melon_logo.dart';
 import '../viewmodels/app_controller.dart';
+import '../widgets/app_modal.dart';
+import '../widgets/melon_logo.dart';
 
 class SetupScreen extends ConsumerStatefulWidget {
   const SetupScreen({super.key});
@@ -107,11 +108,12 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
   Future<bool?> _askCreateFolder(String folderPath) {
     return showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Create mods folder?'),
-        content: Text(
-          'The folder does not exist:\n$folderPath\n\nCreate it now?',
+      builder: (context) => AppModal(
+        title: const AppModalTitle('Create mods folder?'),
+        subtitle: Text(
+          'The selected folder does not exist yet.\n$folderPath',
         ),
+        content: const Text('Create it now so Melon can start using it?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -166,7 +168,8 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
                       children: [
                         Row(
                           children: [
-                            MelonLogo(size: (38 * uiScale).clamp(34, 44).toDouble()),
+                            MelonLogo(
+                                size: (38 * uiScale).clamp(34, 44).toDouble()),
                             SizedBox(width: gapMd),
                             Expanded(
                               child: Text(
@@ -220,7 +223,8 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
                                   ),
                                 ),
                                 style: OutlinedButton.styleFrom(
-                                  minimumSize: Size(0, (48 * uiScale).clamp(44, 52).toDouble()),
+                                  minimumSize: Size(0,
+                                      (48 * uiScale).clamp(44, 52).toDouble()),
                                 ),
                               ),
                             ),
@@ -240,7 +244,8 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
                                   ),
                                 ),
                                 style: OutlinedButton.styleFrom(
-                                  minimumSize: Size(0, (48 * uiScale).clamp(44, 52).toDouble()),
+                                  minimumSize: Size(0,
+                                      (48 * uiScale).clamp(44, 52).toDouble()),
                                 ),
                               ),
                             ),
@@ -263,13 +268,17 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
                           child: ElevatedButton(
                             onPressed: _saving ? null : _save,
                             style: ElevatedButton.styleFrom(
-                              minimumSize: Size(0, (52 * uiScale).clamp(48, 56).toDouble()),
+                              minimumSize: Size(
+                                  0, (52 * uiScale).clamp(48, 56).toDouble()),
                             ),
                             child: _saving
                                 ? SizedBox(
-                                    width: (18 * uiScale).clamp(16, 20).toDouble(),
-                                    height: (18 * uiScale).clamp(16, 20).toDouble(),
-                                    child: const CircularProgressIndicator(strokeWidth: 2),
+                                    width:
+                                        (18 * uiScale).clamp(16, 20).toDouble(),
+                                    height:
+                                        (18 * uiScale).clamp(16, 20).toDouble(),
+                                    child: const CircularProgressIndicator(
+                                        strokeWidth: 2),
                                   )
                                 : Text(
                                     'Save and Continue',

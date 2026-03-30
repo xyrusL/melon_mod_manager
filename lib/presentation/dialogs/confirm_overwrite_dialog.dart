@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../data/services/file_install_service.dart';
+import '../widgets/app_modal.dart';
 
 class ConfirmOverwriteDialog extends StatelessWidget {
   const ConfirmOverwriteDialog({super.key, required this.fileName});
@@ -9,9 +10,10 @@ class ConfirmOverwriteDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('File already exists'),
-      content: Text('"$fileName" already exists in the mods folder.'),
+    return AppModal(
+      title: const AppModalTitle('File already exists'),
+      subtitle: Text('"$fileName" is already in the target folder.'),
+      content: const SizedBox.shrink(),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(ConflictResolution.skip),

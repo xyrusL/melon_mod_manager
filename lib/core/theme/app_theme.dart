@@ -94,4 +94,30 @@ class AppTheme {
       ],
     );
   }
+
+  static BoxDecoration modalDecoration() {
+    return BoxDecoration(
+      borderRadius: BorderRadius.circular(28),
+      gradient: const LinearGradient(
+        colors: [Color(0xFF121E27), Color(0xFF0E171F)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+      border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.5),
+          blurRadius: 32,
+          spreadRadius: 2,
+          offset: const Offset(0, 18),
+        ),
+        BoxShadow(
+          color: _neonGreen.withValues(alpha: 0.08),
+          blurRadius: 20,
+          spreadRadius: 1,
+          offset: const Offset(0, 10),
+        ),
+      ],
+    );
+  }
 }

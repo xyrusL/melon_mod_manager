@@ -5,6 +5,10 @@ abstract class SettingsRepository {
 
   Future<void> saveModsPath(String path);
 
+  Future<String?> getLastSeenAppVersion();
+
+  Future<void> saveLastSeenAppVersion(String appVersion);
+
   Future<bool> shouldPrepareMetadataForAppVersion(String appVersion);
 
   Future<void> markMetadataPreparedForAppVersion(String appVersion);

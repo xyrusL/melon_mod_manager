@@ -7,6 +7,7 @@ class SettingsRepositoryImpl implements SettingsRepository {
   SettingsRepositoryImpl(this._prefs);
 
   static const _modsPathKey = 'mods_path';
+  static const _lastSeenAppVersionKey = 'last_seen_app_version';
   static const _metadataPreparedVersionKey = 'metadata_prepared_app_version';
   static const _autoUpdateIntervalPrefix = 'auto_update_interval';
   static const _autoUpdateCustomDaysPrefix = 'auto_update_custom_days';
@@ -26,6 +27,20 @@ class SettingsRepositoryImpl implements SettingsRepository {
   @override
   Future<void> saveModsPath(String path) async {
     await _prefs.setString(_modsPathKey, path);
+  }
+
+  @override
+  Future<String?> getLastSeenAppVersion() async {
+    final value = _prefs.getString(_lastSeenAppVersionKey);
+    if (value == null || value.trim().isEmpty) {
+      return null;
+    }
+    return value;
+  }
+
+  @override
+  Future<void> saveLastSeenAppVersion(String appVersion) async {
+    await _prefs.setString(_lastSeenAppVersionKey, appVersion);
   }
 
   @override

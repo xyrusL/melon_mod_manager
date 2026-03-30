@@ -159,12 +159,19 @@ class _BulkInstallProgressDialogState
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(
+    return AppModal(
+      title: AppModalTitle(
         widget.contentType == ContentType.mod
             ? 'Installing Selected Mods'
             : 'Downloading Selected ${widget.contentType.label}',
       ),
+      subtitle: Text(
+        widget.contentType == ContentType.mod
+            ? 'Melon is processing the selected projects and applying compatible files.'
+            : 'Melon is downloading the selected ${widget.contentType.label.toLowerCase()} files.',
+      ),
+      showCloseButton: false,
+      width: 620,
       content: SizedBox(
         width: 620,
         child: Column(

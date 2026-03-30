@@ -11,6 +11,7 @@ import '../../core/theme/app_theme.dart';
 import '../../data/services/file_install_service.dart';
 import '../../domain/entities/auto_update_settings.dart';
 import '../../domain/entities/content_type.dart';
+import '../../domain/entities/mod_item.dart';
 import '../../domain/services/auto_update_scheduler.dart';
 import '../dialogs/confirm_overwrite_dialog.dart';
 import '../dialogs/modrinth_search_dialog.dart';
@@ -18,6 +19,7 @@ import '../viewmodels/app_controller.dart';
 import '../viewmodels/app_update_controller.dart';
 import '../viewmodels/mods_controller.dart';
 import '../widgets/action_panel.dart';
+import '../widgets/app_modal.dart';
 import '../widgets/mods_table.dart';
 import '../widgets/status_banner.dart';
 import '../widgets/top_bar.dart';
@@ -35,6 +37,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   static const _autoUpdateScheduler = AutoUpdateScheduler();
   ProviderSubscription<AppUpdateState>? _updateSub;
   bool _autoUpdatePromptShown = false;
+  bool _appUpdatedPromptShown = false;
   bool _isInitializing = true;
   bool _isDropHovering = false;
 
@@ -497,11 +500,14 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title:
-            Text('Delete selected ${state.contentType.label.toLowerCase()}?'),
+      builder: (context) => AppModal(
+        title: AppModalTitle(
+          'Delete selected ${state.contentType.label.toLowerCase()}?',
+        ),
+        subtitle:
+            const Text('This action permanently removes files from disk.'),
         content: Text(
-          'This will permanently delete $selectedCount selected ${state.contentType.singularLabel.toLowerCase()} file(s) from:\n$targetPath',
+          '$selectedCount selected ${state.contentType.singularLabel.toLowerCase()} file(s) will be deleted from:\n$targetPath',
         ),
         actions: [
           TextButton(
@@ -687,9 +693,11 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     if (!exists) {
       final create = await showDialog<bool>(
         context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Create mods folder?'),
-          content: Text('The folder does not exist:\n$path\n\nCreate it now?'),
+        builder: (context) => AppModal(
+          title: const AppModalTitle('Create mods folder?'),
+          subtitle: Text('The selected folder does not exist yet.\n$path'),
+          content: const Text(
+              'Create it now so Melon can start using it right away?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
@@ -741,6 +749,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
       setState(() => _isInitializing = false);
     }
     await _runAutoChecksAfterInitialLoad(currentType);
+    await _showPostUpdateRefreshPromptIfNeeded();
     unawaited(
       _warmUpMetadataIfNeeded(modsPath, notifier).catchError((_) {
         // Warm-up should never block the primary UI load.
@@ -836,6 +845,98 @@ class _MainScreenState extends ConsumerState<MainScreen> {
         );
   }
 
+  Future<void> _showPostUpdateRefreshPromptIfNeeded() async {
+    if (!mounted || _appUpdatedPromptShown) {
+      return;
+    }
+
+    final settingsRepository = ref.read(settingsRepositoryProvider);
+    final currentVersion = (await PackageInfo.fromPlatform()).version;
+    final lastSeenVersion = await settingsRepository.getLastSeenAppVersion();
+
+    if (lastSeenVersion == null || lastSeenVersion == currentVersion) {
+      await settingsRepository.saveLastSeenAppVersion(currentVersion);
+      return;
+    }
+
+    _appUpdatedPromptShown = true;
+    if (!mounted) {
+      return;
+    }
+
+    final refreshNow = await showDialog<bool>(
+      context: context,
+      builder: (context) => _AppUpdatedRefreshDialog(
+        previousVersion: lastSeenVersion,
+        currentVersion: currentVersion,
+      ),
+    );
+
+    await settingsRepository.saveLastSeenAppVersion(currentVersion);
+    if (refreshNow != true || !mounted) {
+      return;
+    }
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => _PostUpdateDataRefreshDialog(
+        runRefresh: _refreshDataAfterAppUpdate,
+      ),
+    );
+  }
+
+  Future<String> _refreshDataAfterAppUpdate() async {
+    final notifier = ref.read(modsControllerProvider.notifier);
+    final initialType = ref.read(modsControllerProvider).contentType;
+    var refreshedFromModrinth = 0;
+    var skippedExternal = 0;
+    final notes = <String>[];
+
+    for (final type in ContentType.values) {
+      await notifier.loadContent(
+        modsPath: widget.modsPath,
+        contentType: type,
+        forceRefresh: true,
+      );
+
+      final items = ref.read(modsControllerProvider).mods;
+      final tracked = items
+          .where((item) => item.provider == ModProviderType.modrinth)
+          .length;
+      final skipped = items.length - tracked;
+
+      refreshedFromModrinth += tracked;
+      skippedExternal += skipped;
+
+      if (tracked == 0) {
+        notes.add('${type.label}: nothing from Modrinth to refresh.');
+        continue;
+      }
+
+      await notifier.checkForUpdatesPreview(modsPath: widget.modsPath);
+      notes.add(
+        '${type.label}: refreshed $tracked Modrinth item(s)'
+        '${skipped > 0 ? ', skipped $skipped external item(s)' : ''}.',
+      );
+    }
+
+    await notifier.loadContent(
+      modsPath: widget.modsPath,
+      contentType: initialType,
+      forceRefresh: true,
+    );
+
+    final summary = refreshedFromModrinth == 0
+        ? 'No Modrinth items were found to refresh.'
+        : 'Refreshed data for $refreshedFromModrinth Modrinth item(s).';
+    final skippedSummary = skippedExternal == 0
+        ? 'Everything in the current library is linked to Modrinth.'
+        : '$skippedExternal item(s) were skipped because they are not from Modrinth.';
+
+    return '$summary\n$skippedSummary\n\n${notes.join('\n')}';
+  }
+
   Future<void> _warmUpMetadataIfNeeded(
     String modsPath,
     ModsController notifier,
@@ -876,6 +977,116 @@ class _ContentTypeTabs extends StatelessWidget {
             ),
           )
           .toList(),
+    );
+  }
+}
+
+class _AppUpdatedRefreshDialog extends StatelessWidget {
+  const _AppUpdatedRefreshDialog({
+    required this.previousVersion,
+    required this.currentVersion,
+  });
+
+  final String previousVersion;
+  final String currentVersion;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppModal(
+      title: const AppModalTitle('Update complete'),
+      subtitle:
+          Text('Melon was updated from v$previousVersion to v$currentVersion.'),
+      content: const Text(
+        'You can refresh Modrinth data now for mods, shader packs, and resource packs. Items that are not from Modrinth will be skipped.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Later'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          child: const Text('Refresh Data'),
+        ),
+      ],
+    );
+  }
+}
+
+class _PostUpdateDataRefreshDialog extends StatefulWidget {
+  const _PostUpdateDataRefreshDialog({required this.runRefresh});
+
+  final Future<String> Function() runRefresh;
+
+  @override
+  State<_PostUpdateDataRefreshDialog> createState() =>
+      _PostUpdateDataRefreshDialogState();
+}
+
+class _PostUpdateDataRefreshDialogState
+    extends State<_PostUpdateDataRefreshDialog> {
+  String _message = 'Refreshing Modrinth data...';
+  bool _done = false;
+  bool _failed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(_run);
+  }
+
+  Future<void> _run() async {
+    try {
+      final result = await widget.runRefresh();
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _done = true;
+        _failed = false;
+        _message = result;
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _done = true;
+        _failed = true;
+        _message = 'Could not refresh Modrinth data.\n$error';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AppModal(
+      title: const AppModalTitle('Refreshing Data'),
+      subtitle: const Text(
+        'Checking Modrinth-backed mods, shader packs, and resource packs.',
+      ),
+      showCloseButton: false,
+      width: 520,
+      content: SizedBox(
+        width: 520,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(_message),
+            if (!_done) ...[
+              const SizedBox(height: 12),
+              const LinearProgressIndicator(),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _done ? () => Navigator.of(context).pop() : null,
+          child: Text(_failed ? 'Close' : 'Done'),
+        ),
+      ],
     );
   }
 }
@@ -930,8 +1141,12 @@ class _UpdateCheckProgressDialogState
   Widget build(BuildContext context) {
     final value =
         (_total > 0) ? (_processed / _total).clamp(0.0, 1.0).toDouble() : null;
-    return AlertDialog(
-      title: const Text('Checking for Updates'),
+    return AppModal(
+      title: const AppModalTitle('Checking for Updates'),
+      subtitle:
+          const Text('Scanning your current content for compatible updates.'),
+      showCloseButton: false,
+      width: 430,
       content: SizedBox(
         width: 430,
         child: Column(
@@ -966,19 +1181,18 @@ class _UpdateConfirmDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Updates Found'),
+    return AppModal(
+      title: const AppModalTitle('Updates Found'),
+      subtitle: Text(
+        'Found ${preview.updates.length} update(s). All found updates will be installed.',
+      ),
+      width: 560,
       content: SizedBox(
         width: 560,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Found ${preview.updates.length} update(s). '
-              'All found updates will be installed.',
-            ),
-            const SizedBox(height: 10),
             ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 280),
               child: ListView.builder(
@@ -992,14 +1206,8 @@ class _UpdateConfirmDialog extends StatelessWidget {
                     padding: EdgeInsets.only(
                       bottom: index == preview.updates.length - 1 ? 0 : 8,
                     ),
-                    child: Container(
+                    child: AppModalSectionCard(
                       padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.08)),
-                      ),
                       child: Row(
                         children: [
                           Expanded(
@@ -1090,8 +1298,11 @@ class _UpdateRunDialogState extends State<_UpdateRunDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Updating Mods'),
+    return AppModal(
+      title: const AppModalTitle('Updating Mods'),
+      subtitle: Text('Applying ${widget.total} update(s) to your local files.'),
+      showCloseButton: false,
+      width: 420,
       content: SizedBox(
         width: 420,
         child: Column(
@@ -1102,11 +1313,6 @@ class _UpdateRunDialogState extends State<_UpdateRunDialog> {
             const SizedBox(height: 10),
             if (!_done) ...[
               const LinearProgressIndicator(),
-              const SizedBox(height: 8),
-              Text(
-                'Applying ${widget.total} update(s)...',
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.72)),
-              ),
             ],
           ],
         ),
@@ -1132,8 +1338,9 @@ class _UpdateResultDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(title),
+    return AppModal(
+      title: AppModalTitle(title),
+      width: 420,
       content: SizedBox(
         width: 420,
         child: Text(message),
