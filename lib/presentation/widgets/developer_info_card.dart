@@ -43,7 +43,7 @@ class DeveloperInfoCard extends ConsumerWidget {
             versionLabel.when(
               data: (value) => value,
               loading: () => 'Loading version...',
-              error: (_, __) => 'v1.6.3-2026.03.30',
+              error: (_, __) => 'v1.6.4-2026.03.30',
             ),
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.72),

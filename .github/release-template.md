@@ -1,6 +1,6 @@
-## Melon Mod Manager 1.6.3
+## Melon Mod Manager 1.6.4
 
-This 1.6.3 update moves Melon to the new stable date-based version format and polishes the app flow after an update with more consistent popup dialogs.
+This 1.6.4 update tightens compact modal sizing so smaller dialogs feel more balanced, while keeping the shared modal style consistent across the app.
 
 ### Fixes and improvements
 
@@ -18,3 +18,5 @@ This 1.6.3 update moves Melon to the new stable date-based version format and po
 - Portable Windows build (`melon_mod_manager_windows_portable.zip`)
 - Linux package (`MelonModManager-Linux-Setup-<version>.tar.gz`)
 - Checksums (`SHA256SUMS.txt`, `SHA256SUMS-linux.txt`)
+- Reduced oversized short-form dialogs by giving the shared modal shell a compact default width.
+- Tightened the App Update Available popup so it matches the rest of the small confirmation dialogs.

@@ -30,6 +30,7 @@ class AppModal extends StatelessWidget {
   Widget build(BuildContext context) {
     final resolvedContentPadding =
         contentPadding ?? const EdgeInsets.only(top: 18);
+    final modalConstraints = BoxConstraints(maxWidth: width ?? 520);
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -38,6 +39,7 @@ class AppModal extends StatelessWidget {
       child: Container(
         width: width,
         height: height,
+        constraints: modalConstraints,
         padding: const EdgeInsets.fromLTRB(24, 22, 24, 20),
         decoration: AppTheme.modalDecoration(),
         child: Column(

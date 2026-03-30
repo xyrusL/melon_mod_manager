@@ -262,7 +262,7 @@ class _ActionPanelState extends ConsumerState<ActionPanel> {
             versionLabel.when(
               data: (v) => v,
               loading: () => 'Loading version...',
-              error: (_, __) => 'v1.6.3-2026.03.30',
+              error: (_, __) => 'v1.6.4-2026.03.30',
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -387,6 +387,7 @@ class _ActionPanelState extends ConsumerState<ActionPanel> {
           context: context,
           builder: (context) => AppModal(
             title: const AppModalTitle('App Update Available'),
+            width: 480,
             subtitle: Text(
               'Current: ${state.currentVersion ?? '-'}\nLatest: ${release?.tagName ?? '-'}',
             ),
@@ -992,7 +993,7 @@ class _AboutDialog extends ConsumerWidget {
         versionLabel.when(
           data: (v) => v,
           loading: () => 'Loading version...',
-          error: (_, __) => 'v1.6.3-2026.03.30',
+          error: (_, __) => 'v1.6.4-2026.03.30',
         ),
       ),
       width: 560,

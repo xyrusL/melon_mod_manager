@@ -23,9 +23,11 @@ Melon Mod Manager makes it easy to:
 - Minecraft Loaders: Fabric, Quilt, Forge, NeoForge
 - Internet Required: Yes, for Modrinth search and update checks
 
-## What's New in 1.6.3-2026.03.30
+## What's New in 1.6.4-2026.03.30
 
-- Melon is now on the stable `1.6.3-2026.03.30` release format instead of the old beta versioning.
+- Refined the shared modal sizing so short confirmation dialogs no longer open wider than they need to.
+- Reduced the App Update Available popup to match the compact modal style used by the other small dialogs.
+- Melon is now on the stable `1.6.4-2026.03.30` release format instead of the old beta versioning.
 - Updated the app modal design so dialogs now use the same layout across update flows, folder prompts, file conflicts, and Modrinth install flows.
 - Added a post-update prompt that lets you refresh Modrinth data after installing a new app version.
 - Improved the refresh messaging so mods, shader packs, and resource packs from Modrinth are refreshed clearly, while non-Modrinth items are skipped with a helpful note.
