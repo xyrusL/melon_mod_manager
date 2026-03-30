@@ -1,7 +1,7 @@
 part of '../modrinth_search_dialog.dart';
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.onReloadPopular});
+  const _EmptyState({super.key, required this.onReloadPopular});
 
   final VoidCallback onReloadPopular;
 
@@ -31,7 +31,7 @@ class _EmptyState extends StatelessWidget {
 }
 
 class _FilteredEmptyState extends StatelessWidget {
-  const _FilteredEmptyState({required this.onClearFilter});
+  const _FilteredEmptyState({super.key, required this.onClearFilter});
 
   final VoidCallback onClearFilter;
 

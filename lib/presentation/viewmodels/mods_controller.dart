@@ -461,24 +461,6 @@ class ModsController extends StateNotifier<ModsState> {
     );
   }
 
-  Future<List<ModrinthProject>> loadPopularClientMods({
-    String? loader = 'fabric',
-    String projectType = 'mod',
-    String? gameVersion,
-    int limit = 30,
-    int offset = 0,
-  }) {
-    return _modrinthRepository.searchProjects(
-      '',
-      loader: loader,
-      projectType: projectType,
-      gameVersion: gameVersion,
-      limit: limit,
-      offset: offset,
-      index: 'downloads',
-    );
-  }
-
   Future<InstallModResult> installFromModrinth({
     required String modsPath,
     required ModrinthProject project,

@@ -719,17 +719,31 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
           Expanded(
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 220),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
               child: _loading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const Center(
+                      key: ValueKey<String>('modrinth_loading'),
+                      child: CircularProgressIndicator(),
+                    )
                   : _results.isEmpty
-                      ? _EmptyState(onReloadPopular: _loadPopular)
+                      ? _EmptyState(
+                          key: const ValueKey<String>('modrinth_empty'),
+                          onReloadPopular: _loadPopular,
+                        )
                       : filteredResults.isEmpty
                           ? _FilteredEmptyState(
+                              key: const ValueKey<String>(
+                                'modrinth_filtered_empty',
+                              ),
                               onClearFilter: () => setState(
                                 () => _statusFilter = _StatusFilter.all,
                               ),
                             )
                           : ListView.builder(
+                              key: ValueKey<String>(
+                                'modrinth_results_${filteredResults.length}_${_statusFilter.name}_$_currentPage',
+                              ),
                               itemCount: filteredResults.length,
                               itemBuilder: (context, index) {
                                 final item = filteredResults[index];

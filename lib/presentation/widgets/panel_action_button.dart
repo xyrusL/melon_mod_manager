@@ -11,6 +11,7 @@ class PanelActionButton extends StatelessWidget {
     this.height = 44,
     this.fontSize = 16,
     this.iconSize = 20,
+    this.animateIcon = false,
   });
 
   final String label;
@@ -21,6 +22,7 @@ class PanelActionButton extends StatelessWidget {
   final double height;
   final double fontSize;
   final double iconSize;
+  final bool animateIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +30,11 @@ class PanelActionButton extends StatelessWidget {
       width: double.infinity,
       child: FilledButton.icon(
         onPressed: onPressed,
-        icon: Icon(icon, size: iconSize),
+        icon: _AnimatedActionIcon(
+          icon: icon,
+          size: iconSize,
+          animate: animateIcon,
+        ),
         style: FilledButton.styleFrom(
           minimumSize: Size.fromHeight(height),
           backgroundColor: backgroundColor,
@@ -42,6 +48,70 @@ class PanelActionButton extends StatelessWidget {
           style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.w600),
         ),
       ),
+    );
+  }
+}
+
+class _AnimatedActionIcon extends StatefulWidget {
+  const _AnimatedActionIcon({
+    required this.icon,
+    required this.size,
+    required this.animate,
+  });
+
+  final IconData icon;
+  final double size;
+  final bool animate;
+
+  @override
+  State<_AnimatedActionIcon> createState() => _AnimatedActionIconState();
+}
+
+class _AnimatedActionIconState extends State<_AnimatedActionIcon>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1100),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.animate) {
+      _controller.repeat();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _AnimatedActionIcon oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.animate == oldWidget.animate) {
+      return;
+    }
+    if (widget.animate) {
+      _controller.repeat();
+    } else {
+      _controller
+        ..stop()
+        ..reset();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = Icon(widget.icon, size: widget.size);
+    if (!widget.animate) {
+      return icon;
+    }
+    return RotationTransition(
+      turns: _controller,
+      child: icon,
     );
   }
 }

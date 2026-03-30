@@ -72,10 +72,10 @@ void main() {
           '/repos/xyrusL/melon_mod_manager/releases/latest') {
         return http.Response(
           jsonEncode({
-            'tag_name': 'v1.6.5-2026.03.30',
-            'name': 'v1.6.5-2026.03.30',
+            'tag_name': 'v1.7.0-2026.03.30',
+            'name': 'v1.7.0-2026.03.30',
             'html_url':
-                'https://github.com/xyrusL/melon_mod_manager/releases/tag/v1.6.5-2026.03.30',
+                'https://github.com/xyrusL/melon_mod_manager/releases/tag/v1.7.0-2026.03.30',
           }),
           200,
         );
@@ -87,12 +87,12 @@ void main() {
       apiClient: GitHubApiClient(client: client),
       owner: 'xyrusL',
       repository: 'melon_mod_manager',
-      currentVersionProvider: () async => '1.6.4-2026.03.30',
+      currentVersionProvider: () async => '1.6.5-2026.03.30',
     );
 
     final result = await service.checkForUpdate();
 
     expect(result.hasUpdate, isTrue);
-    expect(result.latestRelease.tagName, 'v1.6.5-2026.03.30');
+    expect(result.latestRelease.tagName, 'v1.7.0-2026.03.30');
   });
 }

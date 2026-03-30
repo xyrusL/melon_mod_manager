@@ -598,6 +598,10 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
   Future<void> _checkUpdatesWithReview() async {
     final notifier = ref.read(modsControllerProvider.notifier);
+    final settingsRepository = ref.read(settingsRepositoryProvider);
+    final target = _targetForContentType(
+      ref.read(modsControllerProvider).contentType,
+    );
     final contentLabel =
         ref.read(modsControllerProvider).contentType.label.toLowerCase();
     final preview = await showDialog<UpdateCheckPreview>(
@@ -612,6 +616,11 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     );
 
     if (!mounted || preview == null) {
+      return;
+    }
+
+    await settingsRepository.markAutoUpdateCheckAt(target, DateTime.now());
+    if (!mounted) {
       return;
     }
 
@@ -939,6 +948,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     RefreshProgressCallback onProgress,
   ) async {
     final notifier = ref.read(modsControllerProvider.notifier);
+    final settingsRepository = ref.read(settingsRepositoryProvider);
     final initialType = ref.read(modsControllerProvider).contentType;
     var refreshedFromModrinth = 0;
     var skippedExternal = 0;
@@ -992,7 +1002,22 @@ class _MainScreenState extends ConsumerState<MainScreen> {
           totalSteps: totalSteps,
         ),
       );
-      await notifier.checkForUpdatesPreview(modsPath: widget.modsPath);
+      await notifier.checkForUpdatesPreview(
+        modsPath: widget.modsPath,
+        onProgress: (processed, total, message) {
+          onProgress(
+            RefreshProgressSnapshot(
+              detail: '${type.label}: $message ($processed / $total)',
+              step: step,
+              totalSteps: totalSteps,
+            ),
+          );
+        },
+      );
+      await settingsRepository.markAutoUpdateCheckAt(
+        _targetForContentType(type),
+        DateTime.now(),
+      );
       notes.add(
         '${type.label}: refreshed $tracked Modrinth item(s)'
         '${skipped > 0 ? ', skipped $skipped external item(s)' : ''}.',

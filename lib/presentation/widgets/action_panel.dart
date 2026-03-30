@@ -187,6 +187,7 @@ class _ActionPanelState extends ConsumerState<ActionPanel> {
                         onPressed: actionsLocked || !widget.canCheckUpdates
                             ? null
                             : widget.onCheckUpdates,
+                        animateIcon: widget.isBusy,
                         height: primaryHeight,
                         fontSize: primaryFont,
                         iconSize: buttonIcon,
@@ -263,7 +264,7 @@ class _ActionPanelState extends ConsumerState<ActionPanel> {
             versionLabel.when(
               data: (v) => v,
               loading: () => 'Loading version...',
-              error: (_, __) => 'v1.6.5-2026.03.30',
+              error: (_, __) => 'v1.7.0-2026.03.30',
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -304,6 +305,8 @@ class _ActionPanelState extends ConsumerState<ActionPanel> {
                       appUpdateState.status == AppUpdateCheckStatus.checking
                           ? null
                           : () => _checkAppUpdates(context, ref),
+                  animateIcon:
+                      appUpdateState.status == AppUpdateCheckStatus.checking,
                   height: secondaryHeight,
                   fontSize: secondaryFont,
                   iconSize: buttonIcon,
@@ -373,6 +376,10 @@ class _ActionPanelState extends ConsumerState<ActionPanel> {
 
   Future<void> _checkAppUpdates(BuildContext context, WidgetRef ref) async {
     await ref.read(appUpdateControllerProvider.notifier).checkForUpdates();
+    await ref.read(settingsRepositoryProvider).markAutoUpdateCheckAt(
+          AutoUpdateTarget.app,
+          DateTime.now(),
+        );
     final state = ref.read(appUpdateControllerProvider);
     if (!context.mounted) {
       return;
@@ -1000,7 +1007,7 @@ class _AboutDialog extends ConsumerWidget {
         versionLabel.when(
           data: (v) => v,
           loading: () => 'Loading version...',
-          error: (_, __) => 'v1.6.5-2026.03.30',
+          error: (_, __) => 'v1.7.0-2026.03.30',
         ),
       ),
       width: 560,

@@ -1,21 +1,15 @@
-## Melon Mod Manager 1.6.5
+## Melon Mod Manager 1.7.0
 
-This 1.6.5 update fixes the stable version label and adds clearer progress details while Melon refreshes Modrinth and local data after an update.
+This 1.7.0 update makes update flows clearer and more alive, with animated loading icons, richer refresh progress details, and corrected stable-version labeling.
 
 ### Fixes and improvements
 
-- Removed the incorrect beta badge from stable builds.
-- Added step-by-step progress details while refreshing Modrinth data after an app update.
-- Added step-by-step progress details while rebuilding local app data from Update Settings.
-- Reduced oversized short-form dialogs by giving the shared modal shell a compact default width.
-- Tightened the App Update Available popup so it matches the rest of the small confirmation dialogs.
-- Updated popup dialogs to use the new shared modal layout across update flows, folder prompts, file conflicts, and Modrinth install flows.
-- Added a post-update modal that tells users the app update is complete and offers a data refresh right away.
-- Added refresh handling for Modrinth-backed mods, shader packs, and resource packs after an app update.
-- Clarified the refresh result so users can see that non-Modrinth items are skipped instead of treated like an error.
-- Prevented users from closing update settings or saving while local data refresh is still running, with a short wait message.
-- Removed leftover legacy modal code to keep the UI layer cleaner and easier to maintain.
-- Switched app versioning to the stable `UPGRADE.MAJOR.MINOR-YYYY.MM.DD` format.
+- Added animated loading icons for update-related actions.
+- Improved refresh progress details so Melon shows the current category and current Modrinth item being checked.
+- Manual app checks and manual mod, shader, and resource-pack checks now update Last Checked Time even when auto update is off.
+- Fixed the stable app version label so this release no longer shows a beta badge.
+- Hardened the Modrinth browser states so empty or switching result views do not leave a blank panel behind.
+- Removed leftover legacy helper code that was no longer used.
 
 ### Included assets
 
