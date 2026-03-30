@@ -49,8 +49,8 @@ function Validate-ChannelVersion {
   }
 
   if ($Channel -eq 'beta') {
-    if ($Version -notmatch '-beta(\.\d+)?$') {
-      throw "Channel 'beta' requires version suffix '-beta' or '-beta.N'. Current: $Version"
+    if ($Version -notmatch '-beta(\.\d+)*$') {
+      throw "Channel 'beta' requires version suffix '-beta' or '-beta.N[.N]'. Current: $Version"
     }
     return
   }
