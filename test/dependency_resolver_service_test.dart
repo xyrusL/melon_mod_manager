@@ -217,6 +217,182 @@ void main() {
       expect(
           plan.installQueueInOrder.map((e) => e.projectId).toList(), ['root']);
     });
+
+    test('preview lists one required dependency for selected project',
+        () async {
+      final dep = _version(
+        id: 'v_dep',
+        projectId: 'dep_project',
+        name: 'Fabric API',
+      );
+      final root = _version(
+        id: 'v_root',
+        projectId: 'root_project',
+        name: 'Sodium',
+        dependencies: const [
+          ModrinthDependency(
+            type: ModrinthDependencyType.required,
+            projectId: 'dep_project',
+          ),
+        ],
+      );
+
+      final service = DependencyResolverService(
+        modrinthRepository: _FakeModrinthRepository(
+          byVersionId: {'v_root': root},
+          byProjectId: {
+            'root_project': [root],
+            'dep_project': [dep],
+          },
+        ),
+        mappingRepository: _FakeMappingRepository(),
+      );
+
+      final preview = await service.previewRequiredForProjects(
+        projects: const [
+          SelectedProjectPreview(id: 'root_project', title: 'Sodium'),
+        ],
+        loader: 'fabric',
+        gameVersion: '1.21.1',
+      );
+
+      expect(preview.hasBlockingIssues, isFalse);
+      expect(preview.requiredDependencies.map((item) => item.projectId), [
+        'dep_project',
+      ]);
+    });
+
+    test('preview deduplicates shared dependencies across selected mods',
+        () async {
+      final dep = _version(id: 'v_dep', projectId: 'dep_project', name: 'API');
+      final a = _version(
+        id: 'v_a',
+        projectId: 'a_project',
+        name: 'A',
+        dependencies: const [
+          ModrinthDependency(
+            type: ModrinthDependencyType.required,
+            projectId: 'dep_project',
+          ),
+        ],
+      );
+      final b = _version(
+        id: 'v_b',
+        projectId: 'b_project',
+        name: 'B',
+        dependencies: const [
+          ModrinthDependency(
+            type: ModrinthDependencyType.required,
+            projectId: 'dep_project',
+          ),
+        ],
+      );
+
+      final service = DependencyResolverService(
+        modrinthRepository: _FakeModrinthRepository(
+          byVersionId: {
+            'v_a': a,
+            'v_b': b,
+          },
+          byProjectId: {
+            'a_project': [a],
+            'b_project': [b],
+            'dep_project': [dep],
+          },
+        ),
+        mappingRepository: _FakeMappingRepository(),
+      );
+
+      final preview = await service.previewRequiredForProjects(
+        projects: const [
+          SelectedProjectPreview(id: 'a_project', title: 'A'),
+          SelectedProjectPreview(id: 'b_project', title: 'B'),
+        ],
+        loader: 'fabric',
+        gameVersion: '1.21.1',
+      );
+
+      expect(preview.requiredDependencies.length, 1);
+      expect(preview.requiredDependencies.first.projectId, 'dep_project');
+    });
+
+    test('preview excludes dependencies already installed', () async {
+      final dep = _version(id: 'v_dep', projectId: 'dep_project', name: 'API');
+      final root = _version(
+        id: 'v_root',
+        projectId: 'root_project',
+        name: 'Root',
+        dependencies: const [
+          ModrinthDependency(
+            type: ModrinthDependencyType.required,
+            projectId: 'dep_project',
+          ),
+        ],
+      );
+
+      final service = DependencyResolverService(
+        modrinthRepository: _FakeModrinthRepository(
+          byVersionId: {'v_root': root},
+          byProjectId: {
+            'root_project': [root],
+            'dep_project': [dep],
+          },
+        ),
+        mappingRepository: _FakeMappingRepository(
+          mappings: {
+            'dep.jar': ModrinthMapping(
+              jarFileName: 'dep.jar',
+              projectId: 'dep_project',
+              versionId: 'v_dep',
+              installedAt: DateTime(2025),
+            ),
+          },
+        ),
+      );
+
+      final preview = await service.previewRequiredForProjects(
+        projects: const [
+          SelectedProjectPreview(id: 'root_project', title: 'Root'),
+        ],
+        loader: 'fabric',
+        gameVersion: '1.21.1',
+      );
+
+      expect(preview.requiredDependencies, isEmpty);
+    });
+
+    test('preview surfaces blocking dependency issues before install',
+        () async {
+      final root = _version(
+        id: 'v_root',
+        projectId: 'root_project',
+        name: 'Root',
+        dependencies: const [
+          ModrinthDependency(type: ModrinthDependencyType.required),
+        ],
+      );
+
+      final service = DependencyResolverService(
+        modrinthRepository: _FakeModrinthRepository(
+          byVersionId: {'v_root': root},
+          byProjectId: {
+            'root_project': [root],
+          },
+        ),
+        mappingRepository: _FakeMappingRepository(),
+      );
+
+      final preview = await service.previewRequiredForProjects(
+        projects: const [
+          SelectedProjectPreview(id: 'root_project', title: 'Root'),
+        ],
+        loader: 'fabric',
+        gameVersion: '1.21.1',
+      );
+
+      expect(preview.hasBlockingIssues, isTrue);
+      expect(preview.blockingIssues.first, contains('Root:'));
+    });
   });
 }
 

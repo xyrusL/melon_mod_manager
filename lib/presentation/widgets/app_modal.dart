@@ -14,6 +14,7 @@ class AppModal extends StatelessWidget {
     this.showCloseButton = true,
     this.onClose,
     this.contentPadding,
+    this.expandContent = false,
   });
 
   final Widget? title;
@@ -25,6 +26,7 @@ class AppModal extends StatelessWidget {
   final bool showCloseButton;
   final VoidCallback? onClose;
   final EdgeInsetsGeometry? contentPadding;
+  final bool expandContent;
 
   @override
   Widget build(BuildContext context) {
@@ -81,10 +83,18 @@ class AppModal extends StatelessWidget {
                 child: subtitle!,
               ),
             ],
-            Padding(
-              padding: resolvedContentPadding,
-              child: content,
-            ),
+            if (expandContent)
+              Expanded(
+                child: Padding(
+                  padding: resolvedContentPadding,
+                  child: content,
+                ),
+              )
+            else
+              Padding(
+                padding: resolvedContentPadding,
+                child: content,
+              ),
             if (actions.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 18),

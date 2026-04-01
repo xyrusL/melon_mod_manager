@@ -23,14 +23,13 @@ Melon Mod Manager makes it easy to:
 - Minecraft Loaders: Fabric, Quilt, Forge, NeoForge
 - Internet Required: Yes, for Modrinth search and update checks
 
-## What's New in 1.7.0-2026.03.30
+## What's New in 1.7.1
 
-- Added animated loading icons for update-related actions so fetching and checking states are easier to spot.
-- Improved refresh progress details so Melon now shows the current category and the current Modrinth item being checked.
-- Manual app checks and manual mod, shader, and resource-pack checks now update the Last Checked Time log even when auto update is off.
-- Fixed the stable app version label so `1.7.0-2026.03.30` no longer shows a beta badge.
-- Hardened the Modrinth browser states so empty or switching result views do not leave a blank panel behind.
-- Removed leftover legacy helper code that was no longer used.
+- Added an offline warning inside the Modrinth download screen for mods, resource packs, and shaders.
+- Download screens now show `Retry` and `Exit` when there is no internet connection, while the rest of the app stays usable offline.
+- Mod installs now preview required Modrinth dependencies before install starts.
+- Required dependency mods are installed automatically after one confirmation, with shared dependencies deduplicated.
+- Dependency problems are now shown before install so users can see what is blocking the install right away.
 
 ## Key Features
 

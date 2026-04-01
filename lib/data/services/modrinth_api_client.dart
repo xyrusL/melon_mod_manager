@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
+import '../../core/network_exceptions.dart';
 import '../models/modrinth_search_model.dart';
 import '../models/modrinth_version_model.dart';
 
@@ -19,6 +20,32 @@ class ModrinthApiClient {
   Map<String, String> get _headers => const {
         'User-Agent': 'melon-mod-manager/1.0.0 (windows; flutter)',
       };
+
+  Future<http.Response> _get(Uri uri) async {
+    try {
+      return await _client.get(uri, headers: _headers);
+    } on SocketException {
+      throw const NetworkUnavailableException();
+    } on http.ClientException catch (error) {
+      if (error.message.contains('Failed host lookup')) {
+        throw const NetworkUnavailableException();
+      }
+      rethrow;
+    }
+  }
+
+  Future<http.StreamedResponse> _send(http.Request request) async {
+    try {
+      return await _client.send(request);
+    } on SocketException {
+      throw const NetworkUnavailableException();
+    } on http.ClientException catch (error) {
+      if (error.message.contains('Failed host lookup')) {
+        throw const NetworkUnavailableException();
+      }
+      rethrow;
+    }
+  }
 
   Future<List<ModrinthSearchHitModel>> searchProjects(
     String query, {
@@ -46,7 +73,7 @@ class ModrinthApiClient {
       },
     );
 
-    final response = await _client.get(uri, headers: _headers);
+    final response = await _get(uri);
     if (response.statusCode != 200) {
       throw HttpException('Modrinth search failed: ${response.statusCode}');
     }
@@ -77,7 +104,7 @@ class ModrinthApiClient {
       },
     );
 
-    final response = await _client.get(uri, headers: _headers);
+    final response = await _get(uri);
     if (response.statusCode != 200) {
       throw HttpException('Modrinth versions failed: ${response.statusCode}');
     }
@@ -95,7 +122,7 @@ class ModrinthApiClient {
 
   Future<ModrinthVersionModel> getVersionById(String versionId) async {
     final uri = Uri.parse('$_baseUrl/version/$versionId');
-    final response = await _client.get(uri, headers: _headers);
+    final response = await _get(uri);
     if (response.statusCode != 200) {
       throw HttpException(
           'Modrinth version lookup failed: ${response.statusCode}');
@@ -115,7 +142,7 @@ class ModrinthApiClient {
     final uri = Uri.parse('$_baseUrl/version_file/$hash').replace(
       queryParameters: {'algorithm': algorithm},
     );
-    final response = await _client.get(uri, headers: _headers);
+    final response = await _get(uri);
     if (response.statusCode == 404) {
       return null;
     }
@@ -132,7 +159,7 @@ class ModrinthApiClient {
 
   Future<ModrinthSearchHitModel?> getProjectById(String projectId) async {
     final uri = Uri.parse('$_baseUrl/project/$projectId');
-    final response = await _client.get(uri, headers: _headers);
+    final response = await _get(uri);
     if (response.statusCode == 404) {
       return null;
     }
@@ -153,7 +180,7 @@ class ModrinthApiClient {
   }) async {
     final request = http.Request('GET', Uri.parse(url))
       ..headers.addAll(_headers);
-    final response = await _client.send(request);
+    final response = await _send(request);
     if (response.statusCode != 200) {
       throw HttpException('Failed to download file: ${response.statusCode}');
     }

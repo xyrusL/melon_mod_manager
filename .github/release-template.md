@@ -1,15 +1,14 @@
-## Melon Mod Manager 1.7.0
+## Melon Mod Manager 1.7.1
 
-This 1.7.0 update makes update flows clearer and more alive, with animated loading icons, richer refresh progress details, and corrected stable-version labeling.
+This 1.7.1 update improves Modrinth installs and offline handling, so Melon is clearer about required dependency mods and stays friendlier when your connection drops.
 
 ### Fixes and improvements
 
-- Added animated loading icons for update-related actions.
-- Improved refresh progress details so Melon shows the current category and current Modrinth item being checked.
-- Manual app checks and manual mod, shader, and resource-pack checks now update Last Checked Time even when auto update is off.
-- Fixed the stable app version label so this release no longer shows a beta badge.
-- Hardened the Modrinth browser states so empty or switching result views do not leave a blank panel behind.
-- Removed leftover legacy helper code that was no longer used.
+- Added an offline warning inside Modrinth download screens for mods, resource packs, and shaders.
+- Download screens now show Retry and Exit when there is no internet connection, while the rest of Melon stays usable offline.
+- Added a required dependency preview before mod installs start.
+- Melon now auto-installs required Modrinth dependencies after one confirmation.
+- Shared required dependencies are deduplicated, and blocking dependency issues are shown before install begins.
 
 ### Included assets
 

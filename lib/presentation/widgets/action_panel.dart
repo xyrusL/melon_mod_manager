@@ -264,7 +264,7 @@ class _ActionPanelState extends ConsumerState<ActionPanel> {
             versionLabel.when(
               data: (v) => v,
               loading: () => 'Loading version...',
-              error: (_, __) => 'v1.7.0-2026.03.30',
+              error: (_, __) => 'v1.7.1',
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -1007,7 +1007,7 @@ class _AboutDialog extends ConsumerWidget {
         versionLabel.when(
           data: (v) => v,
           loading: () => 'Loading version...',
-          error: (_, __) => 'v1.7.0-2026.03.30',
+          error: (_, __) => 'v1.7.1',
         ),
       ),
       width: 560,

@@ -22,6 +22,7 @@ import '../../domain/entities/modrinth_project.dart';
 import '../../domain/entities/modrinth_version.dart';
 import '../../domain/repositories/modrinth_mapping_repository.dart';
 import '../../domain/repositories/modrinth_repository.dart';
+import '../../domain/services/dependency_resolver_service.dart';
 import '../../domain/usecases/install_mod_usecase.dart';
 import '../../domain/usecases/install_queue_usecase.dart';
 import '../../domain/usecases/update_mods_usecase.dart';
@@ -180,6 +181,7 @@ final modsControllerProvider = StateNotifierProvider<ModsController, ModsState>(
       contentPathService: ref.watch(contentPathServiceProvider),
       mappingRepository: ref.watch(mappingRepositoryProvider),
       modrinthRepository: ref.watch(modrinthRepositoryProvider),
+      dependencyResolverService: ref.watch(dependencyResolverServiceProvider),
       installModUsecase: ref.watch(installModUsecaseProvider),
       updateModsUsecase: ref.watch(updateModsUsecaseProvider),
       fileInstallService: ref.watch(fileInstallServiceProvider),
@@ -200,6 +202,7 @@ class ModsController extends StateNotifier<ModsState> {
     required ContentPathService contentPathService,
     required ModrinthMappingRepository mappingRepository,
     required ModrinthRepository modrinthRepository,
+    required DependencyResolverService dependencyResolverService,
     required InstallModUsecase installModUsecase,
     required UpdateModsUsecase updateModsUsecase,
     required FileInstallService fileInstallService,
@@ -214,6 +217,7 @@ class ModsController extends StateNotifier<ModsState> {
         _contentPathService = contentPathService,
         _mappingRepository = mappingRepository,
         _modrinthRepository = modrinthRepository,
+        _dependencyResolverService = dependencyResolverService,
         _installModUsecase = installModUsecase,
         _updateModsUsecase = updateModsUsecase,
         _fileInstallService = fileInstallService,
@@ -230,6 +234,7 @@ class ModsController extends StateNotifier<ModsState> {
   final ContentPathService _contentPathService;
   final ModrinthMappingRepository _mappingRepository;
   final ModrinthRepository _modrinthRepository;
+  final DependencyResolverService _dependencyResolverService;
   final InstallModUsecase _installModUsecase;
   final UpdateModsUsecase _updateModsUsecase;
   final FileInstallService _fileInstallService;
@@ -595,6 +600,25 @@ class ModsController extends StateNotifier<ModsState> {
       );
       rethrow;
     }
+  }
+
+  Future<DependencyPreview> previewRequiredDependenciesForProjects({
+    required List<ModrinthProject> projects,
+    required String loader,
+    String? gameVersion,
+  }) {
+    return _dependencyResolverService.previewRequiredForProjects(
+      projects: projects
+          .map(
+            (project) => SelectedProjectPreview(
+              id: project.id,
+              title: project.title,
+            ),
+          )
+          .toList(),
+      loader: loader,
+      gameVersion: gameVersion,
+    );
   }
 
   Future<Map<String, ProjectInstallInfo>> loadProjectInstallInfo({

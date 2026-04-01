@@ -142,6 +142,68 @@ class DependencyResolverService {
     return versions;
   }
 
+  Future<DependencyPreview> previewRequiredForProjects({
+    required List<SelectedProjectPreview> projects,
+    required String loader,
+    String? gameVersion,
+  }) async {
+    final selectedProjectIds = projects.map((project) => project.id).toSet();
+    final requiredByProjectId = <String, DependencyPreviewItem>{};
+    final blockingIssues = <String>[];
+
+    for (final project in projects) {
+      final versions = await resolveMainProjectVersions(
+        project.id,
+        loader: loader,
+        gameVersion: gameVersion,
+      );
+      if (versions.isEmpty) {
+        blockingIssues.add(
+          '${project.title}: No compatible version found for this project.',
+        );
+        continue;
+      }
+
+      final plan = await resolveRequired(
+        mainVersionId: versions.first.id,
+        loader: loader,
+        gameVersion: gameVersion,
+      );
+
+      blockingIssues.addAll(
+        plan.incompatibleReasons.map((issue) => '${project.title}: $issue'),
+      );
+      blockingIssues.addAll(
+        plan.unavailableRequired.map((issue) => '${project.title}: $issue'),
+      );
+
+      for (final item in plan.installQueueInOrder) {
+        if (selectedProjectIds.contains(item.projectId)) {
+          continue;
+        }
+        requiredByProjectId.putIfAbsent(
+          item.projectId,
+          () => DependencyPreviewItem(
+            projectId: item.projectId,
+            title: item.displayName,
+            versionNumber: item.version.versionNumber,
+          ),
+        );
+      }
+    }
+
+    final requiredDependencies = requiredByProjectId.values.toList()
+      ..sort(
+        (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()),
+      );
+    final dedupedBlockingIssues = blockingIssues.toSet().toList()..sort();
+
+    return DependencyPreview(
+      requiredDependencies: requiredDependencies,
+      blockingIssues: dedupedBlockingIssues,
+    );
+  }
+
   Future<ModrinthVersion?> _selectDependencyVersion(
     ModrinthDependency dependency, {
     required String loader,
@@ -233,4 +295,38 @@ class ResolvedMod {
   final bool isMain;
 
   String get displayName => version.name;
+}
+
+class SelectedProjectPreview {
+  const SelectedProjectPreview({
+    required this.id,
+    required this.title,
+  });
+
+  final String id;
+  final String title;
+}
+
+class DependencyPreview {
+  const DependencyPreview({
+    required this.requiredDependencies,
+    required this.blockingIssues,
+  });
+
+  final List<DependencyPreviewItem> requiredDependencies;
+  final List<String> blockingIssues;
+
+  bool get hasBlockingIssues => blockingIssues.isNotEmpty;
+}
+
+class DependencyPreviewItem {
+  const DependencyPreviewItem({
+    required this.projectId,
+    required this.title,
+    required this.versionNumber,
+  });
+
+  final String projectId;
+  final String title;
+  final String versionNumber;
 }

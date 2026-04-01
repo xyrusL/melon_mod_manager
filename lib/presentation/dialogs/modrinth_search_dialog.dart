@@ -5,6 +5,7 @@ import '../../core/error_reporter.dart';
 import '../../core/providers.dart';
 import '../../domain/entities/content_type.dart';
 import '../../domain/entities/modrinth_project.dart';
+import '../../domain/services/dependency_resolver_service.dart';
 import '../widgets/app_modal.dart';
 import '../viewmodels/mods_controller.dart';
 
@@ -61,6 +62,8 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
   var _statusFilter = _StatusFilter.all;
   var _versionSelection = _anyVersionValue;
   var _lastQueryWasEmpty = true;
+  var _showOfflinePrompt = false;
+  var _reviewLoading = false;
   String? _detectedGameVersion;
   String? _detectedLoader;
   String? _detectedLoaderVersion;
@@ -71,6 +74,7 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
   Set<String> _selectedProjectIds = <String>{};
   String? _error;
   bool _didChangeContent = false;
+  Future<void> Function()? _retryAction;
 
   @override
   void initState() {
@@ -133,6 +137,7 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
       _currentPage = 1;
       _latestVersionByProject = const {};
     });
+    _retryAction = _loadPopular;
     await _search();
   }
 
@@ -147,6 +152,7 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
     setState(() {
       _loading = true;
       _error = null;
+      _showOfflinePrompt = false;
       _mode = isPopularMode ? _BrowseMode.popular : _BrowseMode.search;
     });
 
@@ -166,7 +172,17 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
           );
       await _applyResults(projects);
     } catch (error) {
-      setState(() => _error = ErrorReporter().toUserMessage(error));
+      if (!mounted) {
+        return;
+      }
+      if (ErrorReporter().isOfflineError(error)) {
+        setState(() {
+          _showOfflinePrompt = true;
+          _error = null;
+        });
+      } else {
+        setState(() => _error = ErrorReporter().toUserMessage(error));
+      }
     } finally {
       if (mounted) {
         setState(() => _loading = false);
@@ -232,7 +248,14 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
       }
     } catch (error) {
       if (mounted) {
-        setState(() => _error = ErrorReporter().toUserMessage(error));
+        if (ErrorReporter().isOfflineError(error)) {
+          setState(() {
+            _showOfflinePrompt = true;
+            _error = null;
+          });
+        } else {
+          setState(() => _error = ErrorReporter().toUserMessage(error));
+        }
       }
     } finally {
       if (mounted) {
@@ -313,6 +336,7 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
       _currentPage = 1;
       _latestVersionByProject = const {};
     });
+    _retryAction = _search;
     await _search();
   }
 
@@ -335,6 +359,7 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
     setState(() {
       _currentPage--;
     });
+    _retryAction = _search;
     await _search();
   }
 
@@ -345,6 +370,7 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
     setState(() {
       _currentPage++;
     });
+    _retryAction = _search;
     await _search();
   }
 
@@ -356,7 +382,17 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
       _pageSize = value;
       _currentPage = 1;
     });
+    _retryAction = _search;
     await _runNewQuery();
+  }
+
+  Future<void> _retryCurrentRequest() async {
+    final action = _retryAction ?? _loadPopular;
+    await action();
+  }
+
+  void _exitOfflinePrompt() {
+    Navigator.of(context).pop(_didChangeContent);
   }
 
   void _toggleSelection(ModrinthProject project) {
@@ -420,12 +456,45 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
       return;
     }
 
+    DependencyPreview dependencyPreview;
+    setState(() {
+      _reviewLoading = true;
+      _error = null;
+    });
+    try {
+      dependencyPreview = await ref
+          .read(modsControllerProvider.notifier)
+          .previewRequiredDependenciesForProjects(
+            projects: selected,
+            loader: _loader,
+            gameVersion: _selectedGameVersion,
+          );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _reviewLoading = false;
+        _error = ErrorReporter().toUserMessage(error);
+      });
+      return;
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _reviewLoading = false;
+    });
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => _CartConfirmDialog(
         projects: selected,
         installInfo: _installInfo,
         latestVersionByProject: _latestVersionByProject,
+        dependencyPreview: dependencyPreview,
       ),
     );
 
@@ -532,321 +601,400 @@ class _ModrinthSearchDialogState extends ConsumerState<ModrinthSearchDialog> {
       ),
       width: 980,
       height: 680,
+      expandContent: true,
+      showCloseButton: !_showOfflinePrompt,
       onClose: () => Navigator.of(context).pop(_didChangeContent),
       contentPadding: const EdgeInsets.only(top: 16),
-      content: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _queryController,
-                  decoration: const InputDecoration(
-                    hintText: 'Search projects',
-                    prefixIcon: Icon(Icons.search),
-                  ),
-                  onChanged: (value) {
-                    _handleQueryChanged(value);
-                  },
-                  onSubmitted: (_) => _runNewQuery(),
-                ),
-              ),
-              if (supportsLoader) ...[
-                const SizedBox(width: 10),
-                SizedBox(
-                  width: 150,
-                  child: DropdownButtonFormField<String>(
-                    key: ValueKey<String>(
-                      'loader_${hasDetectedLoader ? 1 : 0}_${_loader}_${_detectedLoaderVersion ?? ''}',
+      content: _showOfflinePrompt
+          ? _buildOfflinePrompt(context)
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _queryController,
+                        decoration: const InputDecoration(
+                          hintText: 'Search projects',
+                          prefixIcon: Icon(Icons.search),
+                        ),
+                        onChanged: (value) {
+                          _handleQueryChanged(value);
+                        },
+                        onSubmitted: (_) => _runNewQuery(),
+                      ),
                     ),
-                    initialValue: _loader,
-                    isExpanded: true,
-                    items: hasDetectedLoader
-                        ? [
-                            DropdownMenuItem(
-                              value: _loader,
-                              child: Text(_loaderDisplayLabel(_loader)),
-                            ),
-                          ]
-                        : const [
-                            DropdownMenuItem(
-                              value: 'fabric',
-                              child: Text('Fabric'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'quilt',
-                              child: Text('Quilt'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'forge',
-                              child: Text('Forge'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'neoforge',
-                              child: Text('NeoForge'),
-                            ),
-                          ],
-                    onChanged: hasDetectedLoader
-                        ? null
-                        : (value) async {
-                            if (value != null) {
-                              setState(() => _loader = value);
-                              await _runNewQuery();
-                            }
-                          },
-                    decoration: const InputDecoration(labelText: 'Loader'),
-                  ),
-                ),
-              ],
-              const SizedBox(width: 10),
-              SizedBox(
-                width: 170,
-                child: DropdownButtonFormField<_SortMode>(
-                  initialValue: _sortMode,
-                  isExpanded: true,
-                  items: const [
-                    DropdownMenuItem(
-                      value: _SortMode.popular,
-                      child: Text('Popular'),
+                    if (supportsLoader) ...[
+                      const SizedBox(width: 10),
+                      SizedBox(
+                        width: 150,
+                        child: DropdownButtonFormField<String>(
+                          key: ValueKey<String>(
+                            'loader_${hasDetectedLoader ? 1 : 0}_${_loader}_${_detectedLoaderVersion ?? ''}',
+                          ),
+                          initialValue: _loader,
+                          isExpanded: true,
+                          items: hasDetectedLoader
+                              ? [
+                                  DropdownMenuItem(
+                                    value: _loader,
+                                    child: Text(_loaderDisplayLabel(_loader)),
+                                  ),
+                                ]
+                              : const [
+                                  DropdownMenuItem(
+                                    value: 'fabric',
+                                    child: Text('Fabric'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'quilt',
+                                    child: Text('Quilt'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'forge',
+                                    child: Text('Forge'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'neoforge',
+                                    child: Text('NeoForge'),
+                                  ),
+                                ],
+                          onChanged: hasDetectedLoader
+                              ? null
+                              : (value) async {
+                                  if (value != null) {
+                                    setState(() => _loader = value);
+                                    await _runNewQuery();
+                                  }
+                                },
+                          decoration:
+                              const InputDecoration(labelText: 'Loader'),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(width: 10),
+                    SizedBox(
+                      width: 170,
+                      child: DropdownButtonFormField<_SortMode>(
+                        initialValue: _sortMode,
+                        isExpanded: true,
+                        items: const [
+                          DropdownMenuItem(
+                            value: _SortMode.popular,
+                            child: Text('Popular'),
+                          ),
+                          DropdownMenuItem(
+                            value: _SortMode.relevance,
+                            child: Text('Relevance'),
+                          ),
+                          DropdownMenuItem(
+                            value: _SortMode.newest,
+                            child: Text('Newest'),
+                          ),
+                          DropdownMenuItem(
+                            value: _SortMode.updated,
+                            child: Text('Updated'),
+                          ),
+                        ],
+                        onChanged: (value) async {
+                          if (value == null) {
+                            return;
+                          }
+                          setState(() => _sortMode = value);
+                          await _runNewQuery();
+                        },
+                        decoration: const InputDecoration(labelText: 'Sort'),
+                      ),
                     ),
-                    DropdownMenuItem(
-                      value: _SortMode.relevance,
-                      child: Text('Relevance'),
-                    ),
-                    DropdownMenuItem(
-                      value: _SortMode.newest,
-                      child: Text('Newest'),
-                    ),
-                    DropdownMenuItem(
-                      value: _SortMode.updated,
-                      child: Text('Updated'),
+                    if (supportsLoader) ...[
+                      const SizedBox(width: 10),
+                      SizedBox(
+                        width: 220,
+                        child: DropdownButtonFormField<String>(
+                          key: ValueKey<String>(_versionSelection),
+                          initialValue: _versionSelection,
+                          isExpanded: true,
+                          items: versionItems,
+                          onChanged: _loading
+                              ? null
+                              : (value) async {
+                                  if (value == null ||
+                                      value == _versionSelection) {
+                                    return;
+                                  }
+                                  setState(() => _versionSelection = value);
+                                  await _runNewQuery();
+                                },
+                          decoration: const InputDecoration(
+                            labelText: 'Minecraft Version',
+                          ),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(width: 10),
+                    FilledButton(
+                      onPressed: _loading ? null : _runNewQuery,
+                      child: const Text('Search'),
                     ),
                   ],
-                  onChanged: (value) async {
-                    if (value == null) {
-                      return;
-                    }
-                    setState(() => _sortMode = value);
-                    await _runNewQuery();
-                  },
-                  decoration: const InputDecoration(labelText: 'Sort'),
                 ),
-              ),
-              if (supportsLoader) ...[
-                const SizedBox(width: 10),
-                SizedBox(
-                  width: 220,
-                  child: DropdownButtonFormField<String>(
-                    key: ValueKey<String>(_versionSelection),
-                    initialValue: _versionSelection,
-                    isExpanded: true,
-                    items: versionItems,
-                    onChanged: _loading
-                        ? null
-                        : (value) async {
-                            if (value == null || value == _versionSelection) {
-                              return;
-                            }
-                            setState(() => _versionSelection = value);
-                            await _runNewQuery();
-                          },
-                    decoration: const InputDecoration(
-                      labelText: 'Minecraft Version',
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Text(
+                      'Selected: ${_selectedProjectIds.length}',
+                      style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.85)),
                     ),
+                    const SizedBox(width: 12),
+                    _StatusTag(
+                      label: 'Installed ($installedCount)',
+                      color: const Color(0xFF68DA97),
+                      selected: _statusFilter == _StatusFilter.installed,
+                      onTap: () => _toggleStatusFilter(_StatusFilter.installed),
+                    ),
+                    const SizedBox(width: 6),
+                    _StatusTag(
+                      label: 'Update ($updateCount)',
+                      color: const Color(0xFFFFB55A),
+                      selected: _statusFilter == _StatusFilter.update,
+                      onTap: () => _toggleStatusFilter(_StatusFilter.update),
+                    ),
+                    const SizedBox(width: 6),
+                    _StatusTag(
+                      label: 'On Disk ($onDiskCount)',
+                      color: const Color(0xFF86C5FF),
+                      selected: _statusFilter == _StatusFilter.onDisk,
+                      onTap: () => _toggleStatusFilter(_StatusFilter.onDisk),
+                    ),
+                    const Spacer(),
+                    FilledButton.icon(
+                      onPressed: _selectedProjectIds.isEmpty ||
+                              _loading ||
+                              _statusLoading ||
+                              _reviewLoading
+                          ? null
+                          : _confirmAndInstallSelected,
+                      icon: const Icon(Icons.shopping_cart_checkout_rounded),
+                      label: Text(
+                        widget.contentType == ContentType.mod
+                            ? 'Review & Install'
+                            : 'Download Selected',
+                      ),
+                    ),
+                  ],
+                ),
+                if (_error != null) ...[
+                  const SizedBox(height: 8),
+                  Text(_error!,
+                      style: const TextStyle(color: Colors.redAccent)),
+                ],
+                if (_statusLoading) ...[
+                  const SizedBox(height: 8),
+                  const LinearProgressIndicator(minHeight: 4),
+                ],
+                if (_reviewLoading) ...[
+                  const SizedBox(height: 8),
+                  const LinearProgressIndicator(minHeight: 4),
+                ],
+                const SizedBox(height: 10),
+                Expanded(
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 220),
+                    switchInCurve: Curves.easeOutCubic,
+                    switchOutCurve: Curves.easeInCubic,
+                    child: _loading
+                        ? const Center(
+                            key: ValueKey<String>('modrinth_loading'),
+                            child: CircularProgressIndicator(),
+                          )
+                        : _results.isEmpty
+                            ? _EmptyState(
+                                key: const ValueKey<String>('modrinth_empty'),
+                                onReloadPopular: _loadPopular,
+                              )
+                            : filteredResults.isEmpty
+                                ? _FilteredEmptyState(
+                                    key: const ValueKey<String>(
+                                      'modrinth_filtered_empty',
+                                    ),
+                                    onClearFilter: () => setState(
+                                      () => _statusFilter = _StatusFilter.all,
+                                    ),
+                                  )
+                                : ListView.builder(
+                                    key: ValueKey<String>(
+                                      'modrinth_results_${filteredResults.length}_${_statusFilter.name}_$_currentPage',
+                                    ),
+                                    itemCount: filteredResults.length,
+                                    itemBuilder: (context, index) {
+                                      final item = filteredResults[index];
+                                      final info = _installInfo[item.id];
+                                      final selected =
+                                          _selectedProjectIds.contains(item.id);
+                                      final latestVersion =
+                                          info?.latestVersionNumber ??
+                                              _latestVersionByProject[item.id];
+                                      final installedVersion =
+                                          info?.installedVersionNumber;
+
+                                      final versionLine = switch (info?.state) {
+                                        ProjectInstallState.updateAvailable =>
+                                          installedVersion != null &&
+                                                  latestVersion != null
+                                              ? 'Version: $installedVersion -> $latestVersion'
+                                              : latestVersion != null
+                                                  ? 'Latest compatible: $latestVersion'
+                                                  : 'Update available',
+                                        ProjectInstallState.installed =>
+                                          installedVersion != null
+                                              ? 'Installed version: $installedVersion'
+                                              : latestVersion != null
+                                                  ? 'Installed, latest: $latestVersion'
+                                                  : 'Installed',
+                                        _ => latestVersion != null
+                                            ? 'Latest compatible: $latestVersion'
+                                            : 'Latest version not available',
+                                      };
+
+                                      return Padding(
+                                        padding: EdgeInsets.only(
+                                          bottom: index ==
+                                                  filteredResults.length - 1
+                                              ? 8
+                                              : 8,
+                                        ),
+                                        child: _ProjectCard(
+                                          project: item,
+                                          info: info,
+                                          selected: selected,
+                                          versionLine: versionLine,
+                                          onDiskLabel: widget.contentType ==
+                                                  ContentType.mod
+                                              ? 'On Disk'
+                                              : 'Already Added',
+                                          onTapAction: () =>
+                                              _toggleSelection(item),
+                                        ),
+                                      );
+                                    },
+                                  ),
                   ),
                 ),
-              ],
-              const SizedBox(width: 10),
-              FilledButton(
-                onPressed: _loading ? null : _runNewQuery,
-                child: const Text('Search'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Text(
-                'Selected: ${_selectedProjectIds.length}',
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.85)),
-              ),
-              const SizedBox(width: 12),
-              _StatusTag(
-                label: 'Installed ($installedCount)',
-                color: const Color(0xFF68DA97),
-                selected: _statusFilter == _StatusFilter.installed,
-                onTap: () => _toggleStatusFilter(_StatusFilter.installed),
-              ),
-              const SizedBox(width: 6),
-              _StatusTag(
-                label: 'Update ($updateCount)',
-                color: const Color(0xFFFFB55A),
-                selected: _statusFilter == _StatusFilter.update,
-                onTap: () => _toggleStatusFilter(_StatusFilter.update),
-              ),
-              const SizedBox(width: 6),
-              _StatusTag(
-                label: 'On Disk ($onDiskCount)',
-                color: const Color(0xFF86C5FF),
-                selected: _statusFilter == _StatusFilter.onDisk,
-                onTap: () => _toggleStatusFilter(_StatusFilter.onDisk),
-              ),
-              const Spacer(),
-              FilledButton.icon(
-                onPressed:
-                    _selectedProjectIds.isEmpty || _loading || _statusLoading
-                        ? null
-                        : _confirmAndInstallSelected,
-                icon: const Icon(Icons.shopping_cart_checkout_rounded),
-                label: Text(
-                  widget.contentType == ContentType.mod
-                      ? 'Review & Install'
-                      : 'Download Selected',
-                ),
-              ),
-            ],
-          ),
-          if (_error != null) ...[
-            const SizedBox(height: 8),
-            Text(_error!, style: const TextStyle(color: Colors.redAccent)),
-          ],
-          if (_statusLoading) ...[
-            const SizedBox(height: 8),
-            const LinearProgressIndicator(minHeight: 4),
-          ],
-          const SizedBox(height: 10),
-          Expanded(
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 220),
-              switchInCurve: Curves.easeOutCubic,
-              switchOutCurve: Curves.easeInCubic,
-              child: _loading
-                  ? const Center(
-                      key: ValueKey<String>('modrinth_loading'),
-                      child: CircularProgressIndicator(),
-                    )
-                  : _results.isEmpty
-                      ? _EmptyState(
-                          key: const ValueKey<String>('modrinth_empty'),
-                          onReloadPopular: _loadPopular,
-                        )
-                      : filteredResults.isEmpty
-                          ? _FilteredEmptyState(
-                              key: const ValueKey<String>(
-                                'modrinth_filtered_empty',
-                              ),
-                              onClearFilter: () => setState(
-                                () => _statusFilter = _StatusFilter.all,
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Text(
+                      'Per page',
+                      style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.78)),
+                    ),
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      width: 96,
+                      child: DropdownButtonFormField<int>(
+                        initialValue: _pageSize,
+                        isExpanded: true,
+                        items: _pageSizeOptions
+                            .map(
+                              (size) => DropdownMenuItem<int>(
+                                value: size,
+                                child: Text('$size'),
                               ),
                             )
-                          : ListView.builder(
-                              key: ValueKey<String>(
-                                'modrinth_results_${filteredResults.length}_${_statusFilter.name}_$_currentPage',
-                              ),
-                              itemCount: filteredResults.length,
-                              itemBuilder: (context, index) {
-                                final item = filteredResults[index];
-                                final info = _installInfo[item.id];
-                                final selected =
-                                    _selectedProjectIds.contains(item.id);
-                                final latestVersion =
-                                    info?.latestVersionNumber ??
-                                        _latestVersionByProject[item.id];
-                                final installedVersion =
-                                    info?.installedVersionNumber;
-
-                                final versionLine = switch (info?.state) {
-                                  ProjectInstallState.updateAvailable =>
-                                    installedVersion != null &&
-                                            latestVersion != null
-                                        ? 'Version: $installedVersion -> $latestVersion'
-                                        : latestVersion != null
-                                            ? 'Latest compatible: $latestVersion'
-                                            : 'Update available',
-                                  ProjectInstallState.installed =>
-                                    installedVersion != null
-                                        ? 'Installed version: $installedVersion'
-                                        : latestVersion != null
-                                            ? 'Installed, latest: $latestVersion'
-                                            : 'Installed',
-                                  _ => latestVersion != null
-                                      ? 'Latest compatible: $latestVersion'
-                                      : 'Latest version not available',
-                                };
-
-                                return Padding(
-                                  padding: EdgeInsets.only(
-                                    bottom: index == filteredResults.length - 1
-                                        ? 8
-                                        : 8,
-                                  ),
-                                  child: _ProjectCard(
-                                    project: item,
-                                    info: info,
-                                    selected: selected,
-                                    versionLine: versionLine,
-                                    onDiskLabel:
-                                        widget.contentType == ContentType.mod
-                                            ? 'On Disk'
-                                            : 'Already Added',
-                                    onTapAction: () => _toggleSelection(item),
-                                  ),
-                                );
-                              },
-                            ),
-            ),
-          ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              Text(
-                'Per page',
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.78)),
-              ),
-              const SizedBox(width: 8),
-              SizedBox(
-                width: 96,
-                child: DropdownButtonFormField<int>(
-                  initialValue: _pageSize,
-                  isExpanded: true,
-                  items: _pageSizeOptions
-                      .map(
-                        (size) => DropdownMenuItem<int>(
-                          value: size,
-                          child: Text('$size'),
+                            .toList(),
+                        onChanged: _loading ? null : _changePageSize,
+                        decoration: const InputDecoration(
+                          isDense: true,
+                          contentPadding: EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 10),
                         ),
-                      )
-                      .toList(),
-                  onChanged: _loading ? null : _changePageSize,
-                  decoration: const InputDecoration(
-                    isDense: true,
-                    contentPadding:
-                        EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      'Page $_currentPage',
+                      style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.85)),
+                    ),
+                    const SizedBox(width: 10),
+                    IconButton.filledTonal(
+                      tooltip: 'Previous page',
+                      onPressed: (_loading || _currentPage <= 1)
+                          ? null
+                          : _goToPreviousPage,
+                      icon: const Icon(Icons.chevron_left_rounded),
+                    ),
+                    const SizedBox(width: 4),
+                    IconButton.filled(
+                      tooltip: 'Next page',
+                      onPressed:
+                          (_loading || !_hasNextPage) ? null : _goToNextPage,
+                      icon: const Icon(Icons.chevron_right_rounded),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+    );
+  }
+
+  Widget _buildOfflinePrompt(BuildContext context) {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: AppModalSectionCard(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Icon(
+                    Icons.wifi_off_rounded,
+                    color: Color(0xFFFFC15A),
+                    size: 24,
                   ),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'No internet connection',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'You need internet to browse ${widget.contentType.label.toLowerCase()} downloads from Modrinth.',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.78),
+                  height: 1.4,
                 ),
               ),
-              const Spacer(),
-              Text(
-                'Page $_currentPage',
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.85)),
-              ),
-              const SizedBox(width: 10),
-              IconButton.filledTonal(
-                tooltip: 'Previous page',
-                onPressed:
-                    (_loading || _currentPage <= 1) ? null : _goToPreviousPage,
-                icon: const Icon(Icons.chevron_left_rounded),
-              ),
-              const SizedBox(width: 4),
-              IconButton.filled(
-                tooltip: 'Next page',
-                onPressed: (_loading || !_hasNextPage) ? null : _goToNextPage,
-                icon: const Icon(Icons.chevron_right_rounded),
+              const SizedBox(height: 18),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: _exitOfflinePrompt,
+                    child: const Text('Exit'),
+                  ),
+                  const SizedBox(width: 10),
+                  FilledButton(
+                    onPressed: _loading ? null : _retryCurrentRequest,
+                    child: const Text('Retry'),
+                  ),
+                ],
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }

@@ -44,34 +44,6 @@ class TopBar extends StatelessWidget {
             'Melon',
             style: TextStyle(fontSize: titleSize, fontWeight: FontWeight.bold),
           ),
-          SizedBox(width: (6 * uiScale).clamp(5, 10).toDouble()),
-          Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: (7 * uiScale).clamp(6, 10).toDouble(),
-              vertical: (3 * uiScale).clamp(2, 5).toDouble(),
-            ),
-            decoration: BoxDecoration(
-              color: Theme.of(context)
-                  .colorScheme
-                  .secondary
-                  .withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: Theme.of(context)
-                    .colorScheme
-                    .secondary
-                    .withValues(alpha: 0.6),
-              ),
-            ),
-            child: Text(
-              'BETA',
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.secondary,
-                fontSize: (10 * uiScale).clamp(9.5, 12).toDouble(),
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
           SizedBox(width: (14 * uiScale).clamp(10, 24).toDouble()),
           Expanded(
             child: PopupMenuButton<_PathAction>(
