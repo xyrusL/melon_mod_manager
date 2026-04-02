@@ -23,13 +23,14 @@ Melon Mod Manager makes it easy to:
 - Minecraft Loaders: Fabric, Quilt, Forge, NeoForge
 - Internet Required: Yes, for Modrinth search and update checks
 
-## What's New in 1.7.1
+## What's New in 1.7.2
 
-- Added an offline warning inside the Modrinth download screen for mods, resource packs, and shaders.
-- Download screens now show `Retry` and `Exit` when there is no internet connection, while the rest of the app stays usable offline.
-- Mod installs now preview required Modrinth dependencies before install starts.
-- Required dependency mods are installed automatically after one confirmation, with shared dependencies deduplicated.
-- Dependency problems are now shown before install so users can see what is blocking the install right away.
+- Auto-update checks now support hourly, daily, and weekly frequencies.
+- The default update check frequency is now every 8 hours.
+- Added quicker presets including 1 hour, 3 hours, 8 hours, 12 hours, 1 day, 2 days, and 1 week.
+- Custom frequency now uses a value plus unit picker for hours, days, or weeks.
+- Removed `Off` and monthly update checks to keep checks within a useful range.
+- Custom values above 1 week are now rejected with a clear validation message.
 
 ## Key Features
 

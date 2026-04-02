@@ -10,6 +10,8 @@ class SettingsRepositoryImpl implements SettingsRepository {
   static const _lastSeenAppVersionKey = 'last_seen_app_version';
   static const _metadataPreparedVersionKey = 'metadata_prepared_app_version';
   static const _autoUpdateIntervalPrefix = 'auto_update_interval';
+  static const _autoUpdateCustomValuePrefix = 'auto_update_custom_value';
+  static const _autoUpdateCustomUnitPrefix = 'auto_update_custom_unit';
   static const _autoUpdateCustomDaysPrefix = 'auto_update_custom_days';
   static const _autoUpdateLastCheckedPrefix = 'auto_update_last_checked';
 
@@ -59,20 +61,32 @@ class SettingsRepositoryImpl implements SettingsRepository {
     AutoUpdateTarget target,
   ) async {
     final presetRaw = _prefs.getString(_intervalPresetKey(target));
-    AutoUpdateIntervalPreset? preset;
-    for (final value in AutoUpdateIntervalPreset.values) {
-      if (value.name == presetRaw) {
-        preset = value;
-        break;
-      }
-    }
-    final customDays = _prefs.getInt(_intervalCustomDaysKey(target)) ?? 7;
+    final preset = _parsePreset(presetRaw);
+    final storedCustomValue =
+        _prefs.getInt(_intervalCustomValueKey(target)) ??
+            _prefs.getInt(_intervalLegacyCustomDaysKey(target)) ??
+            7;
+    final storedUnitRaw = _prefs.getString(_intervalCustomUnitKey(target));
+    final customUnit = _parseUnit(storedUnitRaw) ??
+        (storedUnitRaw == null
+            ? AutoUpdateIntervalUnit.days
+            : AutoUpdateIntervalSetting.defaultSetting.customUnit);
+
     if (preset == null) {
-      return const AutoUpdateIntervalSetting.off();
+      return AutoUpdateIntervalSetting.defaultSetting;
     }
+
+    if (preset == AutoUpdateIntervalPreset.custom) {
+      return _migrateLegacyCustomSetting(
+        customValue: storedCustomValue,
+        customUnit: customUnit,
+      );
+    }
+
     return AutoUpdateIntervalSetting(
       preset: preset,
-      customDays: customDays.clamp(1, 365),
+      customValue: storedCustomValue,
+      customUnit: customUnit,
     );
   }
 
@@ -81,10 +95,17 @@ class SettingsRepositoryImpl implements SettingsRepository {
     AutoUpdateTarget target,
     AutoUpdateIntervalSetting interval,
   ) async {
+    if (!interval.isValid) {
+      throw ArgumentError(interval.validationError());
+    }
     await _prefs.setString(_intervalPresetKey(target), interval.preset.name);
     await _prefs.setInt(
-      _intervalCustomDaysKey(target),
-      interval.customDays.clamp(1, 365),
+      _intervalCustomValueKey(target),
+      interval.customValue,
+    );
+    await _prefs.setString(
+      _intervalCustomUnitKey(target),
+      interval.customUnit.name,
     );
   }
 
@@ -118,9 +139,64 @@ class SettingsRepositoryImpl implements SettingsRepository {
   String _intervalPresetKey(AutoUpdateTarget target) =>
       '${_autoUpdateIntervalPrefix}_${_targetKey(target)}';
 
-  String _intervalCustomDaysKey(AutoUpdateTarget target) =>
+  String _intervalCustomValueKey(AutoUpdateTarget target) =>
+      '${_autoUpdateCustomValuePrefix}_${_targetKey(target)}';
+
+  String _intervalCustomUnitKey(AutoUpdateTarget target) =>
+      '${_autoUpdateCustomUnitPrefix}_${_targetKey(target)}';
+
+  String _intervalLegacyCustomDaysKey(AutoUpdateTarget target) =>
       '${_autoUpdateCustomDaysPrefix}_${_targetKey(target)}';
 
   String _lastCheckedKey(AutoUpdateTarget target) =>
       '${_autoUpdateLastCheckedPrefix}_${_targetKey(target)}';
+
+  AutoUpdateIntervalPreset? _parsePreset(String? raw) {
+    switch (raw) {
+      case null:
+      case '':
+      case 'off':
+        return AutoUpdateIntervalPreset.hour8;
+      case 'month1':
+        return AutoUpdateIntervalPreset.week1;
+    }
+
+    for (final value in AutoUpdateIntervalPreset.values) {
+      if (value.name == raw) {
+        return value;
+      }
+    }
+    return null;
+  }
+
+  AutoUpdateIntervalUnit? _parseUnit(String? raw) {
+    for (final value in AutoUpdateIntervalUnit.values) {
+      if (value.name == raw) {
+        return value;
+      }
+    }
+    return null;
+  }
+
+  AutoUpdateIntervalSetting _migrateLegacyCustomSetting({
+    required int customValue,
+    required AutoUpdateIntervalUnit customUnit,
+  }) {
+    final sanitizedValue = customValue < 1 ? 1 : customValue;
+    final candidate = AutoUpdateIntervalSetting(
+      preset: AutoUpdateIntervalPreset.custom,
+      customValue: sanitizedValue,
+      customUnit: customUnit,
+    );
+
+    if (candidate.isValid) {
+      return candidate;
+    }
+
+    return const AutoUpdateIntervalSetting(
+      preset: AutoUpdateIntervalPreset.custom,
+      customValue: 1,
+      customUnit: AutoUpdateIntervalUnit.weeks,
+    );
+  }
 }

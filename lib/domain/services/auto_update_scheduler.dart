@@ -9,10 +9,6 @@ class AutoUpdateScheduler {
     DateTime? now,
   }) {
     final duration = interval.toDuration();
-    if (duration == null) {
-      return false;
-    }
-
     if (lastCheckedAt == null) {
       return true;
     }

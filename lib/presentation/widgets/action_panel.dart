@@ -264,7 +264,7 @@ class _ActionPanelState extends ConsumerState<ActionPanel> {
             versionLabel.when(
               data: (v) => v,
               loading: () => 'Loading version...',
-              error: (_, __) => 'v1.7.1',
+              error: (_, __) => 'v1.7.2',
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -368,7 +368,7 @@ class _ActionPanelState extends ConsumerState<ActionPanel> {
   Future<void> _showUpdateSettingsDialog(BuildContext context) async {
     await showDialog<void>(
       context: context,
-      builder: (context) => _UpdateSettingsDialog(
+      builder: (context) => UpdateSettingsDialog(
         onForceRefreshData: widget.onForceRefreshData,
       ),
     );
@@ -436,19 +436,20 @@ class _ActionPanelState extends ConsumerState<ActionPanel> {
   }
 }
 
-class _UpdateSettingsDialog extends ConsumerStatefulWidget {
-  const _UpdateSettingsDialog({
+class UpdateSettingsDialog extends ConsumerStatefulWidget {
+  const UpdateSettingsDialog({
+    super.key,
     required this.onForceRefreshData,
   });
 
   final RunRefreshWithProgress onForceRefreshData;
 
   @override
-  ConsumerState<_UpdateSettingsDialog> createState() =>
+  ConsumerState<UpdateSettingsDialog> createState() =>
       _UpdateSettingsDialogState();
 }
 
-class _UpdateSettingsDialogState extends ConsumerState<_UpdateSettingsDialog> {
+class _UpdateSettingsDialogState extends ConsumerState<UpdateSettingsDialog> {
   static const _targets = <AutoUpdateTarget>[
     AutoUpdateTarget.app,
     AutoUpdateTarget.mods,
@@ -456,11 +457,11 @@ class _UpdateSettingsDialogState extends ConsumerState<_UpdateSettingsDialog> {
     AutoUpdateTarget.shaderPacks,
   ];
 
-  final TextEditingController _customDaysController = TextEditingController(
-    text: '7',
+  final TextEditingController _customValueController = TextEditingController(
+    text: '8',
   );
   AutoUpdateIntervalSetting _globalInterval =
-      const AutoUpdateIntervalSetting.off();
+      AutoUpdateIntervalSetting.defaultSetting;
   final Map<AutoUpdateTarget, DateTime?> _lastChecked = {};
   bool _loading = true;
   bool _saving = false;
@@ -477,7 +478,7 @@ class _UpdateSettingsDialogState extends ConsumerState<_UpdateSettingsDialog> {
 
   @override
   void dispose() {
-    _customDaysController.dispose();
+    _customValueController.dispose();
     super.dispose();
   }
 
@@ -490,7 +491,7 @@ class _UpdateSettingsDialogState extends ConsumerState<_UpdateSettingsDialog> {
       global ??= interval;
       loadedLastChecked[target] = await repo.getLastAutoUpdateCheckAt(target);
     }
-    global ??= const AutoUpdateIntervalSetting.off();
+    global ??= AutoUpdateIntervalSetting.defaultSetting;
 
     if (!mounted) {
       return;
@@ -500,19 +501,21 @@ class _UpdateSettingsDialogState extends ConsumerState<_UpdateSettingsDialog> {
       _lastChecked
         ..clear()
         ..addAll(loadedLastChecked);
-      _customDaysController.text = _globalInterval.customDays.toString();
+      _customValueController.text = _globalInterval.customValue.toString();
       _loading = false;
     });
   }
 
   Future<void> _saveSettings() async {
+    final next = _validatedInterval();
+    if (next == null) {
+      setState(() {});
+      return;
+    }
+
     setState(() => _saving = true);
     final repo = ref.read(settingsRepositoryProvider);
     try {
-      final customDaysRaw = int.tryParse(_customDaysController.text.trim()) ??
-          _globalInterval.customDays;
-      final next =
-          _globalInterval.copyWith(customDays: customDaysRaw.clamp(1, 365));
       for (final target in _targets) {
         await repo.saveAutoUpdateInterval(target, next);
       }
@@ -596,6 +599,40 @@ class _UpdateSettingsDialogState extends ConsumerState<_UpdateSettingsDialog> {
     }
     await _saveSettings();
   }
+
+  AutoUpdateIntervalSetting? _validatedInterval() {
+    if (_customIntervalError() != null) {
+      return null;
+    }
+    final customValue = int.tryParse(_customValueController.text.trim()) ??
+        _globalInterval.customValue;
+    final next = _globalInterval.copyWith(customValue: customValue);
+    if (!next.isValid) {
+      return null;
+    }
+    return next;
+  }
+
+  String? _customIntervalError() {
+    if (_globalInterval.preset != AutoUpdateIntervalPreset.custom) {
+      return null;
+    }
+    final raw = _customValueController.text.trim();
+    if (raw.isEmpty) {
+      return 'Enter a number greater than 0.';
+    }
+    final parsed = int.tryParse(raw);
+    if (parsed == null) {
+      return 'Enter a whole number.';
+    }
+    return _globalInterval.copyWith(customValue: parsed).validationError();
+  }
+
+  String _customUnitLabel(AutoUpdateIntervalUnit unit) => switch (unit) {
+        AutoUpdateIntervalUnit.hours => 'Hours',
+        AutoUpdateIntervalUnit.days => 'Days',
+        AutoUpdateIntervalUnit.weeks => 'Weeks',
+      };
 
   String _targetLabel(AutoUpdateTarget target) => switch (target) {
         AutoUpdateTarget.app => 'App updates',
@@ -710,11 +747,20 @@ class _UpdateSettingsDialogState extends ConsumerState<_UpdateSettingsDialog> {
             style: const TextStyle(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
+          Text(
+            'Melon checks every 8 hours by default. You can use hours, days, or weeks up to 1 week.',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.72),
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 10),
           Row(
             children: [
               Expanded(
                 child: DropdownButtonFormField<AutoUpdateIntervalPreset>(
                   initialValue: _globalInterval.preset,
+                  isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: 'How often to check',
                     isDense: true,
@@ -722,24 +768,32 @@ class _UpdateSettingsDialogState extends ConsumerState<_UpdateSettingsDialog> {
                   ),
                   items: const [
                     DropdownMenuItem(
-                      value: AutoUpdateIntervalPreset.off,
-                      child: Text('Off'),
+                      value: AutoUpdateIntervalPreset.hour1,
+                      child: Text('Every 1 hour'),
+                    ),
+                    DropdownMenuItem(
+                      value: AutoUpdateIntervalPreset.hour3,
+                      child: Text('Every 3 hours'),
+                    ),
+                    DropdownMenuItem(
+                      value: AutoUpdateIntervalPreset.hour8,
+                      child: Text('Every 8 hours'),
+                    ),
+                    DropdownMenuItem(
+                      value: AutoUpdateIntervalPreset.hour12,
+                      child: Text('Every 12 hours'),
                     ),
                     DropdownMenuItem(
                       value: AutoUpdateIntervalPreset.day1,
                       child: Text('Every 1 day'),
                     ),
                     DropdownMenuItem(
-                      value: AutoUpdateIntervalPreset.day3,
-                      child: Text('Every 3 days'),
+                      value: AutoUpdateIntervalPreset.day2,
+                      child: Text('Every 2 days'),
                     ),
                     DropdownMenuItem(
                       value: AutoUpdateIntervalPreset.week1,
-                      child: Text('Every week'),
-                    ),
-                    DropdownMenuItem(
-                      value: AutoUpdateIntervalPreset.month1,
-                      child: Text('Every month'),
+                      child: Text('Every 1 week'),
                     ),
                     DropdownMenuItem(
                       value: AutoUpdateIntervalPreset.custom,
@@ -760,20 +814,64 @@ class _UpdateSettingsDialogState extends ConsumerState<_UpdateSettingsDialog> {
                   AutoUpdateIntervalPreset.custom) ...[
                 const SizedBox(width: 8),
                 SizedBox(
-                  width: 130,
+                  width: 110,
                   child: TextField(
-                    controller: _customDaysController,
+                    controller: _customValueController,
                     keyboardType: TextInputType.number,
+                    onChanged: (_) => setState(() {}),
+                    decoration: InputDecoration(
+                      labelText: 'Value',
+                      isDense: true,
+                      border: OutlineInputBorder(),
+                      errorText: _customIntervalError(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 110,
+                  child: DropdownButtonFormField<AutoUpdateIntervalUnit>(
+                    initialValue: _globalInterval.customUnit,
+                    isExpanded: true,
                     decoration: const InputDecoration(
-                      labelText: 'Days',
+                      labelText: 'Unit',
                       isDense: true,
                       border: OutlineInputBorder(),
                     ),
+                    items: AutoUpdateIntervalUnit.values
+                        .map(
+                          (unit) => DropdownMenuItem(
+                            value: unit,
+                            child: Text(_customUnitLabel(unit)),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      if (value == null) {
+                        return;
+                      }
+                      setState(() {
+                        _globalInterval =
+                            _globalInterval.copyWith(customUnit: value);
+                      });
+                    },
                   ),
                 ),
               ],
             ],
           ),
+          if (_globalInterval.preset == AutoUpdateIntervalPreset.custom &&
+              _globalInterval.customUnit == AutoUpdateIntervalUnit.weeks)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                'Custom week checks can only be 1 week.',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.6),
+                  fontSize: 12,
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -1007,7 +1105,7 @@ class _AboutDialog extends ConsumerWidget {
         versionLabel.when(
           data: (v) => v,
           loading: () => 'Loading version...',
-          error: (_, __) => 'v1.7.1',
+          error: (_, __) => 'v1.7.2',
         ),
       ),
       width: 560,

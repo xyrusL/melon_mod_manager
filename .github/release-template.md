@@ -1,14 +1,15 @@
-## Melon Mod Manager 1.7.1
+## Melon Mod Manager 1.7.2
 
-This 1.7.1 update improves Modrinth installs and offline handling, so Melon is clearer about required dependency mods and stays friendlier when your connection drops.
+This 1.7.2 update refreshes Melon's auto-update timing so checks can run on practical hourly schedules without drifting into long monthly gaps.
 
 ### Fixes and improvements
 
-- Added an offline warning inside Modrinth download screens for mods, resource packs, and shaders.
-- Download screens now show Retry and Exit when there is no internet connection, while the rest of Melon stays usable offline.
-- Added a required dependency preview before mod installs start.
-- Melon now auto-installs required Modrinth dependencies after one confirmation.
-- Shared required dependencies are deduplicated, and blocking dependency issues are shown before install begins.
+- Auto-update checks now support hourly, daily, and weekly frequencies.
+- The default check interval is now every 8 hours.
+- Added new quick presets: 1 hour, 3 hours, 8 hours, 12 hours, 1 day, 2 days, and 1 week.
+- Custom frequency now uses a value plus unit picker for hours, days, or weeks.
+- Removed Off and monthly update checks.
+- Custom intervals longer than 1 week are now rejected with a clear validation message.
 
 ### Included assets
 
