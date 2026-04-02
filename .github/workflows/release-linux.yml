@@ -54,7 +54,18 @@ jobs:
         run: flutter config --enable-linux-desktop
 
       - name: Ensure Linux Runner Exists
-        run: flutter create --platforms=linux .
+        shell: bash
+        run: |
+          if [[ -f linux/CMakeLists.txt ]]; then
+            echo "Linux runner already present."
+            exit 0
+          fi
+
+          flutter create --platforms=linux .
+
+          if [[ -f test/widget_test.dart ]]; then
+            rm test/widget_test.dart
+          fi
 
       - name: Install Dependencies
         run: flutter pub get
