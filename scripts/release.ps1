@@ -56,8 +56,8 @@ function Validate-ChannelVersion {
   }
 
   if ($Channel -eq 'stable') {
-    if ($Version -notmatch '^\d+\.\d+\.\d+-\d{4}\.\d{2}\.\d{2}$') {
-      throw "Channel 'stable' requires version format 'UPGRADE.MAJOR.MINOR-YYYY.MM.DD'. Current: $Version"
+    if ($Version -notmatch '^\d+\.\d+\.\d+$' -and $Version -notmatch '^\d+\.\d+\.\d+-\d{4}\.\d{2}\.\d{2}$') {
+      throw "Channel 'stable' requires version format 'MAJOR.MINOR.PATCH' or 'MAJOR.MINOR.PATCH-YYYY.MM.DD'. Current: $Version"
     }
     return
   }

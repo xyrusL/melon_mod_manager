@@ -11,12 +11,17 @@ on:
         required: true
         type: string
 
+concurrency:
+  group: release-windows-${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref }}
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
 jobs:
   build-and-release:
     runs-on: windows-latest
+    timeout-minutes: 60
 
     steps:
       - name: Checkout
@@ -30,37 +35,18 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Enable Windows Desktop
+        run: flutter config --enable-windows-desktop
+
       - name: Resolve App Version
         id: meta
         shell: pwsh
         run: |
-          $pubspecVersion = (Select-String -Path pubspec.yaml -Pattern '^version:\s*(.+)$').Matches[0].Groups[1].Value.Trim()
-          $appVersion = $pubspecVersion.Split('+')[0]
           $dispatchTag = "${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || '' }}"
-          if (![string]::IsNullOrWhiteSpace($dispatchTag)) {
-            $tagName = $dispatchTag
-          } else {
-            $tagName = "${{ github.ref_name }}"
+          if ([string]::IsNullOrWhiteSpace($dispatchTag)) {
+            $dispatchTag = "${{ github.ref_name }}"
           }
-          if ([string]::IsNullOrWhiteSpace($tagName)) {
-            $tagName = "v$appVersion"
-          }
-          $expectedTag = "v$appVersion"
-          if ($tagName -ne $expectedTag) {
-            throw "Tag/version mismatch. Tag is '$tagName' but pubspec.yaml is '$expectedTag'."
-          }
-          $isStableDateRelease = $appVersion -match '^\d+\.\d+\.\d+-\d{4}\.\d{2}\.\d{2}$'
-          $isPreRelease = if ($appVersion -match '-beta(\.|$)' -or ($appVersion.Contains('-') -and -not $isStableDateRelease)) { "true" } else { "false" }
-          $releaseChannel = if ($appVersion -match '-beta(\.|$)') { "Beta" } elseif ($isPreRelease -eq "true") { "Pre-release" } else { "Stable" }
-          $releaseTitle = "Melon Mod Manager $appVersion"
-          if ($releaseChannel -eq "Beta") {
-            $releaseTitle = "$releaseTitle (Beta)"
-          }
-          "app_version=$appVersion" >> $env:GITHUB_OUTPUT
-          "tag_name=$tagName" >> $env:GITHUB_OUTPUT
-          "is_prerelease=$isPreRelease" >> $env:GITHUB_OUTPUT
-          "release_channel=$releaseChannel" >> $env:GITHUB_OUTPUT
-          "release_title=$releaseTitle" >> $env:GITHUB_OUTPUT
+          dart tool/release_metadata.dart --tag "$dispatchTag" --github-output "$env:GITHUB_OUTPUT"
 
       - name: Install Dependencies
         run: flutter pub get
@@ -68,7 +54,19 @@ jobs:
       - name: Analyze
         run: flutter analyze
 
-      - name: Test
+      - name: Run High-Value Tests
+        run: >
+          flutter test
+          test/release_metadata_test.dart
+          test/error_reporter_test.dart
+          test/modrinth_api_client_test.dart
+          test/modrinth_repository_impl_test.dart
+          test/minecraft_path_service_test.dart
+          test/dependency_resolver_service_test.dart
+          test/modrinth_search_dialog_offline_test.dart
+          test/modrinth_search_dialog_dependency_preview_test.dart
+
+      - name: Run Full Test Suite
         run: flutter test
 
       - name: Build Windows Release

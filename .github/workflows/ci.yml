@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: CI / ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - os: ubuntu-latest
+            label: Linux
+            smoke_build: flutter build linux --release
+          - os: windows-latest
+            label: Windows
+            smoke_build: flutter build windows --release
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install Linux Build Dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
+
+      - name: Enable Linux Desktop
+        if: runner.os == 'Linux'
+        run: flutter config --enable-linux-desktop
+
+      - name: Enable Windows Desktop
+        if: runner.os == 'Windows'
+        run: flutter config --enable-windows-desktop
+
+      - name: Ensure Linux Runner Exists
+        if: runner.os == 'Linux'
+        run: flutter create --platforms=linux .
+
+      - name: Remove Generated Template Test If Created
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          if [[ -f test/widget_test.dart ]]; then
+            rm test/widget_test.dart
+          fi
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Run High-Value Tests
+        run: >
+          flutter test
+          test/release_metadata_test.dart
+          test/error_reporter_test.dart
+          test/modrinth_api_client_test.dart
+          test/modrinth_repository_impl_test.dart
+          test/minecraft_path_service_test.dart
+          test/dependency_resolver_service_test.dart
+          test/modrinth_search_dialog_offline_test.dart
+          test/modrinth_search_dialog_dependency_preview_test.dart
+
+      - name: Run Full Test Suite
+        run: flutter test
+
+      - name: Desktop Smoke Build
+        run: ${{ matrix.smoke_build }}

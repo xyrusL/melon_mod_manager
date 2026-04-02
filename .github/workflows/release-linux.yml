@@ -11,12 +11,17 @@ on:
         required: true
         type: string
 
+concurrency:
+  group: release-linux-${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref }}
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
 jobs:
   build-and-upload-linux:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
 
     steps:
       - name: Checkout
@@ -34,24 +39,11 @@ jobs:
         id: meta
         shell: bash
         run: |
-          pubspec_version="$(sed -nE 's/^version:[[:space:]]*(.+)$/\1/p' pubspec.yaml | head -n1 | tr -d '\r')"
-          app_version="${pubspec_version%%+*}"
           dispatch_tag="${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || '' }}"
-          if [[ -n "$dispatch_tag" ]]; then
-            tag_name="$dispatch_tag"
-          else
-            tag_name="${{ github.ref_name }}"
+          if [[ -z "$dispatch_tag" ]]; then
+            dispatch_tag="${{ github.ref_name }}"
           fi
-          if [[ -z "$tag_name" ]]; then
-            tag_name="v$app_version"
-          fi
-          expected_tag="v$app_version"
-          if [[ "$tag_name" != "$expected_tag" ]]; then
-            echo "Tag/version mismatch. Tag is '$tag_name' but pubspec.yaml is '$expected_tag'."
-            exit 1
-          fi
-          echo "app_version=$app_version" >> "$GITHUB_OUTPUT"
-          echo "tag_name=$tag_name" >> "$GITHUB_OUTPUT"
+          dart tool/release_metadata.dart --tag "$dispatch_tag" --github-output "$GITHUB_OUTPUT"
 
       - name: Install Linux Build Dependencies
         run: |
@@ -64,8 +56,12 @@ jobs:
       - name: Ensure Linux Runner Exists
         run: flutter create --platforms=linux .
 
-      - name: Remove Generated Template Test
-        run: rm -f test/widget_test.dart
+      - name: Remove Generated Template Test If Created
+        shell: bash
+        run: |
+          if [[ -f test/widget_test.dart ]]; then
+            rm test/widget_test.dart
+          fi
 
       - name: Install Dependencies
         run: flutter pub get
@@ -73,7 +69,19 @@ jobs:
       - name: Analyze
         run: flutter analyze
 
-      - name: Test
+      - name: Run High-Value Tests
+        run: >
+          flutter test
+          test/release_metadata_test.dart
+          test/error_reporter_test.dart
+          test/modrinth_api_client_test.dart
+          test/modrinth_repository_impl_test.dart
+          test/minecraft_path_service_test.dart
+          test/dependency_resolver_service_test.dart
+          test/modrinth_search_dialog_offline_test.dart
+          test/modrinth_search_dialog_dependency_preview_test.dart
+
+      - name: Run Full Test Suite
         run: flutter test
 
       - name: Build Linux Release
