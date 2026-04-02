@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag_name:
-        description: 'Existing git tag to release (example: v1.7.3)'
+        description: 'Existing git tag to release (example: v1.7.4)'
         required: true
         type: string
 
@@ -56,13 +56,6 @@ jobs:
       - name: Ensure Linux Runner Exists
         run: flutter create --platforms=linux .
 
-      - name: Remove Generated Template Test If Created
-        shell: bash
-        run: |
-          if [[ -f test/widget_test.dart ]]; then
-            rm test/widget_test.dart
-          fi
-
       - name: Install Dependencies
         run: flutter pub get
 
@@ -73,6 +66,7 @@ jobs:
         run: >
           flutter test
           test/release_metadata_test.dart
+          test/version_label_test.dart
           test/error_reporter_test.dart
           test/modrinth_api_client_test.dart
           test/modrinth_repository_impl_test.dart

@@ -52,14 +52,6 @@ jobs:
         if: runner.os == 'Linux'
         run: flutter create --platforms=linux .
 
-      - name: Remove Generated Template Test If Created
-        if: runner.os == 'Linux'
-        shell: bash
-        run: |
-          if [[ -f test/widget_test.dart ]]; then
-            rm test/widget_test.dart
-          fi
-
       - name: Install Dependencies
         run: flutter pub get
 
@@ -70,6 +62,7 @@ jobs:
         run: >
           flutter test
           test/release_metadata_test.dart
+          test/version_label_test.dart
           test/error_reporter_test.dart
           test/modrinth_api_client_test.dart
           test/modrinth_repository_impl_test.dart

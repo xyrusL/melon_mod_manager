@@ -140,10 +140,12 @@ class _ActionPanelState extends ConsumerState<ActionPanel> {
                           child: Row(
                             children: [
                               Container(
-                                width:
-                                    (22 * widget.uiScale).clamp(20, 26).toDouble(),
-                                height:
-                                    (22 * widget.uiScale).clamp(20, 26).toDouble(),
+                                width: (22 * widget.uiScale)
+                                    .clamp(20, 26)
+                                    .toDouble(),
+                                height: (22 * widget.uiScale)
+                                    .clamp(20, 26)
+                                    .toDouble(),
                                 decoration: BoxDecoration(
                                   color: const Color(0x1A57F1B4),
                                   shape: BoxShape.circle,
@@ -282,7 +284,7 @@ class _ActionPanelState extends ConsumerState<ActionPanel> {
             versionLabel.when(
               data: (v) => v,
               loading: () => 'Loading version...',
-              error: (_, __) => 'v1.7.3',
+              error: (_, __) => 'v1.7.4',
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -686,10 +688,12 @@ class _UpdateSettingsDialogState extends ConsumerState<UpdateSettingsDialog> {
       child: AppModal(
         title: const AppModalTitle('Update Settings'),
         subtitle: const Text('Choose how often Melon checks for updates.'),
-        width: 540,
+        width: 640,
+        height: 740,
+        expandContent: true,
         onClose: _handleDismissAttempt,
         content: SizedBox(
-          width: 540,
+          width: double.infinity,
           child: _loading
               ? const SizedBox(
                   height: 120,
@@ -761,6 +765,8 @@ class _UpdateSettingsDialogState extends ConsumerState<UpdateSettingsDialog> {
   }
 
   Widget _buildUnifiedIntervalCard() {
+    final customMode =
+        _globalInterval.preset == AutoUpdateIntervalPreset.custom;
     return AppModalSectionCard(
       padding: const EdgeInsets.all(12),
       child: Column(
@@ -779,9 +785,12 @@ class _UpdateSettingsDialogState extends ConsumerState<UpdateSettingsDialog> {
             ),
           ),
           const SizedBox(height: 10),
-          Row(
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
             children: [
-              Expanded(
+              SizedBox(
+                width: 320,
                 child: DropdownButtonFormField<AutoUpdateIntervalPreset>(
                   initialValue: _globalInterval.preset,
                   isExpanded: true,
@@ -834,11 +843,9 @@ class _UpdateSettingsDialogState extends ConsumerState<UpdateSettingsDialog> {
                   },
                 ),
               ),
-              if (_globalInterval.preset ==
-                  AutoUpdateIntervalPreset.custom) ...[
-                const SizedBox(width: 8),
+              if (customMode) ...[
                 SizedBox(
-                  width: 110,
+                  width: 118,
                   child: TextField(
                     controller: _customValueController,
                     keyboardType: TextInputType.number,
@@ -851,9 +858,8 @@ class _UpdateSettingsDialogState extends ConsumerState<UpdateSettingsDialog> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
                 SizedBox(
-                  width: 110,
+                  width: 132,
                   child: DropdownButtonFormField<AutoUpdateIntervalUnit>(
                     initialValue: _globalInterval.customUnit,
                     isExpanded: true,
@@ -884,7 +890,17 @@ class _UpdateSettingsDialogState extends ConsumerState<UpdateSettingsDialog> {
               ],
             ],
           ),
-          if (_globalInterval.preset == AutoUpdateIntervalPreset.custom &&
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _buildInfoPill('Default', 'Every 8 hours'),
+              _buildInfoPill('Fastest', 'Every 1 hour'),
+              _buildInfoPill('Longest', 'Every 1 week'),
+            ],
+          ),
+          if (customMode &&
               _globalInterval.customUnit == AutoUpdateIntervalUnit.weeks)
             Padding(
               padding: const EdgeInsets.only(top: 8),
@@ -908,9 +924,9 @@ class _UpdateSettingsDialogState extends ConsumerState<UpdateSettingsDialog> {
 
   String _themeModeSubtitle(AppThemeMode mode) => switch (mode) {
         AppThemeMode.defaultDark =>
-          'The current Melon look with neon green and pink accents.',
+          'Neon green and pink accents with the original Melon mood.',
         AppThemeMode.modernDark =>
-          'A cooler dark theme with glassy blue panels and warm amber highlights.',
+          'Cool blue glass panels with soft amber highlights.',
       };
 
   Widget _buildAppearanceCard() {
@@ -925,23 +941,53 @@ class _UpdateSettingsDialogState extends ConsumerState<UpdateSettingsDialog> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Pick the dark theme that feels best for your setup.',
+            'Switch themes any time. Changes show up right away.',
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.72),
               fontSize: 12,
             ),
           ),
           const SizedBox(height: 10),
-          for (final mode in AppThemeMode.values) ...[
-            _buildThemeOption(mode),
-            if (mode != AppThemeMode.values.last) const SizedBox(height: 8),
-          ],
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final wide = constraints.maxWidth >= 500;
+              if (!wide) {
+                return Column(
+                  children: [
+                    for (final mode in AppThemeMode.values) ...[
+                      _buildThemeOption(mode, compact: true),
+                      if (mode != AppThemeMode.values.last)
+                        const SizedBox(height: 8),
+                    ],
+                  ],
+                );
+              }
+
+              return Row(
+                children: [
+                  Expanded(
+                    child: _buildThemeOption(
+                      AppThemeMode.defaultDark,
+                      compact: true,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _buildThemeOption(
+                      AppThemeMode.modernDark,
+                      compact: true,
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildThemeOption(AppThemeMode mode) {
+  Widget _buildThemeOption(AppThemeMode mode, {bool compact = false}) {
     final selected = _themeMode == mode;
     final accent = switch (mode) {
       AppThemeMode.defaultDark => const Color(0xFF5AFFA7),
@@ -956,7 +1002,7 @@ class _UpdateSettingsDialogState extends ConsumerState<UpdateSettingsDialog> {
       onTap: () => setState(() => _themeMode = mode),
       borderRadius: BorderRadius.circular(14),
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.all(compact ? 10 : 12),
         decoration: BoxDecoration(
           color: selected
               ? accent.withValues(alpha: 0.1)
@@ -969,10 +1015,11 @@ class _UpdateSettingsDialogState extends ConsumerState<UpdateSettingsDialog> {
           ),
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              width: 44,
-              height: 44,
+              width: compact ? 40 : 44,
+              height: compact ? 40 : 44,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
                 gradient: LinearGradient(
@@ -990,19 +1037,68 @@ class _UpdateSettingsDialogState extends ConsumerState<UpdateSettingsDialog> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    _themeModeTitle(mode),
-                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _themeModeTitle(mode),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: compact ? 13 : 14,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: selected
+                              ? accent.withValues(alpha: 0.14)
+                              : Colors.white.withValues(alpha: 0.06),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          selected ? 'Selected' : 'Theme',
+                          style: TextStyle(
+                            color: selected
+                                ? accent
+                                : Colors.white.withValues(alpha: 0.55),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 4),
                   Text(
                     _themeModeSubtitle(mode),
+                    maxLines: compact ? 2 : null,
+                    overflow:
+                        compact ? TextOverflow.ellipsis : TextOverflow.visible,
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.7),
-                      fontSize: 12,
+                      fontSize: compact ? 11.5 : 12,
                       height: 1.35,
                     ),
                   ),
+                  if (compact) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      height: 6,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(999),
+                        gradient: LinearGradient(
+                          colors: [
+                            accent.withValues(alpha: 0.95),
+                            accentAlt.withValues(alpha: 0.9),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -1011,9 +1107,7 @@ class _UpdateSettingsDialogState extends ConsumerState<UpdateSettingsDialog> {
               selected
                   ? Icons.radio_button_checked_rounded
                   : Icons.radio_button_off_rounded,
-              color: selected
-                  ? accent
-                  : Colors.white.withValues(alpha: 0.45),
+              color: selected ? accent : Colors.white.withValues(alpha: 0.45),
             ),
           ],
         ),
@@ -1024,77 +1118,133 @@ class _UpdateSettingsDialogState extends ConsumerState<UpdateSettingsDialog> {
   Widget _buildLastCheckedSummary() {
     return AppModalSectionCard(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final wide = constraints.maxWidth >= 520;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(
-                Icons.history_rounded,
-                size: 14,
-                color: Colors.white.withValues(alpha: 0.55),
+              Row(
+                children: [
+                  Icon(
+                    Icons.history_rounded,
+                    size: 14,
+                    color: Colors.white.withValues(alpha: 0.55),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Last Checked Time',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                      color: Colors.white.withValues(alpha: 0.85),
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 6),
-              Text(
-                'Last Checked Time',
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12,
-                  color: Colors.white.withValues(alpha: 0.85),
-                  letterSpacing: 0.4,
+              const SizedBox(height: 10),
+              if (wide)
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    for (final target in _targets)
+                      SizedBox(
+                        width: (constraints.maxWidth - 10) / 2,
+                        child: _buildLastCheckedCard(target),
+                      ),
+                  ],
+                )
+              else
+                Column(
+                  children: [
+                    for (final target in _targets) ...[
+                      _buildLastCheckedCard(target),
+                      if (target != _targets.last) const SizedBox(height: 8),
+                    ],
+                  ],
                 ),
-              ),
             ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildLastCheckedCard(AutoUpdateTarget target) {
+    final value = _lastChecked[target];
+    final isNever = value == null;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              _targetLabel(target),
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.white.withValues(alpha: 0.65),
+              ),
+            ),
           ),
-          const SizedBox(height: 10),
-          for (final target in _targets) ...[
-            _buildLastCheckedRow(target),
-            if (target != _targets.last) const SizedBox(height: 6),
-          ],
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: isNever
+                  ? Colors.white.withValues(alpha: 0.06)
+                  : const Color(0xFF1E3A2F),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: isNever
+                    ? Colors.white.withValues(alpha: 0.10)
+                    : const Color(0xFF2BCF99).withValues(alpha: 0.35),
+              ),
+            ),
+            child: Text(
+              _lastCheckedLabel(value),
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: isNever
+                    ? Colors.white.withValues(alpha: 0.38)
+                    : const Color(0xFF2BCF99),
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildLastCheckedRow(AutoUpdateTarget target) {
-    final value = _lastChecked[target];
-    final isNever = value == null;
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            _targetLabel(target),
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.white.withValues(alpha: 0.65),
-            ),
+  Widget _buildInfoPill(String label, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: RichText(
+        text: TextSpan(
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.66),
+            fontSize: 11.5,
           ),
+          children: [
+            TextSpan(
+              text: '$label: ',
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            TextSpan(text: value),
+          ],
         ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          decoration: BoxDecoration(
-            color: isNever
-                ? Colors.white.withValues(alpha: 0.06)
-                : const Color(0xFF1E3A2F),
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(
-              color: isNever
-                  ? Colors.white.withValues(alpha: 0.10)
-                  : const Color(0xFF2BCF99).withValues(alpha: 0.35),
-            ),
-          ),
-          child: Text(
-            _lastCheckedLabel(value),
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: isNever
-                  ? Colors.white.withValues(alpha: 0.38)
-                  : const Color(0xFF2BCF99),
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 }
@@ -1249,7 +1399,7 @@ class _AboutDialog extends ConsumerWidget {
         versionLabel.when(
           data: (v) => v,
           loading: () => 'Loading version...',
-          error: (_, __) => 'v1.7.3',
+          error: (_, __) => 'v1.7.4',
         ),
       ),
       width: 560,

@@ -23,13 +23,12 @@ Melon Mod Manager makes it easy to:
 - Minecraft Loaders: Fabric, Quilt, Forge, NeoForge
 - Internet Required: Yes, for Modrinth search and update checks
 
-## What's New in 1.7.3
+## What's New in 1.7.4
 
-- Added theme switching in settings with the current Melon look as the default.
-- Added a second modern dark theme with cooler glassy blue surfaces and warm highlight accents.
-- Theme changes now apply live without restarting the app.
-- Fixed the post-update refresh modal so it shows for real upgrades, not fresh installs or already-prepared metadata.
-- Refined the update-check and metadata-loading animations to use cleaner rotating refresh icons.
+- Cleaned up the Update Settings dialog so the layout feels less cramped and reads more clearly.
+- Polished the theme picker cards to better show the current and modern dark theme options.
+- Restored version labels for dated stable releases so versions like `1.7.0-2026.03.30` no longer look like pre-releases in the app.
+- Kept live theme switching, hourly update checks, and the improved post-update metadata flow from 1.7.3.
 
 ## Key Features
 

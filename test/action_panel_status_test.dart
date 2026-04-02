@@ -83,7 +83,7 @@ Widget _buildPanel({
   return ProviderScope(
     overrides: [
       settingsRepositoryProvider.overrideWithValue(repository),
-      appVersionLabelProvider.overrideWith((ref) async => 'v1.7.3'),
+      appVersionLabelProvider.overrideWith((ref) async => 'v1.7.4'),
       environmentInfoProvider.overrideWith(
         (ref, modsPath) async => const EnvironmentInfoSnapshot(
           minecraftVersion: '1.21.1',
@@ -135,16 +135,16 @@ class _FakeAppUpdateService extends AppUpdateService {
           ),
           owner: 'xyrusL',
           repository: 'melon_mod_manager',
-          currentVersionProvider: () async => '1.7.3',
+          currentVersionProvider: () async => '1.7.4',
         );
 
   @override
   Future<AppUpdateResult> checkForUpdate() async {
     return AppUpdateResult(
-      currentVersion: '1.7.3',
+      currentVersion: '1.7.4',
       latestRelease: const GitHubRelease(
-        tagName: 'v1.7.3',
-        name: 'v1.7.3',
+        tagName: 'v1.7.4',
+        name: 'v1.7.4',
         htmlUrl: 'https://example.com',
         body: '',
         prerelease: false,

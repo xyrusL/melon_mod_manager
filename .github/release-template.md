@@ -1,15 +1,13 @@
-## Melon Mod Manager 1.7.3
+## Melon Mod Manager 1.7.4
 
-This 1.7.3 update gives Melon a theme switcher, adds a new modern dark look, and tightens the update-refresh flow so prompts appear at the right time.
+This 1.7.4 update cleans up the Update Settings experience and restores the full in-app version formatting for dated stable releases.
 
 ### Fixes and improvements
 
-- Added theme switching in settings with two dark themes.
-- Kept the current Melon theme as the default option.
-- Added a new modern dark theme with cooler blue glass panels and warm amber accents.
-- Theme changes now apply live without restarting the app.
-- Fixed the post-update refresh modal so it only appears for real upgrades when metadata still needs refreshing.
-- Refined the update-check and metadata-loading indicators with cleaner rotating refresh icons.
+- Refined the Update Settings dialog with a cleaner, less cramped layout.
+- Polished the theme picker cards so both dark themes are easier to compare.
+- Restored stable date version labels in the app so versions like `1.7.0-2026.03.30` display correctly.
+- Kept live theme switching, the improved refresh prompt logic, and the cleaner rotating update indicators from 1.7.3.
 
 ### Included assets
 

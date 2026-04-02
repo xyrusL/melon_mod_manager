@@ -8,7 +8,8 @@ import 'package:melon_mod/presentation/widgets/refresh_progress_dialog.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  testWidgets('update settings dialog shows 1.7.3 intervals and no off/month',
+  testWidgets(
+      'update settings dialog shows 1.7.4 intervals and cleaner theme picker',
       (tester) async {
     tester.view.physicalSize = const Size(1600, 1200);
     tester.view.devicePixelRatio = 1.0;
@@ -24,6 +25,10 @@ void main() {
 
     expect(find.text('Check Frequency'), findsOneWidget);
     expect(find.text('Every 8 hours'), findsOneWidget);
+    expect(find.text('Switch themes any time. Changes show up right away.'),
+        findsOneWidget);
+    expect(find.text('Melon Default'), findsOneWidget);
+    expect(find.text('Midnight Glass'), findsOneWidget);
     expect(find.text('Off'), findsNothing);
     expect(find.text('Every month'), findsNothing);
 
@@ -36,7 +41,8 @@ void main() {
     expect(find.text('Every 2 days').last, findsOneWidget);
   });
 
-  testWidgets('custom settings use value plus unit and block intervals above one week',
+  testWidgets(
+      'custom settings use value plus unit and block intervals above one week',
       (tester) async {
     tester.view.physicalSize = const Size(1600, 1200);
     tester.view.devicePixelRatio = 1.0;

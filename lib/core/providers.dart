@@ -64,6 +64,29 @@ const _projectRepositoryName = 'melon_mod_manager';
 const projectRepositoryUrl =
     'https://github.com/$_developerGitHubUsername/$_projectRepositoryName';
 
+final _stableDateVersionPattern =
+    RegExp(r'^\d+\.\d+\.\d+-\d{4}\.\d{2}\.\d{2}$');
+final _stableSemverPattern = RegExp(r'^\d+\.\d+\.\d+$');
+final _betaVersionPattern = RegExp(r'-beta(\.|$)');
+
+String formatAppVersionLabel(String version) {
+  final normalized = version.trim();
+  if (normalized.isEmpty) {
+    return 'v-';
+  }
+  if (_betaVersionPattern.hasMatch(normalized)) {
+    return 'v$normalized (Beta)';
+  }
+  if (_stableSemverPattern.hasMatch(normalized) ||
+      _stableDateVersionPattern.hasMatch(normalized)) {
+    return 'v$normalized';
+  }
+  if (normalized.contains('-')) {
+    return 'v$normalized (Pre-release)';
+  }
+  return 'v$normalized';
+}
+
 final appUpdateServiceProvider = Provider<AppUpdateService>((ref) {
   return AppUpdateService(
     apiClient: ref.watch(gitHubApiClientProvider),
@@ -88,11 +111,7 @@ final developerSnapshotProvider =
 
 final appVersionLabelProvider = FutureProvider.autoDispose<String>((ref) async {
   final info = await PackageInfo.fromPlatform();
-  final version = info.version.trim();
-  if (version.contains('-beta')) {
-    return 'v$version (Beta)';
-  }
-  return 'v$version';
+  return formatAppVersionLabel(info.version);
 });
 
 final modrinthRepositoryProvider = Provider<ModrinthRepository>((ref) {
