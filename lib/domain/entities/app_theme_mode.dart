@@ -1,0 +1,4 @@
+enum AppThemeMode {
+  defaultDark,
+  modernDark,
+}

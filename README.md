@@ -23,14 +23,13 @@ Melon Mod Manager makes it easy to:
 - Minecraft Loaders: Fabric, Quilt, Forge, NeoForge
 - Internet Required: Yes, for Modrinth search and update checks
 
-## What's New in 1.7.2
+## What's New in 1.7.3
 
-- Auto-update checks now support hourly, daily, and weekly frequencies.
-- The default update check frequency is now every 8 hours.
-- Added quicker presets including 1 hour, 3 hours, 8 hours, 12 hours, 1 day, 2 days, and 1 week.
-- Custom frequency now uses a value plus unit picker for hours, days, or weeks.
-- Removed `Off` and monthly update checks to keep checks within a useful range.
-- Custom values above 1 week are now rejected with a clear validation message.
+- Added theme switching in settings with the current Melon look as the default.
+- Added a second modern dark theme with cooler glassy blue surfaces and warm highlight accents.
+- Theme changes now apply live without restarting the app.
+- Fixed the post-update refresh modal so it shows for real upgrades, not fresh installs or already-prepared metadata.
+- Refined the update-check and metadata-loading animations to use cleaner rotating refresh icons.
 
 ## Key Features
 

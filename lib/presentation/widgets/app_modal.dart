@@ -43,7 +43,7 @@ class AppModal extends StatelessWidget {
         height: height,
         constraints: modalConstraints,
         padding: const EdgeInsets.fromLTRB(24, 22, 24, 20),
-        decoration: AppTheme.modalDecoration(),
+        decoration: AppTheme.modalDecoration(context),
         child: Column(
           mainAxisSize: height == null ? MainAxisSize.min : MainAxisSize.max,
           crossAxisAlignment: CrossAxisAlignment.start,

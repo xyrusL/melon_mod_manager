@@ -1,5 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../domain/entities/app_theme_mode.dart';
 import '../../domain/entities/auto_update_settings.dart';
 import '../../domain/repositories/settings_repository.dart';
 
@@ -7,6 +8,7 @@ class SettingsRepositoryImpl implements SettingsRepository {
   SettingsRepositoryImpl(this._prefs);
 
   static const _modsPathKey = 'mods_path';
+  static const _appThemeModeKey = 'app_theme_mode';
   static const _lastSeenAppVersionKey = 'last_seen_app_version';
   static const _metadataPreparedVersionKey = 'metadata_prepared_app_version';
   static const _autoUpdateIntervalPrefix = 'auto_update_interval';
@@ -32,6 +34,22 @@ class SettingsRepositoryImpl implements SettingsRepository {
   }
 
   @override
+  Future<AppThemeMode> getAppThemeMode() async {
+    final raw = _prefs.getString(_appThemeModeKey);
+    for (final value in AppThemeMode.values) {
+      if (value.name == raw) {
+        return value;
+      }
+    }
+    return AppThemeMode.defaultDark;
+  }
+
+  @override
+  Future<void> saveAppThemeMode(AppThemeMode mode) async {
+    await _prefs.setString(_appThemeModeKey, mode.name);
+  }
+
+  @override
   Future<String?> getLastSeenAppVersion() async {
     final value = _prefs.getString(_lastSeenAppVersionKey);
     if (value == null || value.trim().isEmpty) {
@@ -43,6 +61,24 @@ class SettingsRepositoryImpl implements SettingsRepository {
   @override
   Future<void> saveLastSeenAppVersion(String appVersion) async {
     await _prefs.setString(_lastSeenAppVersionKey, appVersion);
+  }
+
+  @override
+  Future<PostUpdateMetadataState> getPostUpdateMetadataState(
+    String currentVersion,
+  ) async {
+    final previousVersion = await getLastSeenAppVersion();
+    final isFreshInstall = previousVersion == null;
+    final isUpgrade = !isFreshInstall && previousVersion != currentVersion;
+    final preparedVersion = _prefs.getString(_metadataPreparedVersionKey);
+
+    return PostUpdateMetadataState(
+      previousVersion: previousVersion,
+      currentVersion: currentVersion,
+      isFreshInstall: isFreshInstall,
+      isUpgrade: isUpgrade,
+      isMetadataPreparedForCurrentVersion: preparedVersion == currentVersion,
+    );
   }
 
   @override

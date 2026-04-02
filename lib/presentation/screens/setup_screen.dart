@@ -133,7 +133,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     final theme = Theme.of(context);
 
     return Container(
-      decoration: AppTheme.appBackground(),
+      decoration: AppTheme.appBackground(context),
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: LayoutBuilder(
@@ -161,7 +161,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
                   constraints: BoxConstraints(maxWidth: cardMaxWidth),
                   child: Container(
                     padding: EdgeInsets.all(cardPadding),
-                    decoration: AppTheme.glassPanel(),
+                    decoration: AppTheme.glassPanel(context),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,

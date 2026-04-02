@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/providers.dart';
+import '../../domain/entities/app_theme_mode.dart';
 import '../../domain/entities/auto_update_settings.dart';
+import '../viewmodels/app_controller.dart';
 import '../viewmodels/app_update_controller.dart';
 import 'app_modal.dart';
 import 'panel_action_button.dart';
@@ -137,11 +139,27 @@ class _ActionPanelState extends ConsumerState<ActionPanel> {
                           ),
                           child: Row(
                             children: [
-                              SizedBox(
-                                width: (12 * widget.uiScale).clamp(10, 14),
-                                height: (12 * widget.uiScale).clamp(10, 14),
-                                child: const CircularProgressIndicator(
-                                  strokeWidth: 2,
+                              Container(
+                                width:
+                                    (22 * widget.uiScale).clamp(20, 26).toDouble(),
+                                height:
+                                    (22 * widget.uiScale).clamp(20, 26).toDouble(),
+                                decoration: BoxDecoration(
+                                  color: const Color(0x1A57F1B4),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: const Color(0x6657F1B4),
+                                  ),
+                                ),
+                                child: Center(
+                                  child: AnimatedActionIcon(
+                                    icon: Icons.autorenew_rounded,
+                                    size: (13 * widget.uiScale)
+                                        .clamp(12, 16)
+                                        .toDouble(),
+                                    animate: true,
+                                    color: const Color(0xFF57F1B4),
+                                  ),
                                 ),
                               ),
                               SizedBox(
@@ -264,7 +282,7 @@ class _ActionPanelState extends ConsumerState<ActionPanel> {
             versionLabel.when(
               data: (v) => v,
               loading: () => 'Loading version...',
-              error: (_, __) => 'v1.7.2',
+              error: (_, __) => 'v1.7.3',
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -286,7 +304,7 @@ class _ActionPanelState extends ConsumerState<ActionPanel> {
                     AppUpdateCheckStatus.idle => 'App Update',
                   },
                   icon: switch (appUpdateState.status) {
-                    AppUpdateCheckStatus.checking => Icons.sync_rounded,
+                    AppUpdateCheckStatus.checking => Icons.autorenew_rounded,
                     AppUpdateCheckStatus.updateAvailable =>
                       Icons.new_releases_rounded,
                     AppUpdateCheckStatus.upToDate => Icons.verified_rounded,
@@ -462,6 +480,7 @@ class _UpdateSettingsDialogState extends ConsumerState<UpdateSettingsDialog> {
   );
   AutoUpdateIntervalSetting _globalInterval =
       AutoUpdateIntervalSetting.defaultSetting;
+  AppThemeMode _themeMode = AppThemeMode.defaultDark;
   final Map<AutoUpdateTarget, DateTime?> _lastChecked = {};
   bool _loading = true;
   bool _saving = false;
@@ -486,6 +505,7 @@ class _UpdateSettingsDialogState extends ConsumerState<UpdateSettingsDialog> {
     final repo = ref.read(settingsRepositoryProvider);
     AutoUpdateIntervalSetting? global;
     final loadedLastChecked = <AutoUpdateTarget, DateTime?>{};
+    final themeMode = await repo.getAppThemeMode();
     for (final target in _targets) {
       final interval = await repo.getAutoUpdateInterval(target);
       global ??= interval;
@@ -501,6 +521,7 @@ class _UpdateSettingsDialogState extends ConsumerState<UpdateSettingsDialog> {
       _lastChecked
         ..clear()
         ..addAll(loadedLastChecked);
+      _themeMode = themeMode;
       _customValueController.text = _globalInterval.customValue.toString();
       _loading = false;
     });
@@ -519,6 +540,7 @@ class _UpdateSettingsDialogState extends ConsumerState<UpdateSettingsDialog> {
       for (final target in _targets) {
         await repo.saveAutoUpdateInterval(target, next);
       }
+      await ref.read(appControllerProvider.notifier).saveThemeMode(_themeMode);
       if (!mounted) {
         return;
       }
@@ -679,6 +701,8 @@ class _UpdateSettingsDialogState extends ConsumerState<UpdateSettingsDialog> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildUnifiedIntervalCard(),
+                      const SizedBox(height: 12),
+                      _buildAppearanceCard(),
                       const SizedBox(height: 12),
                       _buildLastCheckedSummary(),
                       const SizedBox(height: 10),
@@ -873,6 +897,126 @@ class _UpdateSettingsDialogState extends ConsumerState<UpdateSettingsDialog> {
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  String _themeModeTitle(AppThemeMode mode) => switch (mode) {
+        AppThemeMode.defaultDark => 'Melon Default',
+        AppThemeMode.modernDark => 'Midnight Glass',
+      };
+
+  String _themeModeSubtitle(AppThemeMode mode) => switch (mode) {
+        AppThemeMode.defaultDark =>
+          'The current Melon look with neon green and pink accents.',
+        AppThemeMode.modernDark =>
+          'A cooler dark theme with glassy blue panels and warm amber highlights.',
+      };
+
+  Widget _buildAppearanceCard() {
+    return AppModalSectionCard(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Appearance',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Pick the dark theme that feels best for your setup.',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.72),
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 10),
+          for (final mode in AppThemeMode.values) ...[
+            _buildThemeOption(mode),
+            if (mode != AppThemeMode.values.last) const SizedBox(height: 8),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildThemeOption(AppThemeMode mode) {
+    final selected = _themeMode == mode;
+    final accent = switch (mode) {
+      AppThemeMode.defaultDark => const Color(0xFF5AFFA7),
+      AppThemeMode.modernDark => const Color(0xFF64E4FF),
+    };
+    final accentAlt = switch (mode) {
+      AppThemeMode.defaultDark => const Color(0xFFFF5FA8),
+      AppThemeMode.modernDark => const Color(0xFFFFC768),
+    };
+
+    return InkWell(
+      onTap: () => setState(() => _themeMode = mode),
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: selected
+              ? accent.withValues(alpha: 0.1)
+              : Colors.black.withValues(alpha: 0.16),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: selected
+                ? accent.withValues(alpha: 0.65)
+                : Colors.white.withValues(alpha: 0.08),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                gradient: LinearGradient(
+                  colors: [
+                    accent.withValues(alpha: 0.95),
+                    accentAlt.withValues(alpha: 0.9),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _themeModeTitle(mode),
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _themeModeSubtitle(mode),
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.7),
+                      fontSize: 12,
+                      height: 1.35,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Icon(
+              selected
+                  ? Icons.radio_button_checked_rounded
+                  : Icons.radio_button_off_rounded,
+              color: selected
+                  ? accent
+                  : Colors.white.withValues(alpha: 0.45),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1105,7 +1249,7 @@ class _AboutDialog extends ConsumerWidget {
         versionLabel.when(
           data: (v) => v,
           loading: () => 'Loading version...',
-          error: (_, __) => 'v1.7.2',
+          error: (_, __) => 'v1.7.3',
         ),
       ),
       width: 560,

@@ -21,7 +21,7 @@ class MelonModApp extends ConsumerWidget {
     return MaterialApp(
       title: 'Melon Mod Manager',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.darkTheme(),
+      theme: AppTheme.themeFor(appState.themeMode),
       builder: (context, child) => Stack(
         children: [
           if (child != null) child,

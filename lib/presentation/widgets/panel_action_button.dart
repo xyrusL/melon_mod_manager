@@ -30,7 +30,7 @@ class PanelActionButton extends StatelessWidget {
       width: double.infinity,
       child: FilledButton.icon(
         onPressed: onPressed,
-        icon: _AnimatedActionIcon(
+        icon: AnimatedActionIcon(
           icon: icon,
           size: iconSize,
           animate: animateIcon,
@@ -52,38 +52,42 @@ class PanelActionButton extends StatelessWidget {
   }
 }
 
-class _AnimatedActionIcon extends StatefulWidget {
-  const _AnimatedActionIcon({
+class AnimatedActionIcon extends StatefulWidget {
+  const AnimatedActionIcon({
+    super.key,
     required this.icon,
     required this.size,
     required this.animate,
+    this.color,
   });
 
   final IconData icon;
   final double size;
   final bool animate;
+  final Color? color;
 
   @override
-  State<_AnimatedActionIcon> createState() => _AnimatedActionIconState();
+  State<AnimatedActionIcon> createState() => _AnimatedActionIconState();
 }
 
-class _AnimatedActionIconState extends State<_AnimatedActionIcon>
+class _AnimatedActionIconState extends State<AnimatedActionIcon>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1100),
-  );
+  late final AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1100),
+    );
     if (widget.animate) {
       _controller.repeat();
     }
   }
 
   @override
-  void didUpdateWidget(covariant _AnimatedActionIcon oldWidget) {
+  void didUpdateWidget(covariant AnimatedActionIcon oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.animate == oldWidget.animate) {
       return;
@@ -105,7 +109,7 @@ class _AnimatedActionIconState extends State<_AnimatedActionIcon>
 
   @override
   Widget build(BuildContext context) {
-    final icon = Icon(widget.icon, size: widget.size);
+    final icon = Icon(widget.icon, size: widget.size, color: widget.color);
     if (!widget.animate) {
       return icon;
     }

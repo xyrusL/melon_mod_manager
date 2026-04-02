@@ -8,7 +8,7 @@ import 'package:melon_mod/presentation/widgets/refresh_progress_dialog.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  testWidgets('update settings dialog shows 1.7.2 intervals and no off/month',
+  testWidgets('update settings dialog shows 1.7.3 intervals and no off/month',
       (tester) async {
     tester.view.physicalSize = const Size(1600, 1200);
     tester.view.devicePixelRatio = 1.0;

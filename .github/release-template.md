@@ -1,15 +1,15 @@
-## Melon Mod Manager 1.7.2
+## Melon Mod Manager 1.7.3
 
-This 1.7.2 update refreshes Melon's auto-update timing so checks can run on practical hourly schedules without drifting into long monthly gaps.
+This 1.7.3 update gives Melon a theme switcher, adds a new modern dark look, and tightens the update-refresh flow so prompts appear at the right time.
 
 ### Fixes and improvements
 
-- Auto-update checks now support hourly, daily, and weekly frequencies.
-- The default check interval is now every 8 hours.
-- Added new quick presets: 1 hour, 3 hours, 8 hours, 12 hours, 1 day, 2 days, and 1 week.
-- Custom frequency now uses a value plus unit picker for hours, days, or weeks.
-- Removed Off and monthly update checks.
-- Custom intervals longer than 1 week are now rejected with a clear validation message.
+- Added theme switching in settings with two dark themes.
+- Kept the current Melon theme as the default option.
+- Added a new modern dark theme with cooler blue glass panels and warm amber accents.
+- Theme changes now apply live without restarting the app.
+- Fixed the post-update refresh modal so it only appears for real upgrades when metadata still needs refreshing.
+- Refined the update-check and metadata-loading indicators with cleaner rotating refresh icons.
 
 ### Included assets
 

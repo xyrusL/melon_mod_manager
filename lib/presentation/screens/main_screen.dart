@@ -91,7 +91,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
         );
 
     return Container(
-      decoration: AppTheme.appBackground(),
+      decoration: AppTheme.appBackground(context),
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: LayoutBuilder(
@@ -218,7 +218,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                                 child: Stack(
                                   children: [
                                     Container(
-                                      decoration: AppTheme.glassPanel(),
+                                      decoration: AppTheme.glassPanel(context),
                                       padding: EdgeInsets.all(
                                         (6 * uiScale).clamp(4, 10).toDouble(),
                                       ),
@@ -906,9 +906,11 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
     final settingsRepository = ref.read(settingsRepositoryProvider);
     final currentVersion = (await PackageInfo.fromPlatform()).version;
-    final lastSeenVersion = await settingsRepository.getLastSeenAppVersion();
+    final metadataState = await settingsRepository.getPostUpdateMetadataState(
+      currentVersion,
+    );
 
-    if (lastSeenVersion == null || lastSeenVersion == currentVersion) {
+    if (!metadataState.shouldPromptForRefresh) {
       await settingsRepository.saveLastSeenAppVersion(currentVersion);
       return;
     }
@@ -921,7 +923,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     final refreshNow = await showDialog<bool>(
       context: context,
       builder: (context) => _AppUpdatedRefreshDialog(
-        previousVersion: lastSeenVersion,
+        previousVersion: metadataState.previousVersion ?? currentVersion,
         currentVersion: currentVersion,
       ),
     );
@@ -1053,9 +1055,10 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   ) async {
     final settingsRepository = ref.read(settingsRepositoryProvider);
     final appVersion = (await PackageInfo.fromPlatform()).version;
-    final shouldWarmUp =
-        await settingsRepository.shouldPrepareMetadataForAppVersion(appVersion);
-    if (!shouldWarmUp) {
+    final metadataState = await settingsRepository.getPostUpdateMetadataState(
+      appVersion,
+    );
+    if (!metadataState.shouldWarmUpInBackground) {
       return;
     }
     await notifier.warmUpContentCaches(modsPath);
