@@ -6,6 +6,7 @@ import 'package:archive/archive.dart';
 import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
 
+import '../../core/safe_file_name.dart';
 import '../../domain/entities/content_type.dart';
 import 'jar_metadata_parser.dart';
 
@@ -808,9 +809,26 @@ class ModPackService {
         continue;
       }
       final entry = Map<String, dynamic>.from(raw);
-      final fileName = (entry['file_name'] as String?)?.trim();
-      if (fileName == null || fileName.isEmpty) {
+      final rawFileName = (entry['file_name'] as String?)?.trim();
+      if (rawFileName == null || rawFileName.isEmpty) {
         failed++;
+        continue;
+      }
+
+      final expectedExtension =
+          contentType == ContentType.mod ? '.jar' : '.zip';
+
+      late final String fileName;
+      try {
+        fileName = SafeFileName.validate(
+          rawFileName,
+          allowedExtensions: [expectedExtension],
+        );
+      } catch (error) {
+        failed++;
+        if (notes.length < 8) {
+          notes.add('$rawFileName: $error');
+        }
         continue;
       }
 
@@ -878,7 +896,11 @@ class ModPackService {
         }
 
         var targetName = fileName;
-        var targetPath = p.join(contentPath, targetName);
+        var targetPath = SafeFileName.resolveChildPath(
+          directoryPath: contentPath,
+          fileName: targetName,
+          allowedExtensions: [expectedExtension],
+        );
         final existing = File(targetPath);
         if (await existing.exists()) {
           final sameBytes = await _hasSameBytes(existing, entryBytes);
@@ -887,7 +909,11 @@ class ModPackService {
             continue;
           }
           targetName = _buildRenamedFileName(targetName);
-          targetPath = p.join(contentPath, targetName);
+          targetPath = SafeFileName.resolveChildPath(
+            directoryPath: contentPath,
+            fileName: targetName,
+            allowedExtensions: [expectedExtension],
+          );
           renamed++;
         }
 

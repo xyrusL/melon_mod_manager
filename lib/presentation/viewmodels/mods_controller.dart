@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 import '../../core/error_reporter.dart';
+import '../../core/safe_file_name.dart';
 import '../../core/providers.dart';
 import '../../data/models/mod_metadata_result.dart';
 import '../../data/services/content_icon_service.dart';
@@ -553,7 +554,10 @@ class ModsController extends StateNotifier<ModsState> {
         );
       }
 
-      final fileName = selected.fileName;
+      final fileName = SafeFileName.validate(
+        selected.fileName,
+        allowedExtensions: [contentType == ContentType.mod ? '.jar' : '.zip'],
+      );
       final stagingPath = await _createStagingPath(
         fileName: fileName,
         folder: 'pack_install',
@@ -566,7 +570,11 @@ class ModsController extends StateNotifier<ModsState> {
         throw Exception('Downloaded file is empty.');
       }
 
-      final destination = p.join(targetPath, fileName);
+      final destination = SafeFileName.resolveChildPath(
+        directoryPath: targetPath,
+        fileName: fileName,
+        allowedExtensions: [contentType == ContentType.mod ? '.jar' : '.zip'],
+      );
       await _commitStagedFile(
         stagedFile: staged,
         targetPath: destination,
@@ -1022,8 +1030,19 @@ class ModsController extends StateNotifier<ModsState> {
             continue;
           }
 
-          final targetName = selectedFile.fileName;
-          final destinationPath = p.join(contentPath, targetName);
+          final targetName = SafeFileName.validate(
+            selectedFile.fileName,
+            allowedExtensions: [
+              state.contentType == ContentType.mod ? '.jar' : '.zip',
+            ],
+          );
+          final destinationPath = SafeFileName.resolveChildPath(
+            directoryPath: contentPath,
+            fileName: targetName,
+            allowedExtensions: [
+              state.contentType == ContentType.mod ? '.jar' : '.zip',
+            ],
+          );
           final existing = File(destinationPath);
           if (await existing.exists() && selectedFile.sha1 != null) {
             final existingSha1 =
@@ -1202,7 +1221,11 @@ class ModsController extends StateNotifier<ModsState> {
         continue;
       }
       try {
-        final oldPath = p.join(contentPath, mapping.jarFileName);
+        final oldPath = SafeFileName.resolveChildPath(
+          directoryPath: contentPath,
+          fileName: mapping.jarFileName,
+          allowedExtensions: ['.jar', '.zip'],
+        );
         final oldFile = File(oldPath);
         if (await oldFile.exists()) {
           await oldFile.delete();
@@ -1930,8 +1953,14 @@ class ModsController extends StateNotifier<ModsState> {
           continue;
         }
 
+        final safeFileName = SafeFileName.validate(
+          selectedFile.fileName,
+          allowedExtensions: [
+            state.contentType == ContentType.mod ? '.jar' : '.zip',
+          ],
+        );
         final stagingPath = await _createStagingPath(
-          fileName: selectedFile.fileName,
+          fileName: safeFileName,
           folder: 'pack_update',
         );
         final staged = await _modrinthRepository.downloadVersionFile(
@@ -1941,7 +1970,13 @@ class ModsController extends StateNotifier<ModsState> {
         if (!await staged.exists() || await staged.length() <= 0) {
           throw Exception('Downloaded file is empty.');
         }
-        final destination = p.join(targetPath, selectedFile.fileName);
+        final destination = SafeFileName.resolveChildPath(
+          directoryPath: targetPath,
+          fileName: safeFileName,
+          allowedExtensions: [
+            state.contentType == ContentType.mod ? '.jar' : '.zip',
+          ],
+        );
         await _commitStagedFile(
           stagedFile: staged,
           targetPath: destination,
@@ -1949,12 +1984,12 @@ class ModsController extends StateNotifier<ModsState> {
         await _cleanupOldMappedContentFiles(
           contentPath: targetPath,
           projectId: mapping.projectId,
-          incomingFileName: selectedFile.fileName,
+          incomingFileName: safeFileName,
         );
 
         await _mappingRepository.put(
           ModrinthMapping(
-            jarFileName: selectedFile.fileName,
+            jarFileName: safeFileName,
             projectId: mapping.projectId,
             versionId: latest.id,
             installedAt: DateTime.now(),

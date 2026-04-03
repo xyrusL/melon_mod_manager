@@ -11,7 +11,6 @@ A desktop app to manage Minecraft mods, shaders, and resource packs in one place
 Melon Mod Manager makes it easy to:
 
 - Browse and download mods, shaders, and resource packs directly from Modrinth
-- Check for updates without manually visiting each project page
 - Auto-detect your Minecraft installation and loader
 - Drag and drop files into the app
 - Manage installed mods, shaders, and resource packs from one UI
@@ -21,19 +20,11 @@ Melon Mod Manager makes it easy to:
 
 - Operating System: Windows 10/11 (64-bit), Linux (x64)
 - Minecraft Loaders: Fabric, Quilt, Forge, NeoForge
-- Internet Required: Yes, for Modrinth search and update checks
-
-## What's New in 1.7.4
-
-- Cleaned up the Update Settings dialog so the layout feels less cramped and reads more clearly.
-- Polished the theme picker cards to better show the current and modern dark theme options.
-- Restored version labels for dated stable releases so versions like `1.7.0-2026.03.30` no longer look like pre-releases in the app.
-- Kept live theme switching, hourly update checks, and the improved post-update metadata flow from 1.7.3.
+- Internet Required: Yes, for Modrinth search and downloads
 
 ## Key Features
 
 - Smart detection of Minecraft folders and loader type
-- One-click update checks for managed content
 - Modrinth integration with search and install flows
 - Drag-and-drop support for local `.jar` and `.zip` files
 - Mod pack import and export support
@@ -75,8 +66,6 @@ flutter analyze
 
 ## Important Notes
 
-- Only content linked to Modrinth can be updated automatically
-- Manually added content will still appear in the app but may not support auto-update
 - Back up important saves before changing your mod setup
 
 ## Links

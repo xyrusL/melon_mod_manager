@@ -1,13 +1,13 @@
-## Melon Mod Manager 1.7.4
+## Melon Mod Manager 1.7.5
 
-This 1.7.4 update cleans up the Update Settings experience and restores the full in-app version formatting for dated stable releases.
+This 1.7.5 update focuses on safer file handling so imported bundles and downloaded content stay inside the intended Minecraft folders.
 
 ### Fixes and improvements
 
-- Refined the Update Settings dialog with a cleaner, less cramped layout.
-- Polished the theme picker cards so both dark themes are easier to compare.
-- Restored stable date version labels in the app so versions like `1.7.0-2026.03.30` display correctly.
-- Kept live theme switching, the improved refresh prompt logic, and the cleaner rotating update indicators from 1.7.3.
+- Hardened bundle import and Modrinth install paths against unsafe file names and path traversal attempts.
+- Added shared file-name validation so only expected `.jar` and `.zip` content types are written to disk.
+- Protected cleanup flows from deleting files outside the managed content folders when stale metadata is malformed.
+- Added regression tests that verify unsafe archive entries are rejected before any file is written.
 
 ### Included assets
 

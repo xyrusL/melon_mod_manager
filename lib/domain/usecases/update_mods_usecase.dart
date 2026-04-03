@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
+import '../../core/safe_file_name.dart';
 import '../entities/mod_item.dart';
 import '../entities/modrinth_mapping.dart';
 import '../repositories/modrinth_mapping_repository.dart';
@@ -82,7 +83,11 @@ class UpdateModsUsecase {
             continue;
           }
 
-          final stagingPath = await _createStagingPath(fileName: file.fileName);
+          final safeFileName = SafeFileName.validate(
+            file.fileName,
+            allowedExtensions: const ['.jar'],
+          );
+          final stagingPath = await _createStagingPath(fileName: safeFileName);
           final downloaded = await _modrinthRepository.downloadVersionFile(
             file: file,
             targetPath: stagingPath,
@@ -95,7 +100,11 @@ class UpdateModsUsecase {
             continue;
           }
 
-          final targetPath = p.join(modsPath, file.fileName);
+          final targetPath = SafeFileName.resolveChildPath(
+            directoryPath: modsPath,
+            fileName: safeFileName,
+            allowedExtensions: const ['.jar'],
+          );
           await _commitStagedFile(
             stagedFile: downloaded,
             targetPath: targetPath,
@@ -104,12 +113,12 @@ class UpdateModsUsecase {
           await _cleanupOldMappedFiles(
             modsPath: modsPath,
             projectId: mapping.projectId,
-            incomingFileName: file.fileName,
+            incomingFileName: safeFileName,
           );
 
           await _mappingRepository.put(
             ModrinthMapping(
-              jarFileName: file.fileName,
+              jarFileName: safeFileName,
               projectId: mapping.projectId,
               versionId: latest.id,
               installedAt: DateTime.now(),
@@ -181,10 +190,18 @@ class UpdateModsUsecase {
         continue;
       }
 
-      final oldPath = p.join(modsPath, mapping.jarFileName);
-      final oldFile = File(oldPath);
-      if (await oldFile.exists()) {
-        await oldFile.delete();
+      try {
+        final oldPath = SafeFileName.resolveChildPath(
+          directoryPath: modsPath,
+          fileName: mapping.jarFileName,
+          allowedExtensions: const ['.jar'],
+        );
+        final oldFile = File(oldPath);
+        if (await oldFile.exists()) {
+          await oldFile.delete();
+        }
+      } catch (_) {
+        // Keep update flow resilient if stale mapping cleanup fails.
       }
       await _mappingRepository.remove(mapping.jarFileName);
     }
