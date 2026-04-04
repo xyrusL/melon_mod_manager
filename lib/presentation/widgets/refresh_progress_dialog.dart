@@ -46,7 +46,6 @@ class _RefreshProgressDialogState extends State<RefreshProgressDialog> {
   int _step = 0;
   int _totalSteps = 0;
   bool _done = false;
-  bool _failed = false;
 
   @override
   void initState() {
@@ -71,7 +70,6 @@ class _RefreshProgressDialogState extends State<RefreshProgressDialog> {
       }
       setState(() {
         _done = true;
-        _failed = false;
         _message = result;
       });
       widget.onFinished?.call();
@@ -81,7 +79,6 @@ class _RefreshProgressDialogState extends State<RefreshProgressDialog> {
       }
       setState(() {
         _done = true;
-        _failed = true;
         _message = '$error';
       });
       widget.onFinished?.call();
