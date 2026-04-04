@@ -27,6 +27,7 @@ class RefreshProgressDialog extends StatefulWidget {
     required this.runRefresh,
     this.startingMessage = 'Preparing refresh...',
     this.width = 520,
+    this.onFinished,
   });
 
   final String title;
@@ -34,6 +35,7 @@ class RefreshProgressDialog extends StatefulWidget {
   final String startingMessage;
   final double width;
   final RunRefreshWithProgress runRefresh;
+  final VoidCallback? onFinished;
 
   @override
   State<RefreshProgressDialog> createState() => _RefreshProgressDialogState();
@@ -72,6 +74,7 @@ class _RefreshProgressDialogState extends State<RefreshProgressDialog> {
         _failed = false;
         _message = result;
       });
+      widget.onFinished?.call();
     } catch (error) {
       if (!mounted) {
         return;
@@ -81,6 +84,7 @@ class _RefreshProgressDialogState extends State<RefreshProgressDialog> {
         _failed = true;
         _message = '$error';
       });
+      widget.onFinished?.call();
     }
   }
 
@@ -95,7 +99,8 @@ class _RefreshProgressDialogState extends State<RefreshProgressDialog> {
     return AppModal(
       title: AppModalTitle(widget.title),
       subtitle: Text(widget.subtitle),
-      showCloseButton: false,
+      showCloseButton: _done,
+      onClose: _done ? () => Navigator.of(context).pop() : null,
       width: widget.width,
       content: SizedBox(
         width: widget.width,
@@ -116,12 +121,6 @@ class _RefreshProgressDialogState extends State<RefreshProgressDialog> {
           ],
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: _done ? () => Navigator.of(context).pop() : null,
-          child: Text(_failed ? 'Close' : 'Done'),
-        ),
-      ],
     );
   }
 }

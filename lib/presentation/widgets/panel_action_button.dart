@@ -12,6 +12,7 @@ class PanelActionButton extends StatelessWidget {
     this.fontSize = 16,
     this.iconSize = 20,
     this.animateIcon = false,
+    this.animatedIcon,
   });
 
   final String label;
@@ -23,6 +24,7 @@ class PanelActionButton extends StatelessWidget {
   final double fontSize;
   final double iconSize;
   final bool animateIcon;
+  final IconData? animatedIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +33,7 @@ class PanelActionButton extends StatelessWidget {
       child: FilledButton.icon(
         onPressed: onPressed,
         icon: AnimatedActionIcon(
-          icon: icon,
+          icon: animateIcon ? (animatedIcon ?? icon) : icon,
           size: iconSize,
           animate: animateIcon,
         ),

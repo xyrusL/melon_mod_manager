@@ -202,6 +202,7 @@ class _ActionPanelState extends ConsumerState<ActionPanel> {
                             ? 'Check for Updates'
                             : 'Updates (Mods Only)',
                         icon: Icons.system_update_alt_rounded,
+                        animatedIcon: Icons.sync_rounded,
                         backgroundColor: const Color(0xFFFFC15A),
                         foregroundColor: Colors.black,
                         onPressed: actionsLocked || !widget.canCheckUpdates
@@ -480,6 +481,7 @@ class _UpdateSettingsDialogState extends ConsumerState<UpdateSettingsDialog> {
   final TextEditingController _customValueController = TextEditingController(
     text: '8',
   );
+  late final ScrollController _settingsScrollController;
   AutoUpdateIntervalSetting _globalInterval =
       AutoUpdateIntervalSetting.defaultSetting;
   AppThemeMode _themeMode = AppThemeMode.defaultDark;
@@ -491,6 +493,7 @@ class _UpdateSettingsDialogState extends ConsumerState<UpdateSettingsDialog> {
   @override
   void initState() {
     super.initState();
+    _settingsScrollController = ScrollController();
     for (final target in _targets) {
       _lastChecked[target] = null;
     }
@@ -499,6 +502,7 @@ class _UpdateSettingsDialogState extends ConsumerState<UpdateSettingsDialog> {
 
   @override
   void dispose() {
+    _settingsScrollController.dispose();
     _customValueController.dispose();
     super.dispose();
   }
@@ -568,13 +572,19 @@ class _UpdateSettingsDialogState extends ConsumerState<UpdateSettingsDialog> {
           subtitle: 'Rebuilding cached local data for Melon.',
           startingMessage: 'Preparing local data refresh...',
           runRefresh: widget.onForceRefreshData,
+          onFinished: () {
+            if (!mounted) {
+              return;
+            }
+            setState(() => _runningForceRefresh = false);
+          },
         ),
       );
       if (!mounted) {
         return;
       }
     } finally {
-      if (mounted) {
+      if (mounted && _runningForceRefresh) {
         setState(() => _runningForceRefresh = false);
       }
     }
@@ -687,7 +697,9 @@ class _UpdateSettingsDialogState extends ConsumerState<UpdateSettingsDialog> {
       },
       child: AppModal(
         title: const AppModalTitle('Update Settings'),
-        subtitle: const Text('Choose how often Melon checks for updates.'),
+        subtitle: const Text(
+          'Manage update checks and choose how Melon looks.',
+        ),
         width: 640,
         height: 740,
         expandContent: true,
@@ -699,54 +711,90 @@ class _UpdateSettingsDialogState extends ConsumerState<UpdateSettingsDialog> {
                   height: 120,
                   child: Center(child: CircularProgressIndicator()),
                 )
-              : SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildUnifiedIntervalCard(),
-                      const SizedBox(height: 12),
-                      _buildAppearanceCard(),
-                      const SizedBox(height: 12),
-                      _buildLastCheckedSummary(),
-                      const SizedBox(height: 10),
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          onPressed: _runningForceRefresh || _saving
-                              ? null
-                              : _forceRefreshData,
-                          style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFF1E3A2F),
-                            foregroundColor: const Color(0xFF2BCF99),
-                            side: const BorderSide(
-                              color: Color(0xFF2BCF99),
-                              width: 1,
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 12,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
+              : ScrollbarTheme(
+                  data: ScrollbarTheme.of(context).copyWith(
+                    thumbColor: WidgetStatePropertyAll(
+                      Colors.white.withValues(alpha: 0.24),
+                    ),
+                    trackColor: WidgetStatePropertyAll(
+                      Colors.white.withValues(alpha: 0.04),
+                    ),
+                    radius: const Radius.circular(99),
+                    thickness: const WidgetStatePropertyAll(5),
+                  ),
+                  child: Scrollbar(
+                    controller: _settingsScrollController,
+                    thumbVisibility: false,
+                    trackVisibility: false,
+                    interactive: true,
+                    child: SingleChildScrollView(
+                      controller: _settingsScrollController,
+                      padding: const EdgeInsets.only(right: 14, bottom: 4),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildSettingsSectionHeader(
+                            title: 'Update Checks',
+                            subtitle:
+                                'Set how often Melon checks for updates and review the latest refresh times.',
+                            icon: Icons.sync_rounded,
+                            accent: const Color(0xFFFFC15A),
+                          ),
+                          const SizedBox(height: 10),
+                          _buildUnifiedIntervalCard(),
+                          const SizedBox(height: 12),
+                          _buildLastCheckedSummary(),
+                          const SizedBox(height: 10),
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton.icon(
+                              onPressed: _runningForceRefresh || _saving
+                                  ? null
+                                  : _forceRefreshData,
+                              style: FilledButton.styleFrom(
+                                backgroundColor: const Color(0xFF1E3A2F),
+                                foregroundColor: const Color(0xFF2BCF99),
+                                side: const BorderSide(
+                                  color: Color(0xFF2BCF99),
+                                  width: 1,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              icon: _runningForceRefresh
+                                  ? const SizedBox(
+                                      width: 14,
+                                      height: 14,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Color(0xFF2BCF99),
+                                      ),
+                                    )
+                                  : const Icon(Icons.refresh_rounded, size: 16),
+                              label: const Text(
+                                'Refresh Local Data',
+                                style: TextStyle(fontWeight: FontWeight.w600),
+                              ),
                             ),
                           ),
-                          icon: _runningForceRefresh
-                              ? const SizedBox(
-                                  width: 14,
-                                  height: 14,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Color(0xFF2BCF99),
-                                  ),
-                                )
-                              : const Icon(Icons.refresh_rounded, size: 16),
-                          label: const Text(
-                            'Refresh Local Data',
-                            style: TextStyle(fontWeight: FontWeight.w600),
+                          const SizedBox(height: 20),
+                          _buildSettingsSectionHeader(
+                            title: 'Theme',
+                            subtitle:
+                                'Pick the visual style for Melon. Changes apply right away.',
+                            icon: Icons.palette_outlined,
+                            accent: const Color(0xFF5AFFA7),
                           ),
-                        ),
+                          const SizedBox(height: 10),
+                          _buildAppearanceCard(),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
         ),
@@ -758,6 +806,56 @@ class _UpdateSettingsDialogState extends ConsumerState<UpdateSettingsDialog> {
           FilledButton(
             onPressed: _saving ? null : _handleSaveAttempt,
             child: Text(_saving ? 'Saving...' : 'Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSettingsSectionHeader({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color accent,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: accent.withValues(alpha: 0.28)),
+            ),
+            child: Icon(icon, color: accent, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.68),
+                    fontSize: 12,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -785,12 +883,11 @@ class _UpdateSettingsDialogState extends ConsumerState<UpdateSettingsDialog> {
             ),
           ),
           const SizedBox(height: 10),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(
-                width: 320,
+                width: double.infinity,
                 child: DropdownButtonFormField<AutoUpdateIntervalPreset>(
                   initialValue: _globalInterval.preset,
                   isExpanded: true,
@@ -844,48 +941,55 @@ class _UpdateSettingsDialogState extends ConsumerState<UpdateSettingsDialog> {
                 ),
               ),
               if (customMode) ...[
-                SizedBox(
-                  width: 118,
-                  child: TextField(
-                    controller: _customValueController,
-                    keyboardType: TextInputType.number,
-                    onChanged: (_) => setState(() {}),
-                    decoration: InputDecoration(
-                      labelText: 'Value',
-                      isDense: true,
-                      border: OutlineInputBorder(),
-                      errorText: _customIntervalError(),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    SizedBox(
+                      width: 118,
+                      child: TextField(
+                        controller: _customValueController,
+                        keyboardType: TextInputType.number,
+                        onChanged: (_) => setState(() {}),
+                        decoration: InputDecoration(
+                          labelText: 'Value',
+                          isDense: true,
+                          border: OutlineInputBorder(),
+                          errorText: _customIntervalError(),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                SizedBox(
-                  width: 132,
-                  child: DropdownButtonFormField<AutoUpdateIntervalUnit>(
-                    initialValue: _globalInterval.customUnit,
-                    isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Unit',
-                      isDense: true,
-                      border: OutlineInputBorder(),
+                    SizedBox(
+                      width: 132,
+                      child: DropdownButtonFormField<AutoUpdateIntervalUnit>(
+                        initialValue: _globalInterval.customUnit,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Unit',
+                          isDense: true,
+                          border: OutlineInputBorder(),
+                        ),
+                        items: AutoUpdateIntervalUnit.values
+                            .map(
+                              (unit) => DropdownMenuItem(
+                                value: unit,
+                                child: Text(_customUnitLabel(unit)),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (value) {
+                          if (value == null) {
+                            return;
+                          }
+                          setState(() {
+                            _globalInterval =
+                                _globalInterval.copyWith(customUnit: value);
+                          });
+                        },
+                      ),
                     ),
-                    items: AutoUpdateIntervalUnit.values
-                        .map(
-                          (unit) => DropdownMenuItem(
-                            value: unit,
-                            child: Text(_customUnitLabel(unit)),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (value) {
-                      if (value == null) {
-                        return;
-                      }
-                      setState(() {
-                        _globalInterval =
-                            _globalInterval.copyWith(customUnit: value);
-                      });
-                    },
-                  ),
+                  ],
                 ),
               ],
             ],
