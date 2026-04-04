@@ -1,13 +1,15 @@
-## Melon Mod Manager 1.7.5
+## Melon Mod Manager 1.7.6
 
-This 1.7.5 update focuses on safer file handling so imported bundles and downloaded content stay inside the intended Minecraft folders.
+This 1.7.6 update tidies the update settings flow so the refresh experience is clearer and the modal states stay in sync.
 
 ### Fixes and improvements
 
-- Hardened bundle import and Modrinth install paths against unsafe file names and path traversal attempts.
-- Added shared file-name validation so only expected `.jar` and `.zip` content types are written to disk.
-- Protected cleanup flows from deleting files outside the managed content folders when stale metadata is malformed.
-- Added regression tests that verify unsafe archive entries are rejected before any file is written.
+- Reworked the Update Settings modal into clearer sections for update checks and theme selection.
+- Made the check frequency control fill the card width so the layout matches the surrounding settings UI.
+- Adjusted the settings modal scrollbar so it sits off the content instead of overlapping the cards.
+- Swapped the update-check busy icon to a better loading indicator for the refresh state.
+- Fixed the local refresh flow so the settings screen stops showing a running refresh as soon as the job is actually complete.
+- Restored the refresh completion modal to a top-right close button instead of a bottom action button.
 
 ### Included assets
 
