@@ -15,6 +15,7 @@ import '../../domain/entities/mod_item.dart';
 import '../../domain/services/auto_update_scheduler.dart';
 import '../dialogs/confirm_overwrite_dialog.dart';
 import '../dialogs/modrinth_search_dialog.dart';
+import '../dialogs/situation_dialog.dart';
 import '../viewmodels/app_controller.dart';
 import '../viewmodels/app_update_controller.dart';
 import '../viewmodels/mods_controller.dart';
@@ -33,6 +34,8 @@ class MainScreen extends ConsumerStatefulWidget {
   @override
   ConsumerState<MainScreen> createState() => _MainScreenState();
 }
+
+enum _MissingPathAction { close, autoDetect, browse, create }
 
 class _MainScreenState extends ConsumerState<MainScreen> {
   static const _autoUpdateScheduler = AutoUpdateScheduler();
@@ -318,6 +321,13 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   }
 
   Future<void> _openModrinthSearch() async {
+    final canContinue = await _confirmEnvironmentForManagedActions(
+      actionLabel: 'download mods',
+    );
+    if (!canContinue || !mounted) {
+      return;
+    }
+
     final state = ref.read(modsControllerProvider);
     final targetPath = ref.read(contentPathServiceProvider).resolveContentPath(
           modsPath: widget.modsPath,
@@ -562,34 +572,27 @@ class _MainScreenState extends ConsumerState<MainScreen> {
       return;
     }
     if (!result.hasPath) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-          backgroundColor: const Color(0xFF3A1420),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: Color(0xFFFF6A7D), width: 1),
+      await _showSituationDialog(
+        situationSpecForAutoDetect(result),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
           ),
-          content: Text(
-            result.message,
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
+        ],
       );
       return;
     }
 
-    if (result.needsCreation) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-          content: Text(result.message),
-        ),
+    if (result.needsCreation && mounted) {
+      await _showSituationDialog(
+        situationSpecForAutoDetect(result),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Continue'),
+          ),
+        ],
       );
     }
 
@@ -597,6 +600,13 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   }
 
   Future<void> _checkUpdatesWithReview() async {
+    final canContinue = await _confirmEnvironmentForManagedActions(
+      actionLabel: 'check for updates',
+    );
+    if (!canContinue || !mounted) {
+      return;
+    }
+
     final notifier = ref.read(modsControllerProvider.notifier);
     final settingsRepository = ref.read(settingsRepositoryProvider);
     final target = _targetForContentType(
@@ -748,6 +758,17 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     if (mounted) {
       setState(() => _isInitializing = true);
     }
+
+    final pathService = ref.read(minecraftPathServiceProvider);
+    final exists = await pathService.pathExistsAndDirectory(modsPath);
+    if (!exists) {
+      if (mounted) {
+        setState(() => _isInitializing = false);
+      }
+      await _handleMissingSavedPath(modsPath);
+      return;
+    }
+
     final notifier = ref.read(modsControllerProvider.notifier);
     final currentType = ref.read(modsControllerProvider).contentType;
     await notifier.loadContent(
@@ -764,6 +785,121 @@ class _MainScreenState extends ConsumerState<MainScreen> {
       _warmUpMetadataIfNeeded(modsPath, notifier).catchError((_) {
         // Warm-up should never block the primary UI load.
       }),
+    );
+  }
+
+  Future<bool> _confirmEnvironmentForManagedActions({
+    required String actionLabel,
+  }) async {
+    final contentType = ref.read(modsControllerProvider).contentType;
+    if (!contentType.supportsLoaderFilter) {
+      return true;
+    }
+
+    final detectedVersion = await ref
+        .read(minecraftVersionServiceProvider)
+        .detectVersionFromModsPath(widget.modsPath);
+    final detectedLoader = await ref
+        .read(minecraftLoaderServiceProvider)
+        .detectLoaderFromModsPath(widget.modsPath);
+
+    if (detectedVersion != null && detectedLoader != null) {
+      return true;
+    }
+
+    if (!mounted) {
+      return false;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => SituationDialog(
+        spec: situationSpecForEnvironmentDetection(
+          actionLabel: actionLabel,
+          minecraftVersion: detectedVersion,
+          loaderName: detectedLoader?.loader,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Continue'),
+          ),
+        ],
+      ),
+    );
+
+    return confirmed == true;
+  }
+
+  Future<void> _handleMissingSavedPath(String modsPath) async {
+    if (!mounted) {
+      return;
+    }
+
+    final choice = await showDialog<_MissingPathAction>(
+      context: context,
+      builder: (context) => SituationDialog(
+        spec: situationSpecForMissingSavedPath(modsPath),
+        actions: [
+          TextButton(
+            onPressed: () =>
+                Navigator.of(context).pop(_MissingPathAction.close),
+            child: const Text('Close'),
+          ),
+          OutlinedButton(
+            onPressed: () =>
+                Navigator.of(context).pop(_MissingPathAction.autoDetect),
+            child: const Text('Auto-detect'),
+          ),
+          OutlinedButton(
+            onPressed: () =>
+                Navigator.of(context).pop(_MissingPathAction.browse),
+            child: const Text('Browse'),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.of(context).pop(_MissingPathAction.create),
+            child: const Text('Create Folder'),
+          ),
+        ],
+      ),
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    switch (choice) {
+      case _MissingPathAction.create:
+        await ref
+            .read(minecraftPathServiceProvider)
+            .createModsDirectory(modsPath);
+        ref.invalidate(environmentInfoProvider(modsPath));
+        await _initializeForPath(modsPath);
+        return;
+      case _MissingPathAction.autoDetect:
+        await _autoDetectPath();
+        return;
+      case _MissingPathAction.browse:
+        await _browseNewPath();
+        return;
+      case _MissingPathAction.close:
+      case null:
+        return;
+    }
+  }
+
+  Future<T?> _showSituationDialog<T>(
+    SituationDialogSpec spec, {
+    required List<Widget> actions,
+  }) {
+    return showDialog<T>(
+      context: context,
+      builder: (context) => SituationDialog(spec: spec, actions: actions),
     );
   }
 

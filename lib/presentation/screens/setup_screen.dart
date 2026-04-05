@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers.dart';
 import '../../core/theme/app_theme.dart';
+import '../dialogs/situation_dialog.dart';
 import '../viewmodels/app_controller.dart';
 import '../widgets/app_modal.dart';
 import '../widgets/melon_logo.dart';
@@ -30,7 +31,13 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     final pathService = ref.read(minecraftPathServiceProvider);
     final result = await pathService.detectDefaultModsPathDetailed();
     if (!result.hasPath) {
+      if (!mounted) {
+        return;
+      }
       setState(() => _error = result.message);
+      await _showSituation(
+        situationSpecForAutoDetect(result),
+      );
       return;
     }
 
@@ -38,6 +45,12 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
       _error = result.needsCreation ? result.message : null;
       _pathController.text = result.path!;
     });
+
+    if (result.needsCreation && mounted) {
+      await _showSituation(
+        situationSpecForAutoDetect(result),
+      );
+    }
   }
 
   Future<void> _browse() async {
@@ -88,6 +101,11 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
           _saving = false;
           _error = 'Cannot create folder: $error';
         });
+        if (mounted) {
+          await _showSituation(
+            situationSpecForUnknownProblem('Cannot create folder:\n$error'),
+          );
+        }
         return;
       }
     }
@@ -98,6 +116,11 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
       setState(() {
         _error = 'Failed to save path: $error';
       });
+      if (mounted) {
+        await _showSituation(
+          situationSpecForUnknownProblem('Failed to save path:\n$error'),
+        );
+      }
     }
 
     if (mounted) {
@@ -122,6 +145,21 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
             child: const Text('Create'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showSituation(SituationDialogSpec spec) {
+    return showDialog<void>(
+      context: context,
+      builder: (context) => SituationDialog(
+        spec: spec,
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
           ),
         ],
       ),

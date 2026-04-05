@@ -122,6 +122,29 @@ class _GlobalErrorOverlayState extends State<_GlobalErrorOverlay> {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
+                      const SizedBox(height: 10),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.04),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.08),
+                          ),
+                        ),
+                        child: Text(
+                          'This is an internal app error. Copy or export the log and send it with the steps that triggered the issue so it can be reproduced.',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.8),
+                            fontSize: 12.5,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
                       const SizedBox(height: 12),
                       Expanded(
                         child: Container(
@@ -136,9 +159,13 @@ class _GlobalErrorOverlayState extends State<_GlobalErrorOverlay> {
                           child: Scrollbar(
                             controller: _errorLogScrollController,
                             thumbVisibility: true,
+                            interactive: true,
+                            radius: const Radius.circular(99),
+                            thickness: 5,
                             child: SingleChildScrollView(
                               controller: _errorLogScrollController,
                               primary: false,
+                              padding: const EdgeInsets.only(right: 10),
                               child: SelectableText(
                                 logText,
                                 style: TextStyle(

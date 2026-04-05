@@ -119,7 +119,7 @@ class _ActionPanelState extends ConsumerState<ActionPanel> {
                     controller: _panelScrollController,
                     primary: false,
                     padding: EdgeInsets.only(
-                      right: (4 * widget.uiScale).clamp(4, 6),
+                      right: (12 * widget.uiScale).clamp(10, 14).toDouble(),
                     ),
                     children: [
                       if (actionsLocked) ...[
@@ -285,7 +285,7 @@ class _ActionPanelState extends ConsumerState<ActionPanel> {
             versionLabel.when(
               data: (v) => v,
               loading: () => 'Loading version...',
-              error: (_, __) => 'v1.7.5',
+              error: (_, __) => 'Version unavailable',
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -1496,6 +1496,7 @@ class _AboutDialog extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final snapshot = ref.watch(developerSnapshotProvider);
     final versionLabel = ref.watch(appVersionLabelProvider);
+    final releaseDateLabel = ref.watch(appReleaseDateLabelProvider);
 
     return AppModal(
       title: const AppModalTitle('About Melon Mod Manager'),
@@ -1503,7 +1504,7 @@ class _AboutDialog extends ConsumerWidget {
         versionLabel.when(
           data: (v) => v,
           loading: () => 'Loading version...',
-          error: (_, __) => 'v1.7.5',
+          error: (_, __) => 'Version unavailable',
         ),
       ),
       width: 560,
@@ -1514,6 +1515,22 @@ class _AboutDialog extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
+              releaseDateLabel.when(
+                data: (value) => value == null
+                    ? const SizedBox.shrink()
+                    : Padding(
+                        padding: const EdgeInsets.only(bottom: 14),
+                        child: Text(
+                          value,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.68),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                loading: () => const SizedBox(height: 14),
+                error: (_, __) => const SizedBox.shrink(),
+              ),
               const Text(
                 'Goal',
                 style: TextStyle(fontWeight: FontWeight.w700),

@@ -63,6 +63,10 @@ const _developerGitHubUsername = 'xyrusL';
 const _projectRepositoryName = 'melon_mod_manager';
 const projectRepositoryUrl =
     'https://github.com/$_developerGitHubUsername/$_projectRepositoryName';
+final _knownReleaseDates = <String, DateTime>{
+  '1.7.6': DateTime(2026, 4, 4),
+  '7.7.9': DateTime(2026, 4, 5),
+};
 
 final _stableDateVersionPattern =
     RegExp(r'^\d+\.\d+\.\d+-\d{4}\.\d{2}\.\d{2}$');
@@ -85,6 +89,34 @@ String formatAppVersionLabel(String version) {
     return 'v$normalized (Pre-release)';
   }
   return 'v$normalized';
+}
+
+String? formatAppReleaseDateLabel(String version) {
+  final normalized = version.trim().toLowerCase().startsWith('v')
+      ? version.trim().substring(1)
+      : version.trim();
+  final releaseDate = _knownReleaseDates[normalized];
+  if (releaseDate == null) {
+    return null;
+  }
+
+  const monthNames = <String>[
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+
+  return 'Released ${monthNames[releaseDate.month - 1]} '
+      '${releaseDate.day}, ${releaseDate.year}';
 }
 
 final appUpdateServiceProvider = Provider<AppUpdateService>((ref) {
@@ -112,6 +144,12 @@ final developerSnapshotProvider =
 final appVersionLabelProvider = FutureProvider.autoDispose<String>((ref) async {
   final info = await PackageInfo.fromPlatform();
   return formatAppVersionLabel(info.version);
+});
+
+final appReleaseDateLabelProvider =
+    FutureProvider.autoDispose<String?>((ref) async {
+  final info = await PackageInfo.fromPlatform();
+  return formatAppReleaseDateLabel(info.version);
 });
 
 final modrinthRepositoryProvider = Provider<ModrinthRepository>((ref) {

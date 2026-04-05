@@ -1,15 +1,17 @@
-## Melon Mod Manager 1.7.6
+## Melon Mod Manager 7.7.9
 
-This 1.7.6 update tidies the update settings flow so the refresh experience is clearer and the modal states stay in sync.
+Tag: `v7.7.9`
+
+This 7.7.9 release fixes the user-facing environment and path handling flow, cleans up legacy UI behavior, and prepares the desktop builds for release from the current tag.
 
 ### Fixes and improvements
 
-- Reworked the Update Settings modal into clearer sections for update checks and theme selection.
-- Made the check frequency control fill the card width so the layout matches the surrounding settings UI.
-- Adjusted the settings modal scrollbar so it sits off the content instead of overlapping the cards.
-- Swapped the update-check busy icon to a better loading indicator for the refresh state.
-- Fixed the local refresh flow so the settings screen stops showing a running refresh as soon as the job is actually complete.
-- Restored the refresh completion modal to a top-right close button instead of a bottom action button.
+- Moved the sidebar scrollbar farther away from the action rows so it stays clearly visible without crowding the buttons.
+- Added guided situation modals for Minecraft detection failures, missing mods folders, unknown loader or version detection, and other user-facing setup problems.
+- Added a fallback problem modal for cases that do not match a known situation cleanly.
+- Kept the internal bug-catch modal separate and improved its reporting guidance so exported logs are more useful for debugging.
+- Removed the legacy inline SVG logo path and switched the app to the checked-in asset logo, eliminating the unsupported `<filter>` runtime warning from the old loader path.
+- Updated the app version metadata to `7.7.9`.
 
 ### Included assets
 
