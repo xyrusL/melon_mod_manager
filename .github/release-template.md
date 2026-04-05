@@ -1,8 +1,8 @@
-## Melon Mod Manager 7.7.9
+## Melon Mod Manager 1.7.7
 
-Tag: `v7.7.9`
+Tag: `v1.7.7`
 
-This 7.7.9 release fixes the user-facing environment and path handling flow, cleans up legacy UI behavior, and prepares the desktop builds for release from the current tag.
+This 1.7.7 release fixes the user-facing environment and path handling flow, cleans up legacy UI behavior, and prepares the desktop builds for release from the current tag.
 
 ### Fixes and improvements
 
@@ -11,7 +11,7 @@ This 7.7.9 release fixes the user-facing environment and path handling flow, cle
 - Added a fallback problem modal for cases that do not match a known situation cleanly.
 - Kept the internal bug-catch modal separate and improved its reporting guidance so exported logs are more useful for debugging.
 - Removed the legacy inline SVG logo path and switched the app to the checked-in asset logo, eliminating the unsupported `<filter>` runtime warning from the old loader path.
-- Updated the app version metadata to `7.7.9`.
+- Updated the app version metadata to `1.7.7`.
 
 ### Included assets
 

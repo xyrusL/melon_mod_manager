@@ -65,7 +65,7 @@ const projectRepositoryUrl =
     'https://github.com/$_developerGitHubUsername/$_projectRepositoryName';
 final _knownReleaseDates = <String, DateTime>{
   '1.7.6': DateTime(2026, 4, 4),
-  '7.7.9': DateTime(2026, 4, 5),
+  '1.7.7': DateTime(2026, 4, 5),
 };
 
 final _stableDateVersionPattern =
