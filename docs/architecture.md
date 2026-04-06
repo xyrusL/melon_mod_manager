@@ -1,5 +1,42 @@
 # Architecture
 
+## Visual Outline
+
+```mermaid
+flowchart TD
+    A[Melon Mod Manager] --> B[presentation]
+    A --> C[domain]
+    A --> D[data]
+    A --> E[core]
+
+    B --> B1[Screens, dialogs, widgets]
+    B --> B2[Riverpod state notifiers]
+    B --> B3[Main UI flow]
+
+    C --> C1[Entities and repository contracts]
+    C --> C2[Dependency resolution]
+    C --> C3[Install and update use cases]
+
+    D --> D1[Modrinth and GitHub API clients]
+    D --> D2[Filesystem scanning and install services]
+    D --> D3[Zip import/export and persistence]
+
+    E --> E1[Dependency wiring]
+    E --> E2[Theme and shared utilities]
+    E --> E3[Error handling]
+
+    B2 --> F[ModsController]
+    B2 --> G[AppController]
+    B2 --> H[AppUpdateController]
+
+    F --> C
+    G --> E
+    H --> D
+
+    C --> D
+    D --> I[Disk, Hive, SharedPreferences, remote APIs]
+```
+
 ## Overview
 
 Melon Mod Manager is a desktop Flutter app with a fairly strict split between:
