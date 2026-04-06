@@ -54,7 +54,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
   }
 
   Future<void> _browse() async {
-    final selected = await FilePicker.platform.getDirectoryPath();
+    final selected = await FilePicker.getDirectoryPath();
     if (selected == null) {
       return;
     }

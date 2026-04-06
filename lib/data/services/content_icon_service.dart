@@ -18,7 +18,7 @@ class ContentIconService {
       final inputStream = InputFileStream(archivePath);
       late final Archive archive;
       try {
-        archive = ZipDecoder().decodeBuffer(inputStream, verify: false);
+        archive = ZipDecoder().decodeStream(inputStream, verify: false);
       } finally {
         inputStream.close();
       }
@@ -57,7 +57,7 @@ class ContentIconService {
       final iconFile = File(p.join(iconDir.path, '$hash.png'));
       if (!await iconFile.exists()) {
         final content = candidate.content;
-        if (content is! List<int> || content.isEmpty) {
+        if (content.isEmpty) {
           return null;
         }
         await iconFile.writeAsBytes(content, flush: true);

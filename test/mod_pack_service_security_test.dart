@@ -21,7 +21,7 @@ void main() {
       final service = ModPackService();
       final embeddedArchive = Archive()
         ..addFile(ArchiveFile('pack.mcmeta', 2, utf8.encode('{}')));
-      final embeddedBytes = ZipEncoder().encode(embeddedArchive)!;
+      final embeddedBytes = ZipEncoder().encode(embeddedArchive);
 
       final bundleArchive = Archive()
         ..addFile(
@@ -45,7 +45,7 @@ void main() {
         ..addFile(
           ArchiveFile('files/../evil.zip', embeddedBytes.length, embeddedBytes),
         );
-      await File(bundlePath).writeAsBytes(ZipEncoder().encode(bundleArchive)!);
+      await File(bundlePath).writeAsBytes(ZipEncoder().encode(bundleArchive));
 
       final result = await service.importContentBundleFromZip(
         contentPath: contentDir.path,

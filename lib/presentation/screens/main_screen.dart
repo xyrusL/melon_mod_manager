@@ -367,7 +367,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
       ContentType.resourcePack => 'Select Resource Pack File(s) (.zip)',
       ContentType.shaderPack => 'Select Shader Pack File(s) (.zip)',
     };
-    final picked = await FilePicker.platform.pickFiles(
+    final picked = await FilePicker.pickFiles(
       dialogTitle: dialogTitle,
       allowMultiple: true,
       type: FileType.custom,
@@ -454,7 +454,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   }
 
   Future<void> _importZipPack() async {
-    final picked = await FilePicker.platform.pickFiles(
+    final picked = await FilePicker.pickFiles(
       allowMultiple: false,
       type: FileType.custom,
       allowedExtensions: const ['zip'],
@@ -480,7 +480,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     };
     final fileName =
         '${prefix}_${timestamp.year.toString().padLeft(4, '0')}${timestamp.month.toString().padLeft(2, '0')}${timestamp.day.toString().padLeft(2, '0')}_${timestamp.hour.toString().padLeft(2, '0')}${timestamp.minute.toString().padLeft(2, '0')}.zip';
-    final savePath = await FilePicker.platform.saveFile(
+    final savePath = await FilePicker.saveFile(
       dialogTitle: 'Export ${state.contentType.label}',
       fileName: fileName,
       type: FileType.custom,
@@ -555,7 +555,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   }
 
   Future<void> _browseNewPath() async {
-    final selected = await FilePicker.platform.getDirectoryPath();
+    final selected = await FilePicker.getDirectoryPath();
     if (selected == null || !mounted) {
       return;
     }

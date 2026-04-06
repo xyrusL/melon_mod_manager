@@ -26,7 +26,7 @@ void main() {
       )
       ..addFile(ArchiveFile('assets/icon.png', iconBytes.length, iconBytes));
 
-    final zipBytes = ZipEncoder().encode(archive)!;
+    final zipBytes = ZipEncoder().encode(archive);
     final parsed = JarMetadataParser.parseFromArchiveBytes(
       Uint8List.fromList(zipBytes),
       'sodium.jar',

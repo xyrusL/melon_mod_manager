@@ -1,4 +1,4 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'dart:async';
 import 'dart:io';
 import 'package:path/path.dart' as p;

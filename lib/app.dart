@@ -226,7 +226,7 @@ class _GlobalErrorOverlayState extends State<_GlobalErrorOverlay> {
         .toIso8601String()
         .replaceAll(':', '-')
         .replaceAll('.', '-');
-    final targetPath = await FilePicker.platform.saveFile(
+    final targetPath = await FilePicker.saveFile(
       dialogTitle: 'Export error log',
       fileName: 'melon_mod_error_$timestamp.log',
       lockParentWindow: true,

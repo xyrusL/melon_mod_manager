@@ -229,7 +229,7 @@ class ModPackService {
         ArchiveFile(_manifestName, manifestBytes.length, manifestBytes));
 
     final encoded = ZipEncoder().encode(archive);
-    if (encoded == null || encoded.isEmpty) {
+    if (encoded.isEmpty) {
       throw Exception('Failed to create zip package.');
     }
 
@@ -502,7 +502,7 @@ class ModPackService {
     }
 
     final encoded = ZipEncoder().encode(archive);
-    if (encoded == null || encoded.isEmpty) {
+    if (encoded.isEmpty) {
       throw Exception('Failed to create zip package.');
     }
 
@@ -705,7 +705,7 @@ class ModPackService {
     );
 
     final encoded = ZipEncoder().encode(archive);
-    if (encoded == null || encoded.isEmpty) {
+    if (encoded.isEmpty) {
       throw Exception('Failed to create zip package.');
     }
 
