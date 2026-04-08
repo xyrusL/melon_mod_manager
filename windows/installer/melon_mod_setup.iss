@@ -81,11 +81,9 @@ var
   FooterLabel: TNewStaticText;
   CloseButton: TNewButton;
 begin
-  ThankYouForm := CreateCustomForm;
+  ThankYouForm := CreateCustomForm(ScaleX(500), ScaleY(250), False, False);
   try
     ThankYouForm.Caption := 'Thanks for using Melon Mod Manager';
-    ThankYouForm.ClientWidth := ScaleX(500);
-    ThankYouForm.ClientHeight := ScaleY(250);
     ThankYouForm.Color := $0011161D;
     ThankYouForm.BorderStyle := bsDialog;
     ThankYouForm.Position := poScreenCenter;
