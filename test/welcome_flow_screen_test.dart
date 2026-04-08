@@ -2,14 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:melon_mod/core/providers.dart';
+import 'package:melon_mod/core/theme/app_theme.dart';
+import 'package:melon_mod/domain/entities/app_theme_mode.dart';
 import 'package:melon_mod/presentation/screens/welcome_flow_screen.dart';
 import 'package:melon_mod/presentation/viewmodels/app_controller.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   testWidgets('welcome flow shows thank-you copy with next and skip', (
     tester,
   ) async {
+    await _setDesktopViewport(tester);
     final prefs = await _prefs({});
     final container = ProviderContainer(
       overrides: [
@@ -21,7 +26,8 @@ void main() {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: const MaterialApp(
+        child: MaterialApp(
+          theme: AppTheme.themeFor(AppThemeMode.defaultDark),
           home: WelcomeFlowScreen(),
         ),
       ),
@@ -37,6 +43,7 @@ void main() {
   testWidgets('final action completes onboarding and moves to setup', (
     tester,
   ) async {
+    await _setDesktopViewport(tester);
     final prefs = await _prefs({});
     final container = ProviderContainer(
       overrides: [
@@ -48,7 +55,8 @@ void main() {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: const MaterialApp(
+        child: MaterialApp(
+          theme: AppTheme.themeFor(AppThemeMode.defaultDark),
           home: WelcomeFlowScreen(),
         ),
       ),
@@ -72,4 +80,11 @@ void main() {
 Future<SharedPreferences> _prefs(Map<String, Object> values) async {
   SharedPreferences.setMockInitialValues(values);
   return SharedPreferences.getInstance();
+}
+
+Future<void> _setDesktopViewport(WidgetTester tester) async {
+  tester.view.physicalSize = const Size(1440, 900);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
 }
