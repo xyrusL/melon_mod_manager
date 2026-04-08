@@ -35,6 +35,26 @@ void main() {
     });
   });
 
+  group('SettingsRepositoryImpl welcome flow', () {
+    test('defaults to incomplete welcome flow', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final repository = SettingsRepositoryImpl(prefs);
+
+      expect(await repository.getHasCompletedWelcomeFlow(), isFalse);
+    });
+
+    test('persists welcome flow completion', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final repository = SettingsRepositoryImpl(prefs);
+
+      await repository.markWelcomeFlowCompleted();
+
+      expect(await repository.getHasCompletedWelcomeFlow(), isTrue);
+    });
+  });
+
   group('SettingsRepositoryImpl post-update metadata state', () {
     test('treats missing last seen version as fresh install without prompt',
         () async {
@@ -66,7 +86,8 @@ void main() {
       expect(state.shouldWarmUpInBackground, isTrue);
     });
 
-    test('prompts when app was upgraded and metadata is not prepared', () async {
+    test('prompts when app was upgraded and metadata is not prepared',
+        () async {
       SharedPreferences.setMockInitialValues({
         'last_seen_app_version': '1.7.2',
         'metadata_prepared_app_version': '1.7.2',

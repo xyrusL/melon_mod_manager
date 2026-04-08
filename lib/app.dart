@@ -9,6 +9,7 @@ import 'core/app_error_service.dart';
 import 'core/theme/app_theme.dart';
 import 'presentation/screens/main_screen.dart';
 import 'presentation/screens/setup_screen.dart';
+import 'presentation/screens/welcome_flow_screen.dart';
 import 'presentation/viewmodels/app_controller.dart';
 
 class MelonModApp extends ConsumerWidget {
@@ -30,6 +31,7 @@ class MelonModApp extends ConsumerWidget {
       ),
       home: switch (appState.status) {
         AppStatus.loading => const _LoadingView(),
+        AppStatus.welcome => const WelcomeFlowScreen(),
         AppStatus.setup => const SetupScreen(),
         AppStatus.ready => MainScreen(modsPath: appState.modsPath!),
       },

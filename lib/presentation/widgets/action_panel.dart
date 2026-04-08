@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/providers.dart';
 import '../../domain/entities/app_theme_mode.dart';
 import '../../domain/entities/auto_update_settings.dart';
+import '../screens/welcome_flow_screen.dart';
 import '../viewmodels/app_controller.dart';
 import '../viewmodels/app_update_controller.dart';
 import 'app_modal.dart';
@@ -1541,6 +1542,18 @@ class _AboutDialog extends ConsumerWidget {
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.82),
                   height: 1.35,
+                ),
+              ),
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    Navigator.of(context).pop();
+                    await WelcomeFlowScreen.openReplay(context);
+                  },
+                  icon: const Icon(Icons.auto_stories_rounded, size: 18),
+                  label: const Text('View Welcome Guide'),
                 ),
               ),
               const SizedBox(height: 14),

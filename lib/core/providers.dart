@@ -66,6 +66,7 @@ const projectRepositoryUrl =
 final _knownReleaseDates = <String, DateTime>{
   '1.7.6': DateTime(2026, 4, 4),
   '1.7.7': DateTime(2026, 4, 5),
+  '1.7.8': DateTime(2026, 4, 8),
 };
 
 final _stableDateVersionPattern =

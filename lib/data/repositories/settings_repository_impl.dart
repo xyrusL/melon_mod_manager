@@ -9,6 +9,7 @@ class SettingsRepositoryImpl implements SettingsRepository {
 
   static const _modsPathKey = 'mods_path';
   static const _appThemeModeKey = 'app_theme_mode';
+  static const _hasCompletedWelcomeFlowKey = 'has_completed_welcome_flow';
   static const _lastSeenAppVersionKey = 'last_seen_app_version';
   static const _metadataPreparedVersionKey = 'metadata_prepared_app_version';
   static const _autoUpdateIntervalPrefix = 'auto_update_interval';
@@ -47,6 +48,16 @@ class SettingsRepositoryImpl implements SettingsRepository {
   @override
   Future<void> saveAppThemeMode(AppThemeMode mode) async {
     await _prefs.setString(_appThemeModeKey, mode.name);
+  }
+
+  @override
+  Future<bool> getHasCompletedWelcomeFlow() async {
+    return _prefs.getBool(_hasCompletedWelcomeFlowKey) ?? false;
+  }
+
+  @override
+  Future<void> markWelcomeFlowCompleted() async {
+    await _prefs.setBool(_hasCompletedWelcomeFlowKey, true);
   }
 
   @override
@@ -98,10 +109,9 @@ class SettingsRepositoryImpl implements SettingsRepository {
   ) async {
     final presetRaw = _prefs.getString(_intervalPresetKey(target));
     final preset = _parsePreset(presetRaw);
-    final storedCustomValue =
-        _prefs.getInt(_intervalCustomValueKey(target)) ??
-            _prefs.getInt(_intervalLegacyCustomDaysKey(target)) ??
-            7;
+    final storedCustomValue = _prefs.getInt(_intervalCustomValueKey(target)) ??
+        _prefs.getInt(_intervalLegacyCustomDaysKey(target)) ??
+        7;
     final storedUnitRaw = _prefs.getString(_intervalCustomUnitKey(target));
     final customUnit = _parseUnit(storedUnitRaw) ??
         (storedUnitRaw == null

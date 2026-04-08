@@ -56,7 +56,8 @@ void main() {
     expect(app.theme?.colorScheme.primary, const Color(0xFF64E4FF));
   });
 
-  testWidgets('selected theme persists after rebuilding the app', (tester) async {
+  testWidgets('selected theme persists after rebuilding the app',
+      (tester) async {
     final prefs = await _prefs({});
     final firstContainer = ProviderContainer(
       overrides: [
@@ -98,6 +99,10 @@ void main() {
 }
 
 Future<SharedPreferences> _prefs(Map<String, Object> values) async {
-  SharedPreferences.setMockInitialValues(values);
+  final withWelcomeState = <String, Object>{
+    'has_completed_welcome_flow': true,
+    ...values,
+  };
+  SharedPreferences.setMockInitialValues(withWelcomeState);
   return SharedPreferences.getInstance();
 }

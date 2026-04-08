@@ -32,6 +32,10 @@ abstract class SettingsRepository {
 
   Future<void> saveAppThemeMode(AppThemeMode mode);
 
+  Future<bool> getHasCompletedWelcomeFlow();
+
+  Future<void> markWelcomeFlowCompleted();
+
   Future<String?> getLastSeenAppVersion();
 
   Future<void> saveLastSeenAppVersion(String appVersion);

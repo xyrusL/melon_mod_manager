@@ -1,10 +1,11 @@
 import 'package:flutter_riverpod/legacy.dart';
 
+import '../../core/debug_flags.dart';
 import '../../core/providers.dart';
 import '../../domain/entities/app_theme_mode.dart';
 import '../../domain/repositories/settings_repository.dart';
 
-enum AppStatus { loading, setup, ready }
+enum AppStatus { loading, welcome, setup, ready }
 
 class AppState {
   const AppState({
@@ -52,6 +53,25 @@ class AppController extends StateNotifier<AppState> {
     try {
       final path = await _settingsRepository.getModsPath();
       final themeMode = await _settingsRepository.getAppThemeMode();
+      final lastSeenVersion = await _settingsRepository.getLastSeenAppVersion();
+      final hasCompletedWelcomeFlow =
+          await _settingsRepository.getHasCompletedWelcomeFlow();
+      final shouldForceWelcome = DebugFlags.showWelcomeFlowPreview;
+      final looksLikeExistingInstall =
+          (path != null && path.trim().isNotEmpty) ||
+          (lastSeenVersion != null && lastSeenVersion.trim().isNotEmpty);
+      final shouldShowWelcome =
+          shouldForceWelcome ||
+          (!hasCompletedWelcomeFlow && !looksLikeExistingInstall);
+
+      if (shouldShowWelcome) {
+        state = AppState(
+          status: AppStatus.welcome,
+          modsPath: path,
+          themeMode: themeMode,
+        );
+        return;
+      }
       if (path == null || path.trim().isEmpty) {
         state = AppState(status: AppStatus.setup, themeMode: themeMode);
       } else {
@@ -78,5 +98,20 @@ class AppController extends StateNotifier<AppState> {
   Future<void> saveThemeMode(AppThemeMode mode) async {
     await _settingsRepository.saveAppThemeMode(mode);
     state = state.copyWith(themeMode: mode);
+  }
+
+  Future<void> completeWelcomeFlow() async {
+    await _settingsRepository.markWelcomeFlowCompleted();
+    final path = await _settingsRepository.getModsPath();
+    if (path == null || path.trim().isEmpty) {
+      state = AppState(status: AppStatus.setup, themeMode: state.themeMode);
+      return;
+    }
+
+    state = AppState(
+      status: AppStatus.ready,
+      modsPath: path,
+      themeMode: state.themeMode,
+    );
   }
 }

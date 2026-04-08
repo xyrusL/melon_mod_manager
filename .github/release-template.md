@@ -1,17 +1,17 @@
-## Melon Mod Manager 1.7.7
+## Melon Mod Manager 1.7.8
 
-Tag: `v1.7.7`
+Tag: `v1.7.8`
 
-This 1.7.7 release fixes the user-facing environment and path handling flow, cleans up legacy UI behavior, and prepares the desktop builds for release from the current tag.
+This 1.7.8 release adds a polished first-run welcome flow for brand-new users, keeps existing users from seeing that tour during upgrades, and adds a replayable welcome guide inside the app.
 
 ### Fixes and improvements
 
-- Moved the sidebar scrollbar farther away from the action rows so it stays clearly visible without crowding the buttons.
-- Added guided situation modals for Minecraft detection failures, missing mods folders, unknown loader or version detection, and other user-facing setup problems.
-- Added a fallback problem modal for cases that do not match a known situation cleanly.
-- Kept the internal bug-catch modal separate and improved its reporting guidance so exported logs are more useful for debugging.
-- Removed the legacy inline SVG logo path and switched the app to the checked-in asset logo, eliminating the unsupported `<filter>` runtime warning from the old loader path.
-- Updated the app version metadata to `1.7.7`.
+- Added a multi-step welcome experience for first-time users before setup starts.
+- Added a replayable welcome guide in the app so the intro can be viewed again later from About.
+- Kept the onboarding visuals aligned with the current app theme for a more consistent first impression.
+- Prevented existing users who update the app from being treated like brand-new installs.
+- Added a debug-only preview flag so the welcome flow can be tested locally without affecting release behavior.
+- Updated the app version metadata to `1.7.8`.
 
 ### Included assets
 
