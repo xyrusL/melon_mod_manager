@@ -56,6 +56,9 @@ class AppController extends StateNotifier<AppState> {
       final lastSeenVersion = await _settingsRepository.getLastSeenAppVersion();
       final hasCompletedWelcomeFlow =
           await _settingsRepository.getHasCompletedWelcomeFlow();
+      if (!mounted) {
+        return;
+      }
       final shouldForceWelcome = DebugFlags.showWelcomeFlowPreview;
       final looksLikeExistingInstall =
           (path != null && path.trim().isNotEmpty) ||
@@ -82,12 +85,18 @@ class AppController extends StateNotifier<AppState> {
         );
       }
     } catch (error) {
+      if (!mounted) {
+        return;
+      }
       state = AppState(status: AppStatus.setup, error: error.toString());
     }
   }
 
   Future<void> saveModsPath(String path) async {
     await _settingsRepository.saveModsPath(path);
+    if (!mounted) {
+      return;
+    }
     state = AppState(
       status: AppStatus.ready,
       modsPath: path,
@@ -97,12 +106,18 @@ class AppController extends StateNotifier<AppState> {
 
   Future<void> saveThemeMode(AppThemeMode mode) async {
     await _settingsRepository.saveAppThemeMode(mode);
+    if (!mounted) {
+      return;
+    }
     state = state.copyWith(themeMode: mode);
   }
 
   Future<void> completeWelcomeFlow() async {
     await _settingsRepository.markWelcomeFlowCompleted();
     final path = await _settingsRepository.getModsPath();
+    if (!mounted) {
+      return;
+    }
     if (path == null || path.trim().isEmpty) {
       state = AppState(status: AppStatus.setup, themeMode: state.themeMode);
       return;

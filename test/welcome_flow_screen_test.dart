@@ -72,7 +72,7 @@ void main() {
     await tester.tap(find.text('Start Setup'));
     await tester.pumpAndSettle();
 
-    final state = container.read(appControllerProvider);
+    final state = await _waitForAppState(container);
     expect(state.status, AppStatus.setup);
   });
 }
@@ -87,4 +87,13 @@ Future<void> _setDesktopViewport(WidgetTester tester) async {
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
+}
+
+Future<AppState> _waitForAppState(ProviderContainer container) async {
+  AppState state = container.read(appControllerProvider);
+  while (state.status == AppStatus.loading) {
+    await Future<void>.delayed(Duration.zero);
+    state = container.read(appControllerProvider);
+  }
+  return state;
 }

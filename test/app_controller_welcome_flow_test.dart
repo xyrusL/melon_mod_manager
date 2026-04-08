@@ -14,7 +14,7 @@ void main() {
     );
     addTearDown(container.dispose);
 
-    await Future<void>.delayed(Duration.zero);
+    await _pumpUntilReady(container);
 
     expect(container.read(appControllerProvider).status, AppStatus.welcome);
   });
@@ -30,7 +30,7 @@ void main() {
     );
     addTearDown(container.dispose);
 
-    await Future<void>.delayed(Duration.zero);
+    await _pumpUntilReady(container);
 
     expect(container.read(appControllerProvider).status, AppStatus.setup);
   });
@@ -47,7 +47,7 @@ void main() {
     );
     addTearDown(container.dispose);
 
-    await Future<void>.delayed(Duration.zero);
+    await _pumpUntilReady(container);
 
     final state = container.read(appControllerProvider);
     expect(state.status, AppStatus.ready);
@@ -66,7 +66,7 @@ void main() {
     );
     addTearDown(container.dispose);
 
-    await Future<void>.delayed(Duration.zero);
+    await _pumpUntilReady(container);
 
     expect(container.read(appControllerProvider).status, AppStatus.setup);
   });
@@ -75,4 +75,10 @@ void main() {
 Future<SharedPreferences> _prefs(Map<String, Object> values) async {
   SharedPreferences.setMockInitialValues(values);
   return SharedPreferences.getInstance();
+}
+
+Future<void> _pumpUntilReady(ProviderContainer container) async {
+  while (container.read(appControllerProvider).status == AppStatus.loading) {
+    await Future<void>.delayed(Duration.zero);
+  }
 }
