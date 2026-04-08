@@ -71,6 +71,103 @@ var
   InstallStageLabel: TNewStaticText;
   InstallPercentLabel: TNewStaticText;
 
+procedure ShowUninstallThankYouDialog();
+var
+  ThankYouForm: TSetupForm;
+  AccentBand: TPanel;
+  CardPanel: TPanel;
+  TitleLabel: TNewStaticText;
+  MessageLabel: TNewStaticText;
+  FooterLabel: TNewStaticText;
+  CloseButton: TNewButton;
+begin
+  ThankYouForm := CreateCustomForm;
+  try
+    ThankYouForm.Caption := 'Thanks for using Melon Mod Manager';
+    ThankYouForm.ClientWidth := ScaleX(500);
+    ThankYouForm.ClientHeight := ScaleY(250);
+    ThankYouForm.Color := $0011161D;
+    ThankYouForm.BorderStyle := bsDialog;
+    ThankYouForm.Position := poScreenCenter;
+
+    AccentBand := TPanel.Create(ThankYouForm);
+    AccentBand.Parent := ThankYouForm;
+    AccentBand.Left := 0;
+    AccentBand.Top := 0;
+    AccentBand.Width := ThankYouForm.ClientWidth;
+    AccentBand.Height := ScaleY(10);
+    AccentBand.BevelOuter := bvNone;
+    AccentBand.Color := $0057F1B4;
+
+    CardPanel := TPanel.Create(ThankYouForm);
+    CardPanel.Parent := ThankYouForm;
+    CardPanel.Left := ScaleX(24);
+    CardPanel.Top := ScaleY(28);
+    CardPanel.Width := ThankYouForm.ClientWidth - ScaleX(48);
+    CardPanel.Height := ScaleY(150);
+    CardPanel.BevelOuter := bvNone;
+    CardPanel.Color := $001A232E;
+
+    TitleLabel := TNewStaticText.Create(ThankYouForm);
+    TitleLabel.Parent := CardPanel;
+    TitleLabel.Left := ScaleX(20);
+    TitleLabel.Top := ScaleY(18);
+    TitleLabel.Width := CardPanel.Width - ScaleX(40);
+    TitleLabel.Height := ScaleY(28);
+    TitleLabel.AutoSize := False;
+    TitleLabel.Transparent := True;
+    TitleLabel.Font.Name := 'Segoe UI';
+    TitleLabel.Font.Size := 14;
+    TitleLabel.Font.Style := [fsBold];
+    TitleLabel.Font.Color := clWhite;
+    TitleLabel.Caption := 'Thanks for trying Melon Mod Manager';
+
+    MessageLabel := TNewStaticText.Create(ThankYouForm);
+    MessageLabel.Parent := CardPanel;
+    MessageLabel.Left := ScaleX(20);
+    MessageLabel.Top := ScaleY(56);
+    MessageLabel.Width := CardPanel.Width - ScaleX(40);
+    MessageLabel.Height := ScaleY(58);
+    MessageLabel.AutoSize := False;
+    MessageLabel.Transparent := True;
+    MessageLabel.WordWrap := True;
+    MessageLabel.Font.Name := 'Segoe UI';
+    MessageLabel.Font.Size := 10;
+    MessageLabel.Font.Color := clWhite;
+    MessageLabel.Caption :=
+      'Your copy of Melon has been removed.'#13#10 +
+      'Thanks for using the app, and you are always welcome back any time.';
+
+    FooterLabel := TNewStaticText.Create(ThankYouForm);
+    FooterLabel.Parent := CardPanel;
+    FooterLabel.Left := ScaleX(20);
+    FooterLabel.Top := ScaleY(122);
+    FooterLabel.Width := CardPanel.Width - ScaleX(40);
+    FooterLabel.Height := ScaleY(22);
+    FooterLabel.AutoSize := False;
+    FooterLabel.Transparent := True;
+    FooterLabel.Font.Name := 'Segoe UI';
+    FooterLabel.Font.Size := 9;
+    FooterLabel.Font.Color := $00A7C2D9;
+    FooterLabel.Caption := 'Thank you for being part of the Minecraft community.';
+
+    CloseButton := TNewButton.Create(ThankYouForm);
+    CloseButton.Parent := ThankYouForm;
+    CloseButton.Caption := 'Close';
+    CloseButton.Width := ScaleX(112);
+    CloseButton.Height := ScaleY(34);
+    CloseButton.Left := ThankYouForm.ClientWidth - CloseButton.Width - ScaleX(24);
+    CloseButton.Top := ThankYouForm.ClientHeight - CloseButton.Height - ScaleY(22);
+    CloseButton.ModalResult := mrOk;
+    CloseButton.Default := True;
+
+    ThankYouForm.ActiveControl := CloseButton;
+    ThankYouForm.ShowModal;
+  finally
+    ThankYouForm.Free;
+  end;
+end;
+
 procedure InitializeWizard();
 begin
   WizardForm.WelcomeLabel2.Caption :=
@@ -130,11 +227,6 @@ procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 begin
   if CurUninstallStep = usDone then
   begin
-    MsgBox(
-      'Thanks for using Melon Mod Manager. ' +
-      'If you want to install it again, you are always welcome.',
-      mbInformation,
-      MB_OK
-    );
+    ShowUninstallThankYouDialog();
   end;
 end;
