@@ -67,6 +67,7 @@ final _knownReleaseDates = <String, DateTime>{
   '1.7.6': DateTime(2026, 4, 4),
   '1.7.7': DateTime(2026, 4, 5),
   '1.7.8': DateTime(2026, 4, 8),
+  '1.7.9': DateTime(2026, 4, 8),
 };
 
 final _stableDateVersionPattern =
@@ -142,15 +143,24 @@ final developerSnapshotProvider =
   );
 });
 
+final packageInfoProvider = FutureProvider.autoDispose<PackageInfo>((ref) async {
+  return PackageInfo.fromPlatform();
+});
+
+final appVersionProvider = FutureProvider.autoDispose<String>((ref) async {
+  final info = await ref.watch(packageInfoProvider.future);
+  return info.version;
+});
+
 final appVersionLabelProvider = FutureProvider.autoDispose<String>((ref) async {
-  final info = await PackageInfo.fromPlatform();
-  return formatAppVersionLabel(info.version);
+  final version = await ref.watch(appVersionProvider.future);
+  return formatAppVersionLabel(version);
 });
 
 final appReleaseDateLabelProvider =
     FutureProvider.autoDispose<String?>((ref) async {
-  final info = await PackageInfo.fromPlatform();
-  return formatAppReleaseDateLabel(info.version);
+  final version = await ref.watch(appVersionProvider.future);
+  return formatAppReleaseDateLabel(version);
 });
 
 final modrinthRepositoryProvider = Provider<ModrinthRepository>((ref) {

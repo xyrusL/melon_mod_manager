@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/providers.dart';
 import '../../core/debug_flags.dart';
 import '../../core/theme/app_theme.dart';
 import '../viewmodels/app_controller.dart';
@@ -54,6 +55,10 @@ class _WelcomeFlowScreenState extends ConsumerState<WelcomeFlowScreen> {
     final palette = theme.extension<AppThemePalette>();
     final accent = theme.colorScheme.primary;
     final accentAlt = theme.colorScheme.secondary;
+    final welcomeBadgeLabel = ref.watch(appVersionProvider).maybeWhen(
+          data: (version) => 'Melon $version Welcome',
+          orElse: () => 'Melon Welcome',
+        );
 
     return Container(
       decoration: AppTheme.appBackground(context),
@@ -143,10 +148,26 @@ class _WelcomeFlowScreenState extends ConsumerState<WelcomeFlowScreen> {
                                     onPageChanged: (value) =>
                                         setState(() => _currentIndex = value),
                                     children: [
-                                      _buildWelcomeSlide(accent, accentAlt),
-                                      _buildFeatureSlide(accent, accentAlt),
-                                      _buildFlowSlide(accent, accentAlt),
-                                      _buildLimitSlide(accent, accentAlt),
+                                      _buildWelcomeSlide(
+                                        accent,
+                                        accentAlt,
+                                        welcomeBadgeLabel,
+                                      ),
+                                      _buildFeatureSlide(
+                                        accent,
+                                        accentAlt,
+                                        welcomeBadgeLabel,
+                                      ),
+                                      _buildFlowSlide(
+                                        accent,
+                                        accentAlt,
+                                        welcomeBadgeLabel,
+                                      ),
+                                      _buildLimitSlide(
+                                        accent,
+                                        accentAlt,
+                                        welcomeBadgeLabel,
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -180,8 +201,13 @@ class _WelcomeFlowScreenState extends ConsumerState<WelcomeFlowScreen> {
     );
   }
 
-  Widget _buildWelcomeSlide(Color accent, Color accentAlt) {
+  Widget _buildWelcomeSlide(
+    Color accent,
+    Color accentAlt,
+    String badgeLabel,
+  ) {
     return _SlideFrame(
+      badgeLabel: badgeLabel,
       headline: 'Welcome to Melon Mod Manager',
       subhead:
           'Thanks for downloading Melon. This quick tour will show what the app does before you set up your Minecraft folder.',
@@ -199,8 +225,13 @@ class _WelcomeFlowScreenState extends ConsumerState<WelcomeFlowScreen> {
     );
   }
 
-  Widget _buildFeatureSlide(Color accent, Color accentAlt) {
+  Widget _buildFeatureSlide(
+    Color accent,
+    Color accentAlt,
+    String badgeLabel,
+  ) {
     return _SlideFrame(
+      badgeLabel: badgeLabel,
       headline: 'Built for a faster mod workflow',
       subhead:
           'Melon keeps the most useful actions close so you can spend less time sorting files and more time building your setup.',
@@ -218,8 +249,13 @@ class _WelcomeFlowScreenState extends ConsumerState<WelcomeFlowScreen> {
     );
   }
 
-  Widget _buildFlowSlide(Color accent, Color accentAlt) {
+  Widget _buildFlowSlide(
+    Color accent,
+    Color accentAlt,
+    String badgeLabel,
+  ) {
     return _SlideFrame(
+      badgeLabel: badgeLabel,
       headline: 'How Melon works',
       subhead:
           'Melon starts by helping you point to the right Minecraft folder, then it reads the local content already available on your machine.',
@@ -237,8 +273,13 @@ class _WelcomeFlowScreenState extends ConsumerState<WelcomeFlowScreen> {
     );
   }
 
-  Widget _buildLimitSlide(Color accent, Color accentAlt) {
+  Widget _buildLimitSlide(
+    Color accent,
+    Color accentAlt,
+    String badgeLabel,
+  ) {
     return _SlideFrame(
+      badgeLabel: badgeLabel,
       headline: 'What Melon can and cannot do',
       subhead:
           'Melon works with live online services for some features, while local file management stays available on your computer.',
@@ -458,6 +499,7 @@ class _BottomBar extends StatelessWidget {
 
 class _SlideFrame extends StatelessWidget {
   const _SlideFrame({
+    required this.badgeLabel,
     required this.headline,
     required this.subhead,
     required this.body,
@@ -466,6 +508,7 @@ class _SlideFrame extends StatelessWidget {
     required this.accentAlt,
   });
 
+  final String badgeLabel;
   final String headline;
   final String subhead;
   final List<String> body;
@@ -501,7 +544,7 @@ class _SlideFrame extends StatelessWidget {
                     border: Border.all(color: accent.withValues(alpha: 0.28)),
                   ),
                   child: Text(
-                    'Melon 1.7.8 Welcome',
+                    badgeLabel,
                     style: TextStyle(
                       color: accent,
                       fontSize: 12,

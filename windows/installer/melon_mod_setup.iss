@@ -2,7 +2,7 @@
 ; Build app first, then point Source to your release output folder.
 
 #ifndef MyAppVersion
-  #define MyAppVersion "1.7.0-2026.03.30"
+  #define MyAppVersion "1.7.9"
 #endif
 
 #ifndef MyOutputBaseFilename
