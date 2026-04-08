@@ -1,18 +1,12 @@
-## Melon Mod Manager 1.7.8
+## Melon Mod Manager `<version>`
 
-Tag: `v1.7.8`
+Tag: `<tag>`
 
-This 1.7.8 release adds a first-run welcome flow for brand-new users, keeps existing users from seeing that intro during upgrades, and improves the release stability around the new onboarding flow.
+Add the release summary for this version before pushing the tag.
 
 ### Fixes and improvements
 
-- Added a multi-step welcome flow for brand-new users before setup starts.
-- Added a replayable welcome guide inside the app so the intro can be viewed again later.
-- Kept the welcome flow aligned with the current app theme for a more consistent first impression.
-- Prevented existing users who update Melon from being treated like first-time installs.
-- Added a development-only preview toggle so the welcome flow can be tested locally without affecting release behavior.
-- Fixed the onboarding test flow so release validation is stable across Windows and Linux.
-- Updated the app version metadata to `1.7.8`.
+- Replace these notes with the actual changes shipped in this release.
 
 ### Included assets
 
