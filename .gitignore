@@ -32,6 +32,12 @@ migrate_working_dir/
 .pub/
 /build/
 /coverage/
+web/node_modules/
+web/.next/
+web/.next-dev/
+web/out/
+web/.node-localstorage*
+runlogs/
 
 # Symbolication related
 app.*.symbols

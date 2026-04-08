@@ -1,0 +1,31 @@
+{
+  "name": "melon-mod-web",
+  "private": true,
+  "version": "0.1.0",
+  "engines": {
+    "node": ">=20 <25"
+  },
+  "scripts": {
+    "dev": "node -e \"require('fs').rmSync('.next-dev',{ recursive: true, force: true })\" && node --localstorage-file=.node-localstorage ./node_modules/next/dist/bin/next dev --turbopack",
+    "build": "node -e \"require('fs').rmSync('.next',{ recursive: true, force: true })\" && node --localstorage-file=.node-localstorage ./node_modules/next/dist/bin/next build",
+    "start": "node --localstorage-file=.node-localstorage ./node_modules/next/dist/bin/next start",
+    "lint": "node --localstorage-file=.node-localstorage ./node_modules/next/dist/bin/next lint"
+  },
+  "dependencies": {
+    "@tailwindcss/postcss": "^4.2.2",
+    "lucide-react": "^1.7.0",
+    "next": "15.3.1",
+    "postcss": "^8.5.9",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-icons": "^5.6.0",
+    "tailwindcss": "^4.2.2"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "@types/node": "22.15.3",
+    "@types/react": "19.1.2",
+    "@types/react-dom": "19.1.2",
+    "typescript": "5.8.3"
+  }
+}

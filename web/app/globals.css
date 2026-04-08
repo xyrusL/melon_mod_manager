@@ -1,0 +1,141 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #10090a;
+  --bg-soft: #181112;
+  --panel: rgba(22, 13, 15, 0.86);
+  --panel-strong: rgba(27, 17, 19, 0.94);
+  --line: rgba(255, 226, 221, 0.12);
+  --line-strong: rgba(255, 226, 221, 0.2);
+  --text: #fff5f1;
+  --muted: #d0bfba;
+  --accent: #ff6278;
+  --accent-strong: #e4435f;
+  --accent-shadow: rgba(255, 98, 120, 0.24);
+  --accent-soft: rgba(255, 98, 120, 0.12);
+  --rind: #9de06f;
+  --rind-strong: #67b64c;
+  --rind-soft: rgba(157, 224, 111, 0.12);
+  --sand: #ffe6df;
+  --seed: #251316;
+}
+
+@theme inline {
+  --color-app-bg: var(--bg);
+  --color-app-bg-soft: var(--bg-soft);
+  --color-app-panel: var(--panel);
+  --color-app-panel-strong: var(--panel-strong);
+  --color-app-line: var(--line);
+  --color-app-line-strong: var(--line-strong);
+  --color-app-text: var(--text);
+  --color-app-muted: var(--muted);
+  --color-app-accent: var(--accent);
+  --color-app-accent-strong: var(--accent-strong);
+  --color-app-accent-soft: var(--accent-soft);
+  --color-app-rind: var(--rind);
+  --color-app-rind-strong: var(--rind-strong);
+  --color-app-rind-soft: var(--rind-soft);
+  --color-app-sand: var(--sand);
+  --color-app-seed: var(--seed);
+  --font-display: Georgia, "Times New Roman", serif;
+  --font-body: "Trebuchet MS", sans-serif;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    min-width: 320px;
+    background:
+      radial-gradient(circle at 14% 16%, rgba(255, 96, 119, 0.2), transparent 24%),
+      radial-gradient(circle at 84% 12%, rgba(159, 227, 112, 0.14), transparent 24%),
+      radial-gradient(circle at 50% 100%, rgba(120, 24, 38, 0.16), transparent 26%),
+      linear-gradient(180deg, #0d0708 0%, #130a0d 46%, #0d0809 100%);
+    color: var(--text);
+    font-family: var(--font-display);
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 28px 28px;
+    mask-image: radial-gradient(circle at center, black 45%, transparent 100%);
+    opacity: 0.18;
+  }
+
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.06;
+    background-image:
+      radial-gradient(circle at 20% 20%, white 0.7px, transparent 0.8px),
+      radial-gradient(circle at 80% 35%, white 0.7px, transparent 0.8px),
+      radial-gradient(circle at 60% 70%, white 0.7px, transparent 0.8px);
+    background-size: 180px 180px;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+}
+
+@layer utilities {
+  .glass-panel {
+    background:
+      linear-gradient(180deg, rgba(30, 18, 20, 0.94), rgba(19, 11, 13, 0.96)),
+      radial-gradient(circle at top left, rgba(255, 96, 119, 0.08), transparent 28%);
+    backdrop-filter: blur(18px);
+    box-shadow: 0 22px 70px rgba(0, 0, 0, 0.28);
+  }
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(26px);
+    animation: reveal-up 720ms cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+  }
+
+  .reveal-delay-1 {
+    animation-delay: 100ms;
+  }
+
+  .reveal-delay-2 {
+    animation-delay: 200ms;
+  }
+
+  .reveal-delay-3 {
+    animation-delay: 300ms;
+  }
+}
+
+@keyframes reveal-up {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .reveal {
+    opacity: 1;
+    transform: none;
+    animation: none;
+  }
+}
