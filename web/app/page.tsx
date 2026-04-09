@@ -13,6 +13,7 @@ import {
   Sparkles,
   Upload,
 } from "lucide-react";
+import { siteDescription, siteName, siteUrl } from "./site-config";
 
 type IconType = LucideIcon;
 
@@ -312,8 +313,21 @@ function SectionHeader({
 }
 
 export default function Home() {
+  const websiteSchema = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: siteName,
+    alternateName: "Melon",
+    url: siteUrl,
+    description: siteDescription,
+  };
+
   return (
     <main className="relative mx-auto flex w-[min(1440px,calc(100%-28px))] flex-col gap-5 px-1 py-5 sm:w-[min(1440px,calc(100%-40px))] sm:px-2 md:w-[min(1440px,calc(100%-72px))] md:px-3 md:py-7 xl:w-[min(1440px,calc(100%-96px))]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
+      />
       <section className="glass-panel reveal reveal-delay-1 rounded-[34px] border border-app-line px-6 py-7 md:px-8 md:py-8">
         <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,0.9fr)_minmax(560px,1.1fr)] 2xl:grid-cols-[minmax(0,0.92fr)_minmax(700px,1.08fr)]">
           <div>

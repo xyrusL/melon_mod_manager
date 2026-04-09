@@ -1,30 +1,62 @@
 import type { Metadata } from "next";
 import "./globals.css";
-
-const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL ??
-  (process.env.VERCEL_PROJECT_PRODUCTION_URL
-    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-    : "http://localhost:3000");
+import {
+  siteDescription,
+  siteLinks,
+  siteName,
+  siteTagline,
+  siteUrl,
+} from "./site-config";
 
 export const metadata: Metadata = {
-  title: "Melon Mod Manager | Desktop Minecraft Mod Manager",
-  description:
-    "Manage Minecraft mods, shaders, and resource packs from one desktop app with Modrinth search, dependency-aware installs, updates, and bundle tools.",
+  title: {
+    default: `${siteName} | ${siteTagline}`,
+    template: `%s | ${siteName}`,
+  },
+  description: siteDescription,
   metadataBase: new URL(siteUrl),
+  applicationName: siteName,
+  alternates: {
+    canonical: "/",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
   icons: {
     icon: [
-      { url: "/favicon.ico", sizes: "any" },
-      { url: "/melon_logo.svg", type: "image/svg+xml" },
+      { url: siteLinks.icon, sizes: "any" },
+      { url: siteLinks.svgIcon, type: "image/svg+xml" },
     ],
-    shortcut: ["/favicon.ico"],
-    apple: ["/melon_logo.svg"],
+    shortcut: [siteLinks.icon],
+    apple: [siteLinks.svgIcon],
   },
+  manifest: "/manifest.webmanifest",
   openGraph: {
-    title: "Melon Mod Manager",
-    description:
-      "Desktop mod management for Minecraft with Modrinth search, updates, dependency handling, and content import/export.",
-    images: ["/download_mod.png"],
+    type: "website",
+    url: "/",
+    siteName,
+    title: `${siteName} | ${siteTagline}`,
+    description: siteDescription,
+    images: [
+      {
+        url: siteLinks.image,
+        alt: `${siteName} app preview`,
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${siteName} | ${siteTagline}`,
+    description: siteDescription,
+    images: [siteLinks.image],
   },
 };
 
