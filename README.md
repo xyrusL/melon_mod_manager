@@ -88,15 +88,18 @@ npm run dev
 
 - Desktop app: build and release with Flutter
 - Website: deploy `web/` to Vercel or another web host
-- Root `vercel.json` is configured so Vercel builds only the website and does not try to deploy the Flutter desktop app
+- In Vercel, set the project Root Directory to `web` so it treats the website as the deployable app
+
+If Vercel import logs show `Could not identify Next.js version` or `No Next.js version detected`, it is usually reading the repo root instead of `web/`. Change the project Root Directory to `web` and keep the Framework Preset as `Next.js`.
 
 If your hosting provider asks for manual settings, use:
 
-- Install command: `cd web && npm install`
-- Build command: `cd web && npm run build`
-- Output: handled by Next.js hosting adapters automatically
+- Root Directory: `web`
+- Install command: `npm install`
+- Build command: `npm run build`
+- Output: handled by Next.js hosting automatically
 
-For Vercel, the included root config already points builds at `web/`.
+Keep the Framework Preset as `Next.js` and leave the Output Directory empty.
 
 If you want the website to share content with the app repository, keep that content in plain files or duplicate small branding assets intentionally. Do not wire the web project into desktop-only Flutter runtime code.
 
@@ -115,3 +118,5 @@ If you want the website to share content with the app repository, keep that cont
 GNU GPL v3.0 License. See the [LICENSE](LICENSE) file for details.
 
 Made for the Minecraft community
+
+
