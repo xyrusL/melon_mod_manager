@@ -1,6 +1,6 @@
 # Melon Mod Manager Website
 
-🌐 Marketing site for **Melon Mod Manager**, the desktop app for managing Minecraft mods, shader packs, and resource packs.
+🌐 **Melon Mod Manager**, the desktop app for managing Minecraft mods, shader packs, and resource packs.
 
 ## ✨ What This Folder Is
 
