@@ -2,31 +2,6 @@
 
 A desktop app to manage Minecraft mods, shaders, and resource packs in one place.
 
-## Repo Layout
-
-This repository now supports two independent products:
-
-- `app` at the repo root: the Flutter desktop application
-- `web/`: the public website for downloads, product info, and release messaging
-
-They are intentionally separate so the desktop app and the website can have different stacks, styling, and deployment targets.
-
-### Hosting Setup
-
-- Desktop app: build and release with Flutter
-- Website: deploy `web/` to Vercel or another web host
-- Root `vercel.json` is configured so Vercel builds only the website and does not try to deploy the Flutter desktop app
-
-### Website Hosting Commands
-
-If your hosting provider asks for manual settings, use:
-
-- Install command: `cd web && npm install`
-- Build command: `cd web && npm run build`
-- Output: handled by Next.js hosting adapters automatically
-
-For Vercel, the included root config already points builds at `web/`.
-
 ## App Preview
 
 ![Download from Modrinth Preview](assets/screenshots/download_mod.png)
@@ -92,6 +67,15 @@ flutter test
 flutter analyze
 ```
 
+### Repo Layout
+
+This repository supports two separate products:
+
+- `app` at the repo root: the Flutter desktop application
+- `web/`: the public website for downloads, product info, and release messaging
+
+They are kept separate so the desktop app and the website can use different stacks, styling, and deployment targets.
+
 ### Website Development
 
 ```bash
@@ -99,6 +83,20 @@ cd web
 npm install
 npm run dev
 ```
+
+### Website Hosting Setup
+
+- Desktop app: build and release with Flutter
+- Website: deploy `web/` to Vercel or another web host
+- Root `vercel.json` is configured so Vercel builds only the website and does not try to deploy the Flutter desktop app
+
+If your hosting provider asks for manual settings, use:
+
+- Install command: `cd web && npm install`
+- Build command: `cd web && npm run build`
+- Output: handled by Next.js hosting adapters automatically
+
+For Vercel, the included root config already points builds at `web/`.
 
 If you want the website to share content with the app repository, keep that content in plain files or duplicate small branding assets intentionally. Do not wire the web project into desktop-only Flutter runtime code.
 
