@@ -1,15 +1,42 @@
-# Website
+# Melon Mod Manager Website
 
-This folder contains the public website for Melon Mod Manager.
+This folder contains the website for Melon Mod Manager.
 
-## Why It Lives Here
+The website is here to support the desktop app. It gives people a simple place to learn what the app does, check its features, and find download or project links.
 
-The desktop app and the website share one repository, but they are deployed separately:
+## What Melon Mod Manager Is
 
-- repo root: Flutter desktop application
-- `web/`: Next.js website for Vercel or other web hosts
+Melon Mod Manager is a desktop app for Minecraft players.
 
-## Local Development
+It helps people manage:
+
+- mods
+- shader packs
+- resource packs
+
+The app is built to make setup easier. You can browse content, install files, track updates, and keep your Minecraft folders tidy without doing everything by hand.
+
+## What This Website Is For
+
+The website is the public face of the project.
+
+It is meant to:
+
+- show what the app does
+- explain why people may want to use it
+- guide visitors to downloads and project links
+- give the project a cleaner home on the web
+
+## Project Structure
+
+This repository has two parts:
+
+- repo root: the Flutter desktop app
+- `web/`: the Next.js website
+
+They live in one repo, but they are deployed separately.
+
+## Run The Website Locally
 
 ```bash
 cd web
@@ -17,28 +44,45 @@ npm install
 npm run dev
 ```
 
-Use Node 20 or Node 22 LTS for local development. Node 25 currently breaks this Next.js app at startup with a `localStorage.getItem is not a function` error.
+Use Node 20 or Node 22 LTS for local work.
 
-If `nvm use 22.22.0` still shows Node 25 when you run `node -v`, your PATH is prioritizing `C:\Program Files\nodejs` over nvm. This project scripts already pass a valid `--localstorage-file` option to avoid the crash, but fixing PATH order is still recommended.
+Node 25 can break this app at startup with a `localStorage.getItem is not a function` error.
 
-## Hosting
+## Build The Website
 
-### Vercel
+```bash
+cd web
+npm run build
+npm run start
+```
 
-The repo root includes `vercel.json`, so Vercel installs and builds only `web/`.
+## Deploy On Vercel
 
-### Other Hosts
+Set the Vercel project Root Directory to `web`.
 
-If a host needs manual commands:
+Use these settings:
 
-- install: `cd web && npm install`
-- build: `cd web && npm run build`
-- start: `cd web && npm run start`
+- Framework Preset: `Next.js`
+- Root Directory: `web`
+- Install Command: `npm install`
+- Build Command: `npm run build`
+- Output Directory: leave empty
 
-## Why Not Reuse The Flutter App Directly
+If Vercel says `Could not identify Next.js version` or `No Next.js version detected`, it is usually looking at the repo root instead of `web`.
 
-You can build a Flutter web target, but for a public product site this setup is usually cleaner:
+## Why The Website Is Separate
 
-- better Vercel support
-- clearer separation from desktop-only Flutter code
-- easier marketing and SEO customization
+The desktop app and the website do different jobs.
+
+Keeping them separate makes it easier to:
+
+- deploy the website on Vercel
+- keep desktop-only code out of the website
+- shape the site for product info, downloads, and search visibility
+
+## Quick Links
+
+- Main project repo: [melon_mod_manager](https://github.com/xyrusL/melon_mod_manager)
+- Releases: [GitHub Releases](https://github.com/xyrusL/melon_mod_manager/releases)
+- Issues: [GitHub Issues](https://github.com/xyrusL/melon_mod_manager/issues)
+- Modrinth: [modrinth.com](https://modrinth.com)
