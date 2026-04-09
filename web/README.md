@@ -70,7 +70,7 @@ Use these settings:
 
 If Vercel says `Could not identify Next.js version` or `No Next.js version detected`, it is usually looking at the repo root instead of `web`.
 
-The repository root also contains a fallback `vercel.json` that builds `web/` explicitly. That helps if the project is imported from the repo root, but the preferred setup is still to point the Vercel project directly at `web`.
+Do not use the repository root as the deploy target for the website. The repo root is the Flutter desktop app. The only supported Vercel setup for the website is to point the project Root Directory to `web`.
 
 ## Troubleshooting
 
@@ -94,7 +94,7 @@ Check these first:
 - the latest deployment is the active production deployment
 - the domain is attached to the correct Vercel project
 
-If you imported the repository from the repo root, redeploy after confirming the fallback root `vercel.json` is picked up.
+If you imported the repository from the repo root, change the Root Directory to `web` in the Vercel dashboard and redeploy.
 
 #### Vercel says it cannot detect Next.js
 
@@ -160,14 +160,6 @@ cd web
 npm run build
 npm run start
 ```
-
-Repo-root fallback build:
-
-```bash
-npm run build --prefix web
-```
-
-Use the repo-root command if your host or CI is building from the repository root and you want to confirm the website still builds correctly.
 
 ## Why The Website Is Separate
 
