@@ -1,23 +1,23 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #10090a;
-  --bg-soft: #181112;
-  --panel: rgba(22, 13, 15, 0.86);
-  --panel-strong: rgba(27, 17, 19, 0.94);
-  --line: rgba(255, 226, 221, 0.12);
-  --line-strong: rgba(255, 226, 221, 0.2);
-  --text: #fff5f1;
-  --muted: #d0bfba;
-  --accent: #ff6278;
-  --accent-strong: #e4435f;
-  --accent-shadow: rgba(255, 98, 120, 0.24);
-  --accent-soft: rgba(255, 98, 120, 0.12);
-  --rind: #9de06f;
-  --rind-strong: #67b64c;
-  --rind-soft: rgba(157, 224, 111, 0.12);
-  --sand: #ffe6df;
-  --seed: #251316;
+  --bg: #07110f;
+  --bg-soft: #0c1b17;
+  --panel: rgba(11, 24, 20, 0.86);
+  --panel-strong: rgba(8, 19, 16, 0.94);
+  --line: rgba(225, 247, 235, 0.12);
+  --line-strong: rgba(225, 247, 235, 0.2);
+  --text: #f5fff8;
+  --muted: #bad0c4;
+  --accent: #8bd9b7;
+  --accent-strong: #56c499;
+  --accent-shadow: rgba(91, 204, 163, 0.24);
+  --accent-soft: rgba(139, 217, 183, 0.14);
+  --rind: #b7e36c;
+  --rind-strong: #88bd49;
+  --rind-soft: rgba(183, 227, 108, 0.14);
+  --sand: #eff9d8;
+  --seed: #11201b;
 }
 
 @theme inline {
@@ -53,10 +53,10 @@
   body {
     min-width: 320px;
     background:
-      radial-gradient(circle at 14% 16%, rgba(255, 96, 119, 0.2), transparent 24%),
-      radial-gradient(circle at 84% 12%, rgba(159, 227, 112, 0.14), transparent 24%),
-      radial-gradient(circle at 50% 100%, rgba(120, 24, 38, 0.16), transparent 26%),
-      linear-gradient(180deg, #0d0708 0%, #130a0d 46%, #0d0809 100%);
+      radial-gradient(circle at 14% 16%, rgba(93, 206, 165, 0.16), transparent 24%),
+      radial-gradient(circle at 84% 12%, rgba(183, 227, 108, 0.14), transparent 24%),
+      radial-gradient(circle at 50% 100%, rgba(33, 88, 72, 0.16), transparent 26%),
+      linear-gradient(180deg, #06100e 0%, #091613 46%, #050d0b 100%);
     color: var(--text);
     font-family: var(--font-display);
   }
@@ -96,8 +96,8 @@
 @layer utilities {
   .glass-panel {
     background:
-      linear-gradient(180deg, rgba(30, 18, 20, 0.94), rgba(19, 11, 13, 0.96)),
-      radial-gradient(circle at top left, rgba(255, 96, 119, 0.08), transparent 28%);
+      linear-gradient(180deg, rgba(16, 31, 26, 0.94), rgba(8, 18, 15, 0.96)),
+      radial-gradient(circle at top left, rgba(139, 217, 183, 0.08), transparent 28%);
     backdrop-filter: blur(18px);
     box-shadow: 0 22px 70px rgba(0, 0, 0, 0.28);
   }
@@ -119,12 +119,34 @@
   .reveal-delay-3 {
     animation-delay: 300ms;
   }
+
+  .cta-pulse {
+    background-size: 200% 200%;
+    animation: cta-gradient 5.5s ease-in-out infinite;
+  }
 }
 
 @keyframes reveal-up {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes cta-gradient {
+  0% {
+    background-position: 0% 50%;
+    box-shadow: 0 18px 38px rgba(91, 204, 163, 0.2);
+  }
+
+  50% {
+    background-position: 100% 50%;
+    box-shadow: 0 18px 42px rgba(183, 227, 108, 0.24);
+  }
+
+  100% {
+    background-position: 0% 50%;
+    box-shadow: 0 18px 38px rgba(91, 204, 163, 0.2);
   }
 }
 
@@ -138,4 +160,10 @@
     transform: none;
     animation: none;
   }
+
+  .cta-pulse {
+    animation: none;
+  }
 }
+
+
