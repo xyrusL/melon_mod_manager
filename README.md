@@ -101,6 +101,8 @@ If your hosting provider asks for manual settings, use:
 
 Keep the Framework Preset as `Next.js` and leave the Output Directory empty.
 
+This repo also includes a root-level `vercel.json` as a fallback for repo-root imports. That config tells Vercel to install and build the Next.js site from `web/`, which helps avoid the generic Vercel `404: NOT_FOUND` page when the project was imported from the repository root instead of the website folder.
+
 If you want the website to share content with the app repository, keep that content in plain files or duplicate small branding assets intentionally. Do not wire the web project into desktop-only Flutter runtime code.
 
 ## Important Notes

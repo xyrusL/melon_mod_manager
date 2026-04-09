@@ -70,6 +70,105 @@ Use these settings:
 
 If Vercel says `Could not identify Next.js version` or `No Next.js version detected`, it is usually looking at the repo root instead of `web`.
 
+The repository root also contains a fallback `vercel.json` that builds `web/` explicitly. That helps if the project is imported from the repo root, but the preferred setup is still to point the Vercel project directly at `web`.
+
+## Troubleshooting
+
+Because this repository contains two separate apps, most deployment problems happen when the host reads the wrong one:
+
+- repo root: Flutter desktop app
+- `web/`: Next.js website
+
+If local development works with `cd web` and `npm run dev`, but the deployed site fails, check the points below.
+
+### Common Problems
+
+#### Vercel shows `404: NOT_FOUND`
+
+This usually means Vercel is not serving the Next.js site from `web/`.
+
+Check these first:
+
+- the Vercel project is connected to the correct repository
+- the project Root Directory is `web`
+- the latest deployment is the active production deployment
+- the domain is attached to the correct Vercel project
+
+If you imported the repository from the repo root, redeploy after confirming the fallback root `vercel.json` is picked up.
+
+#### Vercel says it cannot detect Next.js
+
+That usually means Vercel is reading the Flutter app at the repo root instead of the website in `web/`.
+
+Fix:
+
+- set Framework Preset to `Next.js`
+- set Root Directory to `web`
+- keep Output Directory empty
+- redeploy
+
+#### Local works but production build fails
+
+Run the production build from inside `web`:
+
+```bash
+cd web
+npm run build
+```
+
+If that fails locally, fix that error first before redeploying.
+
+If it succeeds locally but fails on Vercel, compare:
+
+- Node version used locally and on Vercel
+- Vercel Root Directory
+- install and build commands
+
+#### Node version issues
+
+Use Node 20 or Node 22 LTS.
+
+Node 25 may break startup with:
+
+```text
+localStorage.getItem is not a function
+```
+
+### Quick Deployment Checklist
+
+Before deploying, verify:
+
+- you are deploying the website, not the Flutter desktop app
+- the Vercel Root Directory is `web`
+- `web/package.json` is the package file Vercel is using
+- `npm run build` works inside `web`
+- the production domain points to the correct Vercel project
+
+### Helpful Commands
+
+Local development:
+
+```bash
+cd web
+npm run dev
+```
+
+Production check:
+
+```bash
+cd web
+npm run build
+npm run start
+```
+
+Repo-root fallback build:
+
+```bash
+npm run build --prefix web
+```
+
+Use the repo-root command if your host or CI is building from the repository root and you want to confirm the website still builds correctly.
+
 ## Why The Website Is Separate
 
 The desktop app and the website do different jobs.
