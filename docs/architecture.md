@@ -8,6 +8,7 @@ flowchart TD
     A --> C[domain]
     A --> D[data]
     A --> E[core]
+    A --> W[web]
 
     B --> B1[Screens, dialogs, widgets]
     B --> B2[Riverpod state notifiers]
@@ -24,6 +25,11 @@ flowchart TD
     E --> E1[Dependency wiring]
     E --> E2[Theme and shared utilities]
     E --> E3[Error handling]
+
+    W --> W1[Next.js marketing site]
+    W --> W2[app/page.tsx landing page]
+    W --> W3[app/globals.css theme tokens]
+    W --> W4[public assets and screenshots]
 
     B2 --> F[ModsController]
     B2 --> G[AppController]
@@ -45,6 +51,7 @@ Melon Mod Manager is a desktop Flutter app with a fairly strict split between:
 - `domain`: app-facing entities, repository contracts, dependency/update/install use cases
 - `data`: concrete implementations for Modrinth/GitHub APIs, filesystem scanning, zip import/export, and persistence
 - `core`: dependency wiring, theme, shared error handling, and small utilities
+- `web`: a separate Next.js website used for download, repository, issue, and Modrinth entry points
 
 The app is not event-bus driven. Most user actions go through a small number of Riverpod `StateNotifier`s:
 
@@ -147,14 +154,44 @@ Tests focus on code that matters operationally:
 
 This test layout is a good map of which parts of the codebase are considered risky.
 
+### `web`
+
+Marketing/download site for the desktop app:
+
+- `app/page.tsx`: the landing page content, section structure, external links, and card styling
+- `app/globals.css`: shared website theme tokens, backgrounds, motion, and utility classes
+- `public/`: logo, favicon, and the product screenshot used on the landing page
+- `package.json`: Next.js scripts for local dev and production builds
+
+Use this folder when you need to update the public-facing website rather than the Flutter desktop UI. If someone is looking for website copy, layout, colors, or external download links, start in `web/app/page.tsx` and `web/app/globals.css`.
+
 ### Other Project Folders
 
 - `.github/workflows/`: CI plus Windows/Linux release pipelines
 - `tool/`: release metadata helper used by GitHub Actions
 - `assets/`: app logo and screenshots
+- `web/`: Next.js website for marketing, release downloads, and project links
 - `windows/`: Windows runner and installer script
 
 ## Data Flow Through the App
+
+## Website Flow
+
+```mermaid
+flowchart LR
+    A[Visitor opens site] --> B[Next.js app router]
+    B --> C[web/app/page.tsx]
+    C --> D[Section data arrays and external links]
+    C --> E[Reusable section helpers]
+    C --> F[public/melon_logo.svg and public/download_mod.png]
+    B --> G[web/app/globals.css]
+    G --> H[Theme tokens, glass panels, button animation]
+    D --> I[GitHub releases]
+    D --> J[GitHub repository and issues]
+    D --> K[Modrinth]
+```
+
+This flow is intentionally simple. The website is a static Next.js landing page, so most changes live in `web/app/page.tsx` for structure/copy and `web/app/globals.css` for look-and-feel.
 
 ## 1. App state bootstrap
 
@@ -355,3 +392,4 @@ If you need to reorient quickly:
    - import/export: `mod_pack_service.dart`
    - Minecraft path/environment detection: `minecraft_path_service.dart`, `minecraft_loader_service.dart`, `minecraft_version_service.dart`
    - remote API behavior: `modrinth_repository_impl.dart`, `modrinth_api_client.dart`, `app_update_service.dart`
+
