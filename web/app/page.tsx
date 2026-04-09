@@ -13,6 +13,8 @@ import {
   Sparkles,
   Upload,
 } from "lucide-react";
+import { BackToTopButton } from "./components/back-to-top-button";
+import { ScrollReveal } from "./components/scroll-reveal";
 import { siteDescription, siteName, siteUrl } from "./site-config";
 
 type IconType = LucideIcon;
@@ -328,9 +330,13 @@ export default function Home() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
       />
-      <section className="glass-panel reveal reveal-delay-1 rounded-[34px] border border-app-line px-6 py-7 md:px-8 md:py-8">
+      <BackToTopButton />
+      <ScrollReveal
+        as="section"
+        className="glass-panel rounded-[34px] border border-app-line px-6 py-7 md:px-8 md:py-8"
+      >
         <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,0.9fr)_minmax(560px,1.1fr)] 2xl:grid-cols-[minmax(0,0.92fr)_minmax(700px,1.08fr)]">
-          <div>
+          <ScrollReveal delay={0.06}>
             <div className="inline-flex items-center gap-3 rounded-full border border-app-line bg-white/5 px-4 py-2.5 font-body text-[0.92rem] font-bold tracking-[0.04em] text-app-text shadow-[0_0_0_1px_var(--color-app-rind-soft)]">
               <Image
                 src="/melon_logo.svg"
@@ -370,9 +376,9 @@ export default function Home() {
                 View repository
               </ExternalLink>
             </div>
-          </div>
+          </ScrollReveal>
 
-          <div className="grid gap-4">
+          <ScrollReveal className="grid gap-4" delay={0.14}>
             <div className="inline-flex w-fit rounded-full border border-[var(--color-app-accent-soft)] bg-[linear-gradient(135deg,var(--color-app-accent-soft),var(--color-app-rind-soft))] px-3 py-2 font-body text-[0.76rem] font-bold uppercase tracking-[0.16em] text-app-sand">
               Made for modded Minecraft setups
             </div>
@@ -413,24 +419,27 @@ export default function Home() {
                 </p>
               </div>
             </div>
-          </div>
+          </ScrollReveal>
         </div>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {heroSignals.map((signal) => (
-            <div
+          {heroSignals.map((signal, index) => (
+            <ScrollReveal
               key={signal}
+              delay={0.12 + index * 0.06}
               className="rounded-[18px] border border-app-line bg-white/[0.045] px-4 py-3 font-body text-[0.95rem] leading-6 text-app-sand"
             >
               {signal}
-            </div>
+            </ScrollReveal>
           ))}
         </div>
 
         <div className="mt-3 grid gap-3 sm:grid-cols-3" aria-label="Melon Mod Manager summary">
-          {quickStats.map((stat) => (
-            <article
+          {quickStats.map((stat, index) => (
+            <ScrollReveal
+              as="article"
               key={stat.label}
+              delay={0.18 + index * 0.08}
               className="rounded-[20px] border border-app-line bg-white/[0.045] px-5 py-4"
             >
               <div className="flex items-baseline gap-3">
@@ -441,12 +450,15 @@ export default function Home() {
                   {stat.label}
                 </span>
               </div>
-            </article>
+            </ScrollReveal>
           ))}
         </div>
-      </section>
+      </ScrollReveal>
 
-      <section className="glass-panel reveal reveal-delay-2 rounded-[34px] border border-app-line px-6 py-7 md:px-8 md:py-8">
+      <ScrollReveal
+        as="section"
+        className="glass-panel rounded-[34px] border border-app-line px-6 py-7 md:px-8 md:py-8"
+      >
         <SectionHeader
           eyebrow="What Melon manages"
           title="Manage mods, shader packs, and resource packs in one place."
@@ -454,12 +466,14 @@ export default function Home() {
         />
 
         <div className="mt-6 grid gap-4 xl:grid-cols-3">
-          {contentTypes.map((type) => {
+          {contentTypes.map((type, index) => {
             const Icon = type.icon;
 
             return (
-              <article
+              <ScrollReveal
+                as="article"
                 key={type.title}
+                delay={0.08 + index * 0.08}
                 className={`glass-panel flex h-full flex-col rounded-[26px] border border-app-line p-6 ${type.toneClassName}`}
               >
                 <div className="flex items-start justify-between gap-4">
@@ -488,13 +502,16 @@ export default function Home() {
                     </div>
                   ))}
                 </div>
-              </article>
+              </ScrollReveal>
             );
           })}
         </div>
-      </section>
+      </ScrollReveal>
 
-      <section className="glass-panel reveal reveal-delay-3 rounded-[34px] border border-app-line px-6 py-7 md:px-8 md:py-8">
+      <ScrollReveal
+        as="section"
+        className="glass-panel rounded-[34px] border border-app-line px-6 py-7 md:px-8 md:py-8"
+      >
         <SectionHeader
           eyebrow="Why people keep it installed"
           title="Helpful desktop tools for everyday mod setup."
@@ -502,12 +519,14 @@ export default function Home() {
         />
 
         <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {toolkitCards.map((card) => {
+          {toolkitCards.map((card, index) => {
             const Icon = card.icon;
 
             return (
-              <article
+              <ScrollReveal
+                as="article"
                 key={card.title}
+                delay={0.08 + index * 0.06}
                 className={`rounded-[24px] border border-app-line p-5 ${card.toneClassName}`}
               >
                 <div className={`inline-flex rounded-2xl border p-3 ${card.iconClassName}`}>
@@ -519,13 +538,16 @@ export default function Home() {
                 <p className="mt-3 font-body leading-7 text-app-muted">
                   {card.text}
                 </p>
-              </article>
+              </ScrollReveal>
             );
           })}
         </div>
-      </section>
+      </ScrollReveal>
 
-      <section className="glass-panel reveal reveal-delay-2 rounded-[34px] border border-app-line px-6 py-7 md:px-8 md:py-8">
+      <ScrollReveal
+        as="section"
+        className="glass-panel rounded-[34px] border border-app-line px-6 py-7 md:px-8 md:py-8"
+      >
         <SectionHeader
           eyebrow="How the app works"
           title="Four steps from setup to maintenance."
@@ -533,12 +555,14 @@ export default function Home() {
         />
 
         <div className="mt-6 grid gap-4 xl:grid-cols-2">
-          {workflowSteps.map((step) => {
+          {workflowSteps.map((step, index) => {
             const Icon = step.icon;
 
             return (
-              <article
+              <ScrollReveal
+                as="article"
                 key={step.step}
+                delay={0.08 + index * 0.08}
                 className={`glass-panel flex h-full flex-col rounded-[28px] border border-app-line p-6 ${step.toneClassName}`}
               >
                 <div className="flex items-start justify-between gap-4">
@@ -555,13 +579,16 @@ export default function Home() {
                 <p className="mt-3 font-body leading-7 text-app-muted">
                   {step.text}
                 </p>
-              </article>
+              </ScrollReveal>
             );
           })}
         </div>
-      </section>
+      </ScrollReveal>
 
-      <section className="glass-panel reveal reveal-delay-3 rounded-[34px] border border-app-line px-6 py-7 md:px-8 md:py-8">
+      <ScrollReveal
+        as="section"
+        className="glass-panel rounded-[34px] border border-app-line px-6 py-7 md:px-8 md:py-8"
+      >
         <SectionHeader
           eyebrow="Compatibility and trust"
           title="Built for common setups and easy to verify."
@@ -570,7 +597,10 @@ export default function Home() {
 
         <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
           <div className="grid gap-4">
-            <div className="rounded-[24px] border border-app-line bg-white/[0.04] p-5">
+            <ScrollReveal
+              delay={0.08}
+              className="rounded-[24px] border border-app-line bg-white/[0.04] p-5"
+            >
               <h3 className="font-body text-[1.5rem] font-semibold leading-[1.08] text-app-text">
                 Why antivirus warnings may appear
               </h3>
@@ -579,9 +609,12 @@ export default function Home() {
                 positives. That is why it helps to keep the source code and
                 release files easy to inspect.
               </p>
-            </div>
+            </ScrollReveal>
 
-            <div className="rounded-[24px] border border-app-line bg-white/[0.04] p-5">
+            <ScrollReveal
+              delay={0.16}
+              className="rounded-[24px] border border-app-line bg-white/[0.04] p-5"
+            >
               <h3 className="font-body text-[1.5rem] font-semibold leading-[1.08] text-app-text">
                 What Melon focuses on
               </h3>
@@ -589,26 +622,30 @@ export default function Home() {
                 Loader-aware Java mod workflows, support for shader packs and
                 resource packs, and straightforward GitHub-based releases.
               </p>
-            </div>
+            </ScrollReveal>
           </div>
 
           <div className="grid gap-3" aria-label="Compatibility summary">
-            {trustFacts.map((item) => (
-              <div
+            {trustFacts.map((item, index) => (
+              <ScrollReveal
                 key={item}
+                delay={0.1 + index * 0.06}
                 className="rounded-[20px] border border-app-line bg-white/[0.04] px-5 py-4"
               >
                 <div className="flex items-start gap-3">
                   <span className="mt-1.5 h-3 w-3 rounded-full bg-[radial-gradient(circle_at_35%_35%,#fff5ef,var(--accent)_56%,var(--color-app-rind-strong)_100%)] shadow-[0_0_20px_var(--accent-shadow)]" />
                   <p className="font-body leading-7 text-app-muted">{item}</p>
                 </div>
-              </div>
+              </ScrollReveal>
             ))}
           </div>
         </div>
-      </section>
+      </ScrollReveal>
 
-      <section className="glass-panel reveal reveal-delay-3 rounded-[34px] border border-app-line px-6 py-7 md:px-8 md:py-8">
+      <ScrollReveal
+        as="section"
+        className="glass-panel rounded-[34px] border border-app-line px-6 py-7 md:px-8 md:py-8"
+      >
         <SectionHeader
           eyebrow="Get started"
           title="Download Melon and start organizing the library."
@@ -616,31 +653,36 @@ export default function Home() {
         />
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {quickLinks.map((link) => {
+          {quickLinks.map((link, index) => {
             const Icon = link.icon;
 
             return (
-              <ExternalLink
+              <ScrollReveal
+                as="div"
                 key={link.label}
-                href={link.href}
-                className={`group flex min-h-[170px] flex-col justify-between rounded-[22px] border border-app-line p-5 transition duration-150 hover:-translate-y-0.5 ${link.cardClassName}`}
+                delay={0.08 + index * 0.08}
               >
-                <div className="flex items-start justify-between gap-4">
-                  <span className="font-body text-sm font-semibold uppercase tracking-[0.12em] text-app-sand">
-                    {link.label}
-                  </span>
-                  <div className={`rounded-xl border p-2 transition-transform duration-150 group-hover:translate-x-0.5 ${link.iconClassName}`}>
-                    <Icon className="h-4 w-4" />
+                <ExternalLink
+                  href={link.href}
+                  className={`group flex min-h-[170px] flex-col justify-between rounded-[22px] border border-app-line p-5 transition duration-150 hover:-translate-y-0.5 ${link.cardClassName}`}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <span className="font-body text-sm font-semibold uppercase tracking-[0.12em] text-app-sand">
+                      {link.label}
+                    </span>
+                    <div className={`rounded-xl border p-2 transition-transform duration-150 group-hover:translate-x-0.5 ${link.iconClassName}`}>
+                      <Icon className="h-4 w-4" />
+                    </div>
                   </div>
-                </div>
-                <p className="max-w-[22ch] font-body text-[1rem] leading-7 text-app-muted">
-                  {link.blurb}
-                </p>
-              </ExternalLink>
+                  <p className="max-w-[22ch] font-body text-[1rem] leading-7 text-app-muted">
+                    {link.blurb}
+                  </p>
+                </ExternalLink>
+              </ScrollReveal>
             );
           })}
         </div>
-      </section>
+      </ScrollReveal>
     </main>
   );
 }
