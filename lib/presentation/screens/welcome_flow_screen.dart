@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -81,19 +82,19 @@ class _WelcomeFlowScreenState extends ConsumerState<WelcomeFlowScreen> {
             return Stack(
               children: [
                 Positioned(
-                  top: -120,
-                  right: -80,
+                  top: -92,
+                  right: -72,
                   child: _GlowOrb(
-                    size: 320,
-                    color: accent.withValues(alpha: 0.16),
+                    size: 220,
+                    color: accent.withValues(alpha: 0.11),
                   ),
                 ),
                 Positioned(
-                  bottom: -140,
-                  left: -100,
+                  bottom: -118,
+                  left: -82,
                   child: _GlowOrb(
-                    size: 360,
-                    color: accentAlt.withValues(alpha: 0.14),
+                    size: 260,
+                    color: accentAlt.withValues(alpha: 0.1),
                   ),
                 ),
                 Center(
@@ -677,9 +678,9 @@ class _VisualCard extends StatelessWidget {
         border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
         boxShadow: [
           BoxShadow(
-            color: accent.withValues(alpha: 0.12),
-            blurRadius: 20,
-            spreadRadius: 1,
+            color: accent.withValues(alpha: 0.08),
+            blurRadius: 16,
+            spreadRadius: 0,
             offset: const Offset(0, 12),
           ),
         ],
@@ -687,15 +688,15 @@ class _VisualCard extends StatelessWidget {
       child: Stack(
         children: [
           Positioned(
-            top: -20,
-            right: -20,
-            child: _GlowOrb(size: 140, color: accent.withValues(alpha: 0.18)),
+            top: 18,
+            right: 12,
+            child: _GlowOrb(size: 92, color: accent.withValues(alpha: 0.12)),
           ),
           Positioned(
-            bottom: -28,
-            left: -16,
+            bottom: 18,
+            left: 14,
             child:
-                _GlowOrb(size: 120, color: accentAlt.withValues(alpha: 0.14)),
+                _GlowOrb(size: 82, color: accentAlt.withValues(alpha: 0.1)),
           ),
           Padding(
             padding: const EdgeInsets.all(22),
@@ -725,7 +726,13 @@ class _HeroWelcomeVisual extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Spacer(),
-          const Center(child: MelonLogo(size: 122)),
+          Center(
+            child: _WatermelonHaloLogo(
+              size: 122,
+              accent: accent,
+              accentAlt: accentAlt,
+            ),
+          ),
           const SizedBox(height: 18),
           Center(
             child: Text(
@@ -1225,12 +1232,142 @@ class _GlowOrb extends StatelessWidget {
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           gradient: RadialGradient(
+            radius: 0.72,
             colors: [
               color,
+              color.withValues(alpha: color.a * 0.22),
               color.withValues(alpha: 0.0),
             ],
+            stops: const [0.0, 0.42, 1.0],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _WatermelonHaloLogo extends StatefulWidget {
+  const _WatermelonHaloLogo({
+    required this.size,
+    required this.accent,
+    required this.accentAlt,
+  });
+
+  final double size;
+  final Color accent;
+  final Color accentAlt;
+
+  @override
+  State<_WatermelonHaloLogo> createState() => _WatermelonHaloLogoState();
+}
+
+class _WatermelonHaloLogoState extends State<_WatermelonHaloLogo>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 9),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = Theme.of(context).extension<AppThemePalette>();
+    final shellColor =
+        (palette?.panelColor ?? const Color(0xFF101A21)).withValues(alpha: 0.9);
+    final haloSize = widget.size + 56;
+
+    return SizedBox(
+      width: haloSize,
+      height: haloSize,
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, _) {
+          final angle = _controller.value * math.pi * 2;
+          final pulse = 0.95 + (math.sin(angle) * 0.035);
+
+          return Stack(
+            alignment: Alignment.center,
+            children: [
+              Transform.scale(
+                scale: pulse,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: widget.accent.withValues(alpha: 0.13),
+                        blurRadius: 22,
+                        spreadRadius: -2,
+                      ),
+                      BoxShadow(
+                        color: widget.accentAlt.withValues(alpha: 0.1),
+                        blurRadius: 28,
+                        spreadRadius: -4,
+                      ),
+                    ],
+                  ),
+                  child: const SizedBox.expand(),
+                ),
+              ),
+              Transform.rotate(
+                angle: angle,
+                child: Container(
+                  width: haloSize,
+                  height: haloSize,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: SweepGradient(
+                      colors: [
+                        const Color(0xFF123A22),
+                        widget.accentAlt.withValues(alpha: 0.95),
+                        const Color(0xFF1EE38C),
+                        const Color(0xFFFF6F8B),
+                        widget.accent.withValues(alpha: 0.98),
+                        const Color(0xFF123A22),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Container(
+                width: haloSize - 18,
+                height: haloSize - 18,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: shellColor,
+                ),
+              ),
+              Container(
+                width: widget.size + 28,
+                height: widget.size + 28,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    radius: 0.78,
+                    colors: [
+                      Colors.white.withValues(alpha: 0.07),
+                      widget.accent.withValues(alpha: 0.08),
+                      Colors.transparent,
+                    ],
+                    stops: const [0.0, 0.58, 1.0],
+                  ),
+                ),
+              ),
+              MelonLogo(size: widget.size, withGlow: false),
+            ],
+          );
+        },
       ),
     );
   }
