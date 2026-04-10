@@ -125,6 +125,115 @@
     box-shadow: 0 22px 70px rgba(0, 0, 0, 0.28);
   }
 
+  .interactive-card,
+  .interactive-card-mint,
+  .interactive-card-sky,
+  .interactive-card-gold,
+  .interactive-card-violet,
+  .interactive-card-rind {
+    position: relative;
+    overflow: hidden;
+    transition:
+      transform 240ms ease,
+      border-color 240ms ease,
+      box-shadow 280ms ease,
+      background-color 280ms ease,
+      filter 280ms ease;
+  }
+
+  .interactive-card::before,
+  .interactive-card-mint::before,
+  .interactive-card-sky::before,
+  .interactive-card-gold::before,
+  .interactive-card-violet::before,
+  .interactive-card-rind::before {
+    content: "";
+    position: absolute;
+    inset: -20% auto auto -10%;
+    width: 65%;
+    height: 65%;
+    border-radius: 999px;
+    background: radial-gradient(circle, var(--card-glow, rgba(139, 217, 183, 0.14)) 0%, transparent 70%);
+    opacity: 0;
+    transform: translate3d(-6px, 8px, 0) scale(0.92);
+    transition:
+      opacity 280ms ease,
+      transform 320ms ease;
+    pointer-events: none;
+  }
+
+  .interactive-card:hover,
+  .interactive-card:focus-visible,
+  .interactive-card-mint:hover,
+  .interactive-card-mint:focus-visible,
+  .interactive-card-sky:hover,
+  .interactive-card-sky:focus-visible,
+  .interactive-card-gold:hover,
+  .interactive-card-gold:focus-visible,
+  .interactive-card-violet:hover,
+  .interactive-card-violet:focus-visible,
+  .interactive-card-rind:hover,
+  .interactive-card-rind:focus-visible {
+    transform: translateY(-4px);
+    border-color: var(--card-border, rgba(139, 217, 183, 0.34));
+    box-shadow:
+      0 22px 46px rgba(0, 0, 0, 0.24),
+      0 0 0 1px var(--card-outline, rgba(139, 217, 183, 0.12)),
+      0 0 34px var(--card-shadow, rgba(139, 217, 183, 0.2));
+    filter: saturate(1.06);
+  }
+
+  .interactive-card:hover::before,
+  .interactive-card:focus-visible::before,
+  .interactive-card-mint:hover::before,
+  .interactive-card-mint:focus-visible::before,
+  .interactive-card-sky:hover::before,
+  .interactive-card-sky:focus-visible::before,
+  .interactive-card-gold:hover::before,
+  .interactive-card-gold:focus-visible::before,
+  .interactive-card-violet:hover::before,
+  .interactive-card-violet:focus-visible::before,
+  .interactive-card-rind:hover::before,
+  .interactive-card-rind:focus-visible::before {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  .interactive-card-mint {
+    --card-border: rgba(139, 217, 183, 0.42);
+    --card-outline: rgba(139, 217, 183, 0.16);
+    --card-shadow: rgba(139, 217, 183, 0.22);
+    --card-glow: rgba(139, 217, 183, 0.18);
+  }
+
+  .interactive-card-sky {
+    --card-border: rgba(115, 183, 246, 0.44);
+    --card-outline: rgba(115, 183, 246, 0.16);
+    --card-shadow: rgba(115, 183, 246, 0.24);
+    --card-glow: rgba(115, 183, 246, 0.18);
+  }
+
+  .interactive-card-gold {
+    --card-border: rgba(241, 189, 103, 0.46);
+    --card-outline: rgba(241, 189, 103, 0.16);
+    --card-shadow: rgba(241, 189, 103, 0.22);
+    --card-glow: rgba(241, 189, 103, 0.18);
+  }
+
+  .interactive-card-violet {
+    --card-border: rgba(178, 140, 255, 0.44);
+    --card-outline: rgba(178, 140, 255, 0.16);
+    --card-shadow: rgba(178, 140, 255, 0.22);
+    --card-glow: rgba(178, 140, 255, 0.18);
+  }
+
+  .interactive-card-rind {
+    --card-border: rgba(183, 227, 108, 0.44);
+    --card-outline: rgba(183, 227, 108, 0.16);
+    --card-shadow: rgba(183, 227, 108, 0.22);
+    --card-glow: rgba(183, 227, 108, 0.18);
+  }
+
   .cta-pulse {
     background-size: 200% 200%;
     animation: cta-gradient 5.5s ease-in-out infinite;
@@ -262,6 +371,21 @@
     animation: none;
   }
 
+  .interactive-card,
+  .interactive-card-mint,
+  .interactive-card-sky,
+  .interactive-card-gold,
+  .interactive-card-violet,
+  .interactive-card-rind {
+    transition: none;
+  }
+
+  .interactive-card::before,
+  .interactive-card-mint::before,
+  .interactive-card-sky::before,
+  .interactive-card-gold::before,
+  .interactive-card-violet::before,
+  .interactive-card-rind::before,
   .thank-heart-shell,
   .thank-heart-icon,
   .thank-heart-glow,

@@ -39,6 +39,12 @@ npm run build
 npm run start
 ```
 
+## 🔐 Security Notes
+
+- production responses include CSP and baseline browser security headers from `web/next.config.ts`
+- the homepage JSON-LD is intentionally hashed for CSP, so inline scripts should not be added casually
+- if you add third-party embeds, analytics, or new remote asset origins, update the CSP deliberately instead of weakening it
+
 ## 🚀 Deploy On Vercel
 
 Set the Vercel project **Root Directory** to `web`.

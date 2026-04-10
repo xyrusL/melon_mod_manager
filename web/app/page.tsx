@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { BackToTopButton } from "./components/back-to-top-button";
 import { ScrollReveal } from "./components/scroll-reveal";
+import { getWebsiteSchemaJsonLd } from "./structured-data";
 import { siteDescription, siteName, siteUrl } from "./site-config";
 
 type IconType = LucideIcon;
@@ -22,6 +23,7 @@ type IconType = LucideIcon;
 type AccentCard = {
   toneClassName: string;
   iconClassName: string;
+  hoverClassName?: string;
 };
 
 type QuickLink = {
@@ -33,17 +35,62 @@ type QuickLink = {
   iconClassName: string;
 };
 
-const quickStats = [
-  { value: "4", label: "loaders supported" },
-  { value: "3", label: "content types in one library" },
-  { value: "2", label: "desktop platforms supported" },
+const quickStats: Array<{ value: string; label: string } & AccentCard> = [
+  {
+    value: "4",
+    label: "loaders supported",
+    toneClassName:
+      "bg-[linear-gradient(180deg,rgba(139,217,183,0.12),rgba(255,255,255,0.03))]",
+    iconClassName: "",
+    hoverClassName: "interactive-card-mint",
+  },
+  {
+    value: "3",
+    label: "content types in one library",
+    toneClassName:
+      "bg-[linear-gradient(180deg,rgba(110,198,255,0.12),rgba(255,255,255,0.03))]",
+    iconClassName: "",
+    hoverClassName: "interactive-card-sky",
+  },
+  {
+    value: "2",
+    label: "desktop platforms supported",
+    toneClassName:
+      "bg-[linear-gradient(180deg,rgba(245,196,108,0.12),rgba(255,255,255,0.03))]",
+    iconClassName: "",
+    hoverClassName: "interactive-card-gold",
+  },
 ];
 
-const heroSignals = [
-  "Modrinth search inside the app",
-  "Drag-and-drop `.jar` and `.zip` installs",
-  "Tracked updates for Modrinth-backed content",
-  "Import, export, and rebuild local metadata",
+const heroSignals: Array<{ label: string } & AccentCard> = [
+  {
+    label: "Modrinth search inside the app",
+    toneClassName:
+      "bg-[linear-gradient(180deg,rgba(139,217,183,0.12),rgba(255,255,255,0.03))]",
+    iconClassName: "",
+    hoverClassName: "interactive-card-mint",
+  },
+  {
+    label: "Drag-and-drop `.jar` and `.zip` installs",
+    toneClassName:
+      "bg-[linear-gradient(180deg,rgba(110,198,255,0.12),rgba(255,255,255,0.03))]",
+    iconClassName: "",
+    hoverClassName: "interactive-card-sky",
+  },
+  {
+    label: "Tracked updates for Modrinth-backed content",
+    toneClassName:
+      "bg-[linear-gradient(180deg,rgba(182,142,255,0.12),rgba(255,255,255,0.03))]",
+    iconClassName: "",
+    hoverClassName: "interactive-card-violet",
+  },
+  {
+    label: "Import, export, and rebuild local metadata",
+    toneClassName:
+      "bg-[linear-gradient(180deg,rgba(245,196,108,0.12),rgba(255,255,255,0.03))]",
+    iconClassName: "",
+    hoverClassName: "interactive-card-gold",
+  },
 ];
 
 const contentTypes: Array<{
@@ -56,7 +103,7 @@ const contentTypes: Array<{
   {
     title: "Mods",
     subtitle: ".jar files and Modrinth projects",
-    text: "Search Modrinth, add local jars, preview required dependencies, and keep tracked mod installs easier to review later.",
+    text: "Search Modrinth, add local jars, surface linked dependency requirements, and keep tracked installs readable instead of guessing what belongs together.",
     points: [
       "Loader-aware install context",
       "Dependency preview before install",
@@ -109,7 +156,7 @@ const workflowSteps: Array<{
   {
     step: "01",
     title: "Detect the setup you already use",
-    text: "Point Melon at your Minecraft folder and it helps detect a supported loader, game version, and the right content path before you start changing files.",
+    text: "Point Melon at your Minecraft folder and it helps infer the active loader, match the game version, and lock onto the right content path before files start moving.",
     icon: Search,
     toneClassName:
       "bg-[linear-gradient(180deg,rgba(124,233,181,0.1),rgba(255,255,255,0.02))]",
@@ -119,7 +166,7 @@ const workflowSteps: Array<{
   {
     step: "02",
     title: "Browse Modrinth or add local files",
-    text: "Use the built-in Modrinth dialog for downloads or drag local `.jar` and `.zip` files into the app with the correct destination already in context.",
+    text: "Use the built-in Modrinth dialog for downloads or drag local `.jar` and `.zip` files into the app with the destination already mapped to the active content lane.",
     icon: PackageSearch,
     toneClassName:
       "bg-[linear-gradient(180deg,rgba(110,198,255,0.1),rgba(255,255,255,0.02))]",
@@ -129,7 +176,7 @@ const workflowSteps: Array<{
   {
     step: "03",
     title: "Review updates and install with more context",
-    text: "Check tracked content for compatible updates, preview dependency requirements, and keep a clearer split between Modrinth installs and manually added files.",
+    text: "Check tracked content for compatible updates, preview dependency requirements, and get a cleaner compatibility read before a missing supporting mod turns into launch errors.",
     icon: Download,
     toneClassName:
       "bg-[linear-gradient(180deg,rgba(245,196,108,0.1),rgba(255,255,255,0.02))]",
@@ -155,7 +202,7 @@ const toolkitCards: Array<{
 } & AccentCard> = [
   {
     title: "Dependency-aware installs",
-    text: "Preview and resolve required Modrinth dependencies before they turn into broken setups.",
+    text: "Surface required Modrinth dependencies early so the install flow feels more like a compatibility check than trial and error.",
     icon: Boxes,
     toneClassName:
       "bg-[linear-gradient(180deg,rgba(124,233,181,0.11),rgba(255,255,255,0.02))]",
@@ -164,7 +211,7 @@ const toolkitCards: Array<{
   },
   {
     title: "Local file intake",
-    text: "Add `.jar` and `.zip` files with drag-and-drop or the file picker instead of sorting folders manually.",
+    text: "Add `.jar` and `.zip` files with drag-and-drop or the file picker while Melon steers them toward the right folder path.",
     icon: FolderInput,
     toneClassName:
       "bg-[linear-gradient(180deg,rgba(110,198,255,0.11),rgba(255,255,255,0.02))]",
@@ -182,7 +229,7 @@ const toolkitCards: Array<{
   },
   {
     title: "Content update review",
-    text: "Check compatible updates for mods, shader packs, and resource packs from the same app workflow.",
+    text: "Check compatible updates for mods, shader packs, and resource packs from the same workflow without bouncing between tabs and folders.",
     icon: RefreshCw,
     toneClassName:
       "bg-[linear-gradient(180deg,rgba(182,142,255,0.12),rgba(255,255,255,0.02))]",
@@ -209,11 +256,35 @@ const toolkitCards: Array<{
   },
 ];
 
-const trustFacts = [
-  "Windows 10/11 (64-bit) and Linux (x64)",
-  "Fabric, Quilt, Forge, and NeoForge support",
-  "Internet required for Modrinth browsing and downloads",
-  "Open-source code and release downloads on GitHub",
+const trustFacts: Array<{ text: string } & AccentCard> = [
+  {
+    text: "Windows 10/11 (64-bit) and Linux (x64)",
+    toneClassName:
+      "bg-[linear-gradient(180deg,rgba(139,217,183,0.11),rgba(255,255,255,0.03))]",
+    iconClassName: "",
+    hoverClassName: "interactive-card-mint",
+  },
+  {
+    text: "Fabric, Quilt, Forge, and NeoForge support",
+    toneClassName:
+      "bg-[linear-gradient(180deg,rgba(110,198,255,0.11),rgba(255,255,255,0.03))]",
+    iconClassName: "",
+    hoverClassName: "interactive-card-sky",
+  },
+  {
+    text: "Internet required for Modrinth browsing and downloads",
+    toneClassName:
+      "bg-[linear-gradient(180deg,rgba(245,196,108,0.11),rgba(255,255,255,0.03))]",
+    iconClassName: "",
+    hoverClassName: "interactive-card-gold",
+  },
+  {
+    text: "Open-source code and release downloads on GitHub",
+    toneClassName:
+      "bg-[linear-gradient(180deg,rgba(182,142,255,0.11),rgba(255,255,255,0.03))]",
+    iconClassName: "",
+    hoverClassName: "interactive-card-violet",
+  },
 ];
 
 const quickLinks: QuickLink[] = [
@@ -315,20 +386,13 @@ function SectionHeader({
 }
 
 export default function Home() {
-  const websiteSchema = {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    name: siteName,
-    alternateName: "Melon",
-    url: siteUrl,
-    description: siteDescription,
-  };
+  const websiteSchemaJsonLd = getWebsiteSchemaJsonLd();
 
   return (
     <main className="relative mx-auto flex w-[min(1440px,calc(100%-28px))] flex-col gap-5 px-1 py-5 sm:w-[min(1440px,calc(100%-40px))] sm:px-2 md:w-[min(1440px,calc(100%-72px))] md:px-3 md:py-7 xl:w-[min(1440px,calc(100%-96px))]">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
+        dangerouslySetInnerHTML={{ __html: websiteSchemaJsonLd }}
       />
       <BackToTopButton />
       <ScrollReveal
@@ -355,8 +419,9 @@ export default function Home() {
               </h1>
               <p className="max-w-[33rem] font-body text-[1rem] leading-7 text-app-muted">
                 Melon helps you find the right content path, browse Modrinth,
-                add local `.jar` and `.zip` files, review updates, and keep
-                bundle archives tidy in one place.
+                add local `.jar` and `.zip` files, auto-detect the most likely
+                folder target, flag linked dependency needs, review updates,
+                and keep bundle archives tidy in one place.
               </p>
             </div>
 
@@ -397,21 +462,21 @@ export default function Home() {
             </div>
 
             <div className="grid gap-3 md:grid-cols-3">
-              <div className="rounded-[20px] border border-app-line bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(139,217,183,0.08))] p-4">
+              <div className="interactive-card-mint rounded-[20px] border border-app-line bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(139,217,183,0.08))] p-4">
                 <SectionEyebrow>Detect setup</SectionEyebrow>
                 <p className="mt-3 font-body leading-7 text-app-muted">
-                  Loader-aware path detection helps point installs to the right
-                  folder first.
+                  Loader-aware path detection helps map installs to the right
+                  folder lane first.
                 </p>
               </div>
-              <div className="rounded-[20px] border border-app-line bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(157,224,111,0.05))] p-4">
+              <div className="interactive-card-rind rounded-[20px] border border-app-line bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(157,224,111,0.05))] p-4">
                 <SectionEyebrow>Track sources</SectionEyebrow>
                 <p className="mt-3 font-body leading-7 text-app-muted">
                   Keep Modrinth installs and manually added files in one
                   library view.
                 </p>
               </div>
-              <div className="rounded-[20px] border border-app-line bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(239,249,216,0.08))] p-4">
+              <div className="interactive-card-gold rounded-[20px] border border-app-line bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(239,249,216,0.08))] p-4">
                 <SectionEyebrow>Repair local data</SectionEyebrow>
                 <p className="mt-3 font-body leading-7 text-app-muted">
                   Rebuild metadata and refresh caches when local state gets
@@ -425,11 +490,11 @@ export default function Home() {
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {heroSignals.map((signal, index) => (
             <ScrollReveal
-              key={signal}
+              key={signal.label}
               delay={0.12 + index * 0.06}
-              className="rounded-[18px] border border-app-line bg-white/[0.045] px-4 py-3 font-body text-[0.95rem] leading-6 text-app-sand"
+              className={`rounded-[18px] border border-app-line px-4 py-3 font-body text-[0.95rem] leading-6 text-app-sand ${signal.toneClassName} ${signal.hoverClassName ?? ""}`}
             >
-              {signal}
+              {signal.label}
             </ScrollReveal>
           ))}
         </div>
@@ -440,7 +505,7 @@ export default function Home() {
               as="article"
               key={stat.label}
               delay={0.18 + index * 0.08}
-              className="rounded-[20px] border border-app-line bg-white/[0.045] px-5 py-4"
+              className={`rounded-[20px] border border-app-line px-5 py-4 ${stat.toneClassName} ${stat.hoverClassName ?? ""}`}
             >
               <div className="flex items-baseline gap-3">
                 <strong className="text-[clamp(1.45rem,2.2vw,2rem)] leading-none text-app-sand">
@@ -474,7 +539,7 @@ export default function Home() {
                 as="article"
                 key={type.title}
                 delay={0.08 + index * 0.08}
-                className={`glass-panel flex h-full flex-col rounded-[26px] border border-app-line p-6 ${type.toneClassName}`}
+                className={`glass-panel interactive-card flex h-full flex-col rounded-[26px] border border-app-line p-6 ${type.toneClassName} ${type.hoverClassName ?? ""}`}
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className={`inline-flex rounded-2xl border p-3 ${type.iconClassName}`}>
@@ -527,7 +592,7 @@ export default function Home() {
                 as="article"
                 key={card.title}
                 delay={0.08 + index * 0.06}
-                className={`rounded-[24px] border border-app-line p-5 ${card.toneClassName}`}
+                className={`interactive-card rounded-[24px] border border-app-line p-5 ${card.toneClassName} ${card.hoverClassName ?? ""}`}
               >
                 <div className={`inline-flex rounded-2xl border p-3 ${card.iconClassName}`}>
                   <Icon className="h-5 w-5" />
@@ -563,7 +628,7 @@ export default function Home() {
                 as="article"
                 key={step.step}
                 delay={0.08 + index * 0.08}
-                className={`glass-panel flex h-full flex-col rounded-[28px] border border-app-line p-6 ${step.toneClassName}`}
+                className={`glass-panel interactive-card flex h-full flex-col rounded-[28px] border border-app-line p-6 ${step.toneClassName} ${step.hoverClassName ?? ""}`}
               >
                 <div className="flex items-start justify-between gap-4">
                   <span className={`inline-flex h-14 w-14 items-center justify-center rounded-full border font-body text-[0.88rem] font-bold tracking-[0.12em] ${step.iconClassName}`}>
@@ -599,11 +664,16 @@ export default function Home() {
           <div className="grid gap-4">
             <ScrollReveal
               delay={0.08}
-              className="rounded-[24px] border border-app-line bg-white/[0.04] p-5"
+              className="interactive-card-sky rounded-[24px] border border-app-line bg-[linear-gradient(180deg,rgba(110,198,255,0.12),rgba(255,255,255,0.03))] p-5"
             >
-              <h3 className="font-body text-[1.5rem] font-semibold leading-[1.08] text-app-text">
-                Why antivirus warnings may appear
-              </h3>
+              <div className="flex items-start justify-between gap-4">
+                <h3 className="font-body text-[1.5rem] font-semibold leading-[1.08] text-app-text">
+                  Why antivirus warnings may appear
+                </h3>
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#73b7f6]/35 bg-[#73b7f6]/14 font-body text-[1rem] font-bold text-[#b9deff] shadow-[0_0_24px_rgba(115,183,246,0.22)]">
+                  ?
+                </span>
+              </div>
               <p className="mt-3 font-body leading-7 text-app-muted">
                 Small unsigned desktop apps can sometimes trigger false
                 positives. That is why it helps to keep the source code and
@@ -613,13 +683,19 @@ export default function Home() {
 
             <ScrollReveal
               delay={0.16}
-              className="rounded-[24px] border border-app-line bg-white/[0.04] p-5"
+              className="interactive-card-mint rounded-[24px] border border-app-line bg-[linear-gradient(180deg,rgba(139,217,183,0.12),rgba(255,255,255,0.03))] p-5"
             >
-              <h3 className="font-body text-[1.5rem] font-semibold leading-[1.08] text-app-text">
-                What Melon focuses on
-              </h3>
+              <div className="flex items-start justify-between gap-4">
+                <h3 className="font-body text-[1.5rem] font-semibold leading-[1.08] text-app-text">
+                  What Melon focuses on
+                </h3>
+                <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-[#69d1a4]/34 bg-[#69d1a4]/14 text-[#9ff0ca] shadow-[0_0_26px_rgba(105,209,164,0.2)]">
+                  <Sparkles className="h-5 w-5" />
+                </span>
+              </div>
               <p className="mt-3 font-body leading-7 text-app-muted">
-                Loader-aware Java mod workflows, support for shader packs and
+                Loader-aware Java mod workflows, automatic path inference,
+                dependency-aware install checks, support for shader packs and
                 resource packs, and straightforward GitHub-based releases.
               </p>
             </ScrollReveal>
@@ -628,13 +704,13 @@ export default function Home() {
           <div className="grid gap-3" aria-label="Compatibility summary">
             {trustFacts.map((item, index) => (
               <ScrollReveal
-                key={item}
+                key={item.text}
                 delay={0.1 + index * 0.06}
-                className="rounded-[20px] border border-app-line bg-white/[0.04] px-5 py-4"
+                className={`rounded-[20px] border border-app-line px-5 py-4 ${item.toneClassName} ${item.hoverClassName ?? ""}`}
               >
                 <div className="flex items-start gap-3">
                   <span className="mt-1.5 h-3 w-3 rounded-full bg-[radial-gradient(circle_at_35%_35%,#fff5ef,var(--accent)_56%,var(--color-app-rind-strong)_100%)] shadow-[0_0_20px_var(--accent-shadow)]" />
-                  <p className="font-body leading-7 text-app-muted">{item}</p>
+                  <p className="font-body leading-7 text-app-muted">{item.text}</p>
                 </div>
               </ScrollReveal>
             ))}
