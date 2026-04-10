@@ -152,7 +152,7 @@ jobs:
           if (!(Test-Path $iscc)) {
             throw "ISCC not found at $iscc"
           }
-          & $iscc "windows\installer\melon_mod_setup.iss" "/DMyAppVersion=$appVersion" "/DMyOutputBaseFilename=$outputBase" "/DMyVersionInfoVersion=$versionInfo"
+          & $iscc "windows\installer\melon_mod_setup.iss" "/DMyAppVersion=$appVersion" "/DMyOutputBaseFilename=$outputBase" "/DMyVersionInfoVersion=$versionInfo" "/DMySiteUrl=https://melonmod.deze.me"
           if ($LASTEXITCODE -ne 0) {
             throw "Inno Setup build failed with code $LASTEXITCODE"
           }

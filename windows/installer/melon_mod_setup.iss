@@ -2,7 +2,7 @@
 ; Build app first, then point Source to your release output folder.
 
 #ifndef MyAppVersion
-  #define MyAppVersion "1.7.9"
+  #define MyAppVersion "1.7.10"
 #endif
 
 #ifndef MyOutputBaseFilename
@@ -12,6 +12,15 @@
 #ifndef MyVersionInfoVersion
   #define MyVersionInfoVersion "1.0.0.0"
 #endif
+
+#ifndef MySiteUrl
+  #define MySiteUrl "http://localhost:3000"
+#endif
+
+#define MyRoamingDataDir "{userappdata}\Melon Mod Manager\Melon Mod Manager"
+#define MyLocalDataDir "{localappdata}\Melon Mod Manager\Melon Mod Manager"
+#define MyHiveBoxBase "{userdocs}\modrinth_mappings"
+#define MyThankYouUrl MySiteUrl + "/thank-you-message"
 
 [Setup]
 AppId={{6A8C18A3-8D5A-4E8D-9D2D-2B4E8D8F0B11}
@@ -49,6 +58,17 @@ Name: "desktopicon"; Description: "Create a desktop icon"; GroupDescription: "Ad
 ; remove old app payload files/folders before copying the new build.
 Type: filesandordirs; Name: "{app}\*"
 
+[UninstallDelete]
+; Remove app-owned Flutter settings and support data only.
+; Do not delete the user's Minecraft mods/resource packs/shader packs.
+Type: filesandordirs; Name: "{#MyRoamingDataDir}"
+Type: dirifempty; Name: "{userappdata}\Melon Mod Manager"
+Type: filesandordirs; Name: "{#MyLocalDataDir}"
+Type: dirifempty; Name: "{localappdata}\Melon Mod Manager"
+Type: files; Name: "{#MyHiveBoxBase}.hive"
+Type: files; Name: "{#MyHiveBoxBase}.hivec"
+Type: files; Name: "{#MyHiveBoxBase}.lock"
+
 [Files]
 ; Update these paths to your real Windows release output.
 Source: "..\..\build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -70,6 +90,7 @@ FinishedHeadingLabel=Setup Complete
 var
   InstallStageLabel: TNewStaticText;
   InstallPercentLabel: TNewStaticText;
+  ThankYouPageOpened: Boolean;
 
 procedure InitializeWizard();
 begin
@@ -118,10 +139,59 @@ end;
 
 function InitializeUninstall(): Boolean;
 begin
+  ThankYouPageOpened := False;
   Result :=
     MsgBox(
       'Do you really want to uninstall Melon Mod Manager?',
       mbConfirmation,
       MB_YESNO
     ) = IDYES;
+end;
+
+procedure CleanupAppTempData();
+var
+  TempRoot: String;
+  AppTempDir: String;
+begin
+  TempRoot := GetEnv('TEMP');
+  if TempRoot = '' then
+    exit;
+
+  AppTempDir := AddBackslash(TempRoot) + 'melon_mod';
+  if DirExists(AppTempDir) then
+    if not DelTree(AppTempDir, True, True, True) then
+      Log(Format('Could not remove app temp directory "%s".', [AppTempDir]));
+end;
+
+procedure OpenThankYouPageAfterUninstall();
+var
+  ErrorCode: Integer;
+begin
+  if ThankYouPageOpened or UninstallSilent then
+    exit;
+
+  if not ShellExec(
+    '',
+    '{#MyThankYouUrl}',
+    '',
+    '',
+    SW_SHOWNORMAL,
+    ewNoWait,
+    ErrorCode
+  ) then
+    Log(Format(
+      'Could not open uninstall thank-you page "%s" (error %d).',
+      ['{#MyThankYouUrl}', ErrorCode]
+    ))
+  else
+    ThankYouPageOpened := True;
+end;
+
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+begin
+  if CurUninstallStep = usUninstall then
+    CleanupAppTempData();
+
+  if CurUninstallStep = usDone then
+    OpenThankYouPageAfterUninstall();
 end;

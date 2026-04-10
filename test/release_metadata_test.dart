@@ -6,15 +6,15 @@ void main() {
   group('release metadata', () {
     test('parses semver stable version and matching tag', () {
       final metadata = resolveReleaseMetadata(
-        pubspecContent: 'name: melon_mod\nversion: 1.7.9+1\n',
-        tagName: 'v1.7.9',
+        pubspecContent: 'name: melon_mod\nversion: 1.7.10+1\n',
+        tagName: 'v1.7.10',
       );
 
-      expect(metadata.appVersion, '1.7.9');
-      expect(metadata.tagName, 'v1.7.9');
+      expect(metadata.appVersion, '1.7.10');
+      expect(metadata.tagName, 'v1.7.10');
       expect(metadata.releaseChannel, 'Stable');
       expect(metadata.isPrerelease, isFalse);
-      expect(metadata.releaseTitle, 'Melon Mod Manager 1.7.9');
+      expect(metadata.releaseTitle, 'Melon Mod Manager 1.7.10');
     });
 
     test('parses stable date release as stable', () {
@@ -38,10 +38,10 @@ void main() {
       expect(metadata.releaseTitle, 'Melon Mod Manager 1.8.0-beta.2 (Beta)');
     });
 
-    test('rejects tag mismatch for 1.7.9', () {
+    test('rejects tag mismatch for 1.7.10', () {
       expect(
         () => resolveReleaseMetadata(
-          pubspecContent: 'version: 1.7.9+1\n',
+          pubspecContent: 'version: 1.7.10+1\n',
           tagName: 'v1.7.0',
         ),
         throwsA(isA<FormatException>()),

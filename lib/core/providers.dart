@@ -68,6 +68,7 @@ final _knownReleaseDates = <String, DateTime>{
   '1.7.7': DateTime(2026, 4, 5),
   '1.7.8': DateTime(2026, 4, 8),
   '1.7.9': DateTime(2026, 4, 8),
+  '1.7.10': DateTime(2026, 4, 10),
 };
 
 final _stableDateVersionPattern =

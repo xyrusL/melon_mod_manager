@@ -15,6 +15,31 @@ import 'package:melon_mod/presentation/widgets/refresh_progress_dialog.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  testWidgets('app update button uses update icon while idle', (tester) async {
+    final repository = await _buildRepository();
+
+    await tester.pumpWidget(
+      _buildPanel(
+        repository: repository,
+        appUpdateState: const AppUpdateState(
+          status: AppUpdateCheckStatus.idle,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('App Update'), findsOneWidget);
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is AnimatedActionIcon &&
+            widget.icon == Icons.update_rounded &&
+            !widget.animate,
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('app update button uses rotating refresh icon while checking',
       (tester) async {
     final repository = await _buildRepository();

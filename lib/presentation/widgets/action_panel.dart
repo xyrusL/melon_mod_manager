@@ -312,7 +312,7 @@ class _ActionPanelState extends ConsumerState<ActionPanel> {
                       Icons.new_releases_rounded,
                     AppUpdateCheckStatus.upToDate => Icons.verified_rounded,
                     AppUpdateCheckStatus.error => Icons.error_outline_rounded,
-                    AppUpdateCheckStatus.idle => Icons.system_update_rounded,
+                    AppUpdateCheckStatus.idle => Icons.update_rounded,
                   },
                   backgroundColor: switch (appUpdateState.status) {
                     AppUpdateCheckStatus.updateAvailable =>
@@ -1519,13 +1519,8 @@ class _AboutDialog extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                'Goal',
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 6),
               Text(
-                'Manage Minecraft mods, resource packs, and shader packs in one place: scan local folders, install and update from Modrinth, and safely import/export zip bundles.',
+                'Melon Mod Manager helps you keep your Minecraft setup organized without doing everything by hand. You can scan what is already in your folders, browse and install mods from Modrinth, update older files, and pack or unpack zip bundles when you want to move things around. It is built to make mod management feel simpler, clearer, and less messy.',
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.82),
                   height: 1.35,
