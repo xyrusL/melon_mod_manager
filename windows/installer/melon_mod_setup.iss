@@ -179,10 +179,11 @@ begin
     ewNoWait,
     ErrorCode
   ) then
-    Log(Format(
-      'Could not open uninstall thank-you page "%s" (error %d).',
-      ['{#MyThankYouUrl}', ErrorCode]
-    ))
+  begin
+    Log('Could not open uninstall thank-you page. Error code: ' +
+      IntToStr(ErrorCode));
+    Log('Thank-you URL: {#MyThankYouUrl}');
+  end
   else
     ThankYouPageOpened := True;
 end;
