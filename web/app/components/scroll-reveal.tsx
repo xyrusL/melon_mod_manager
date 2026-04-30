@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useReducedMotion } from "motion/react";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 type RevealDirection = "up" | "down" | "left" | "right";
 type ScrollRevealTag = "article" | "div" | "section";
@@ -44,28 +44,26 @@ export function ScrollReveal({
   id,
 }: ScrollRevealProps) {
   const shouldReduceMotion = useReducedMotion();
+  const [isMounted, setIsMounted] = useState(false);
   const MotionComponent = motion.create(as ?? "div");
   const hiddenOffset = getHiddenOffset(direction, distance);
+  const canAnimate = isMounted && !shouldReduceMotion;
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   return (
     <MotionComponent
       id={id}
       className={className}
-      initial={
-        shouldReduceMotion
-          ? false
-          : { opacity: 0, ...hiddenOffset }
-      }
-      whileInView={
-        shouldReduceMotion
-          ? undefined
-          : { opacity: 1, x: 0, y: 0 }
-      }
-      animate={shouldReduceMotion ? { opacity: 1, x: 0, y: 0 } : undefined}
+      initial={canAnimate ? { opacity: 0, ...hiddenOffset } : false}
+      whileInView={canAnimate ? { opacity: 1, x: 0, y: 0 } : undefined}
+      animate={canAnimate ? undefined : { opacity: 1, x: 0, y: 0 }}
       viewport={{ once: true, amount }}
       transition={{
-        duration: shouldReduceMotion ? 0 : duration,
-        delay: shouldReduceMotion ? 0 : delay,
+        duration: canAnimate ? duration : 0,
+        delay: canAnimate ? delay : 0,
         ease: [0.2, 0.7, 0.2, 1],
       }}
     >
